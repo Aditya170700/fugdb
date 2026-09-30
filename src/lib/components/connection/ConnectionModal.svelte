@@ -295,18 +295,42 @@
       <div class="p-6 space-y-4 text-xs max-h-[360px] overflow-y-auto">
         {#if activeTab === 'general'}
           <!-- Name & Environment -->
-          <div class="grid grid-cols-3 gap-3">
-            <div class="col-span-2 space-y-1">
-              <label for="conn-name" class="font-semibold text-slate-300 text-[11px]">Connection Name</label>
-              <input id="conn-name" bind:value={name} class="w-full bg-surface-950 border border-slate-800 rounded-md px-3 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500" />
-            </div>
+          <div class="space-y-3">
             <div class="space-y-1">
-              <label for="conn-env" class="font-semibold text-slate-300 text-[11px]">Environment</label>
-              <select id="conn-env" bind:value={environment} class="w-full bg-surface-950 border border-slate-800 rounded-md px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
-                <option value="dev">🟢 Dev</option>
-                <option value="staging">🟡 Staging</option>
-                <option value="production">🔴 Production</option>
-              </select>
+              <label for="conn-name" class="font-semibold text-slate-300 text-[11px]">Connection Name</label>
+              <input id="conn-name" bind:value={name} placeholder="e.g. Local PostgreSQL" class="w-full bg-surface-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 shadow-sm" />
+            </div>
+
+            <div class="space-y-1.5">
+              <span class="font-semibold text-slate-300 text-[11px] block">Environment & Safety Level</span>
+              <div class="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onclick={() => environment = 'dev'}
+                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all {environment === 'dev' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300 shadow-sm shadow-emerald-500/20' : 'bg-surface-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+                >
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 {environment === 'dev' ? 'animate-pulse' : ''}"></span>
+                  <span>Development</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick={() => environment = 'staging'}
+                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all {environment === 'staging' ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm shadow-amber-500/20' : 'bg-surface-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+                >
+                  <span class="w-2 h-2 rounded-full bg-amber-400 {environment === 'staging' ? 'animate-pulse' : ''}"></span>
+                  <span>Staging</span>
+                </button>
+
+                <button
+                  type="button"
+                  onclick={() => environment = 'production'}
+                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all {environment === 'production' ? 'bg-rose-500/15 border-rose-500 text-rose-300 shadow-sm shadow-rose-500/20' : 'bg-surface-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+                >
+                  <span class="w-2 h-2 rounded-full bg-rose-400 {environment === 'production' ? 'animate-pulse' : ''}"></span>
+                  <span>Production</span>
+                </button>
+              </div>
             </div>
           </div>
 
