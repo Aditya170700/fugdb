@@ -60,8 +60,21 @@
   <!-- Table Tree List -->
   <div class="flex-1 overflow-y-auto p-2 space-y-1">
     {#if connectionStore.isLoading}
-      <div class="p-4 text-center text-xs text-slate-500 animate-pulse">
-        Loading schema metadata...
+      <div class="p-4 text-center text-xs text-slate-500 animate-pulse flex flex-col items-center gap-2">
+        <RefreshCw size={16} class="animate-spin text-indigo-400" />
+        <span>Loading schema metadata...</span>
+      </div>
+    {:else if connectionStore.errorMessage}
+      <div class="p-3 m-1 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-300 text-xs flex flex-col gap-2">
+        <span class="font-bold text-[11px] uppercase tracking-wider text-rose-400">Connection Error</span>
+        <p class="text-[11px] leading-relaxed break-words">{connectionStore.errorMessage}</p>
+        <button 
+          type="button"
+          onclick={() => connectionStore.loadSchema(connectionStore.activeConnectionId)}
+          class="self-start px-2 py-1 bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 rounded text-[10px] font-semibold transition-colors"
+        >
+          Retry Connect
+        </button>
       </div>
     {:else if connectionStore.filteredTables.length === 0}
       <div class="p-4 text-center text-xs text-slate-500">

@@ -1,6 +1,9 @@
 use async_trait::async_trait;
-use sqlx::{mysql::MySqlPoolOptions, MySqlPool, Row, Column};
-use std::time::Instant;
+use sqlx::{
+    mysql::{MySqlConnectOptions, MySqlPoolOptions, MySqlSslMode},
+    MySqlPool, Row, Column,
+};
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 use crate::drivers::DatabaseAdapter;
@@ -25,17 +28,28 @@ impl MySqlAdapter {
         let user = config.username.as_deref().unwrap_or("root");
         let password = config.password.as_deref().unwrap_or("");
 
-        let url = format!(
-            "mysql://{}:{}@{}:{}/{}",
-            user, password, host, port, database
-        );
+        let mut connect_opts = MySqlConnectOptions::new()
+            .host(host)
+            .port(port)
+            .database(database)
+            .username(user)
+            .password(password);
+
+        if let Some(ref ssl) = config.ssl_mode {
+            match ssl.as_str() {
+                "disable" => connect_opts = connect_opts.ssl_mode(MySqlSslMode::Disabled),
+                "prefer" => connect_opts = connect_opts.ssl_mode(MySqlSslMode::Preferred),
+                "require" => connect_opts = connect_opts.ssl_mode(MySqlSslMode::Required),
+                _ => {}
+            }
+        }
 
         let pool = MySqlPoolOptions::new()
-            .max_connections(10)
-            .acquire_timeout(std::time::Duration::from_secs(5))
-            .connect(&url)
+            .max_connections(5)
+            .acquire_timeout(Duration::from_secs(5))
+            .connect_with(connect_opts)
             .await
-            .map_err(|e| AppError::ConnectionError(e.to_string()))?;
+            .map_err(|e| AppError::ConnectionError(format!("MySQL connection failed: {}", e)))?;
 
         Ok(Self {
             pool,

@@ -1,6 +1,9 @@
 use async_trait::async_trait;
-use sqlx::{postgres::PgPoolOptions, PgPool, Row, Column};
-use std::time::Instant;
+use sqlx::{
+    postgres::{PgConnectOptions, PgPoolOptions, PgSslMode},
+    PgPool, Row, Column,
+};
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 
 use crate::drivers::DatabaseAdapter;
@@ -25,31 +28,36 @@ impl PostgresAdapter {
         let user = config.username.as_deref().unwrap_or("postgres");
         let password = config.password.as_deref().unwrap_or("");
 
-        let url = format!(
-            "postgres://{}:{}@{}:{}/{}",
-            urlencoding(user),
-            urlencoding(password),
-            host,
-            port,
-            database
-        );
+        let mut connect_opts = PgConnectOptions::new()
+            .host(host)
+            .port(port)
+            .database(database)
+            .username(user)
+            .password(password);
+
+        if let Some(ref ssl) = config.ssl_mode {
+            match ssl.as_str() {
+                "disable" => connect_opts = connect_opts.ssl_mode(PgSslMode::Disable),
+                "prefer" => connect_opts = connect_opts.ssl_mode(PgSslMode::Prefer),
+                "require" => connect_opts = connect_opts.ssl_mode(PgSslMode::Require),
+                _ => {}
+            }
+        } else {
+            connect_opts = connect_opts.ssl_mode(PgSslMode::Prefer);
+        }
 
         let pool = PgPoolOptions::new()
-            .max_connections(10)
-            .acquire_timeout(std::time::Duration::from_secs(5))
-            .connect(&url)
+            .max_connections(5)
+            .acquire_timeout(Duration::from_secs(5))
+            .connect_with(connect_opts)
             .await
-            .map_err(|e| AppError::ConnectionError(e.to_string()))?;
+            .map_err(|e| AppError::ConnectionError(format!("PostgreSQL connection failed: {}", e)))?;
 
         Ok(Self {
             pool,
             database_name: database.to_string(),
         })
     }
-}
-
-fn urlencoding(s: &str) -> String {
-    urlencoding::encode(s).to_string()
 }
 
 #[async_trait]
@@ -93,7 +101,6 @@ impl DatabaseAdapter for PostgresAdapter {
         for row in &rows {
             let mut row_values = Vec::new();
             for col in row.columns() {
-                // Generic string/json conversion for safety
                 let val: Option<String> = row.try_get(col.name()).ok();
                 row_values.push(match val {
                     Some(v) => serde_json::Value::String(v),
@@ -149,7 +156,6 @@ impl DatabaseAdapter for PostgresAdapter {
     }
 
     async fn generate_erd_metadata(&self) -> Result<Vec<RelationEdge>, AppError> {
-        // Query foreign keys from information_schema
         Ok(vec![])
     }
 
@@ -163,11 +169,5 @@ impl DatabaseAdapter for PostgresAdapter {
 
     async fn batch_insert_rows(&self, _table: &str, _columns: &[String], rows: &[Vec<serde_json::Value>], _strategy: &ConflictStrategy) -> Result<u64, AppError> {
         Ok(rows.len() as u64)
-    }
-}
-
-mod urlencoding {
-    pub fn encode(s: &str) -> String {
-        s.replace('/', "%2F").replace('@', "%40").replace(':', "%3A")
     }
 }

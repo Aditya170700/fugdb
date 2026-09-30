@@ -12,6 +12,7 @@ export class ConnectionStore {
       port: 15432,
       database: 'fugdb_test',
       username: 'fugdb_user',
+      password: 'fugdb_password',
     },
     {
       id: 'conn-local-mysql',
@@ -22,22 +23,14 @@ export class ConnectionStore {
       port: 3306,
       database: 'fugdb_test',
       username: 'fugdb_user',
+      password: 'fugdb_password',
     },
-    {
-      id: 'conn-prod-analytics',
-      name: 'Production Warehouse',
-      driver: 'postgres',
-      environment: 'production',
-      host: 'db.prod.company.com',
-      port: 5432,
-      database: 'analytics',
-      username: 'readonly_analyst',
-    }
   ]);
 
   activeConnectionId = $state<string>('conn-local-pg');
   schemas = $state<Record<string, SchemaTree>>({});
   isLoading = $state<boolean>(false);
+  errorMessage = $state<string | null>(null);
   activeSchemaSearch = $state<string>('');
 
   activeConnection = $derived(
@@ -58,26 +51,40 @@ export class ConnectionStore {
 
   async selectConnection(id: string) {
     this.activeConnectionId = id;
-    if (!this.schemas[id]) {
-      await this.loadSchema(id);
-    }
+    this.errorMessage = null;
+    await this.loadSchema(id);
   }
 
   async loadSchema(connectionId: string) {
+    const config = this.connections.find(c => c.id === connectionId);
+    if (!config) return;
+
     this.isLoading = true;
+    this.errorMessage = null;
+
     try {
+      // 1. Ensure connected in backend
+      await api.connect(config);
+      // 2. Fetch schema tree
       const tree = await api.fetchSchema(connectionId);
       this.schemas[connectionId] = tree;
-    } catch (err) {
-      console.error('Failed to fetch schema:', err);
+    } catch (err: any) {
+      console.error('Failed to load schema:', err);
+      this.errorMessage = typeof err === 'string' ? err : err?.message || JSON.stringify(err);
     } finally {
       this.isLoading = false;
     }
   }
 
-  addConnection(config: ConnectionConfig) {
-    this.connections.push(config);
-    this.selectConnection(config.id);
+  async addConnection(config: ConnectionConfig) {
+    // Avoid duplicate IDs
+    const existingIdx = this.connections.findIndex(c => c.id === config.id);
+    if (existingIdx >= 0) {
+      this.connections[existingIdx] = config;
+    } else {
+      this.connections.push(config);
+    }
+    await this.selectConnection(config.id);
   }
 }
 

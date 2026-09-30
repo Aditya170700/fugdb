@@ -10,6 +10,7 @@ export interface TabItem {
   sql?: string;
   tableName?: string;
   queryResult?: QueryResult;
+  errorMessage?: string;
   isExecuting?: boolean;
   isModified?: boolean;
 }
@@ -79,11 +80,14 @@ export class TabsStore {
     if (!tab || !tab.sql) return;
 
     tab.isExecuting = true;
+    tab.errorMessage = undefined;
     try {
       const result = await api.executeQuery(tab.connectionId, tab.sql);
       tab.queryResult = result;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Execution error:', err);
+      tab.errorMessage = typeof err === 'string' ? err : err?.message || JSON.stringify(err);
+      tab.queryResult = undefined;
     } finally {
       tab.isExecuting = false;
     }

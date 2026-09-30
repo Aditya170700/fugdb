@@ -2,7 +2,7 @@
   import type { QueryResult } from '$lib/api/types';
   import { Check, Copy, Download, Filter, Save, Undo } from 'lucide-svelte';
 
-  let { result }: { result?: QueryResult } = $props();
+  let { result, errorMessage }: { result?: QueryResult; errorMessage?: string } = $props();
 
   let stagedChangesCount = $state(0);
   let filterText = $state('');
@@ -35,7 +35,14 @@
 </script>
 
 <div class="w-full h-full flex flex-col bg-surface-950">
-  {#if !result}
+  {#if errorMessage}
+    <div class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+      <div class="max-w-md bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-rose-300 text-xs space-y-2 text-left shadow-lg">
+        <span class="font-bold text-[11px] uppercase tracking-wider text-rose-400 block">Query Execution Error</span>
+        <p class="font-mono text-slate-200 text-xs bg-surface-950/70 p-2.5 rounded-lg border border-slate-800 break-words">{errorMessage}</p>
+      </div>
+    </div>
+  {:else if !result}
     <div class="flex-1 flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
       <span>No data to display.</span>
       <span class="text-xs text-slate-600">Press <kbd class="px-1.5 py-0.5 rounded bg-surface-800 text-slate-300 font-mono">Cmd+Enter</kbd> to execute query.</span>

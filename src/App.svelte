@@ -4,11 +4,13 @@
   import ConnectionTree from '$lib/components/sidebar/ConnectionTree.svelte';
   import SqlEditor from '$lib/components/editor/SqlEditor.svelte';
   import DataGrid from '$lib/components/grid/DataGrid.svelte';
+  import ConnectionModal from '$lib/components/connection/ConnectionModal.svelte';
   import ErdModal from '$lib/components/erd/ErdModal.svelte';
   import TransferModal from '$lib/components/transfer/TransferModal.svelte';
   import MockDataModal from '$lib/components/qa/MockDataModal.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
 
+  let isNewConnOpen = $state(false);
   let isErdOpen = $state(false);
   let isTransferOpen = $state(false);
   let isMockDataOpen = $state(false);
@@ -19,6 +21,7 @@
 <main class="w-screen h-screen flex flex-col bg-surface-950 text-slate-100 overflow-hidden font-sans">
   <!-- Top Navigation Header -->
   <Navbar 
+    onOpenNewConnection={() => isNewConnOpen = true}
     onOpenErd={() => isErdOpen = true}
     onOpenTransfer={() => isTransferOpen = true}
     onOpenMockData={() => isMockDataOpen = true}
@@ -26,7 +29,7 @@
 
   <!-- Main Content Layout (Sidebar + Split Editor/Grid Area) -->
   <div class="flex-1 flex overflow-hidden">
-    <ConnectionTree />
+    <ConnectionTree onOpenNewConnection={() => isNewConnOpen = true} />
 
     <section class="flex-1 flex flex-col overflow-hidden bg-surface-950">
       {#if activeTab}
@@ -37,7 +40,7 @@
 
         <!-- Bottom Split: Results Data Grid -->
         <div class="flex-1 overflow-hidden">
-          <DataGrid result={activeTab.queryResult} />
+          <DataGrid result={activeTab.queryResult} errorMessage={activeTab.errorMessage} />
         </div>
       {:else}
         <div class="flex-1 flex items-center justify-center text-slate-500 text-sm">
@@ -51,6 +54,7 @@
   <Statusbar />
 
   <!-- Modals -->
+  <ConnectionModal isOpen={isNewConnOpen} onClose={() => isNewConnOpen = false} />
   <ErdModal isOpen={isErdOpen} onClose={() => isErdOpen = false} />
   <TransferModal isOpen={isTransferOpen} onClose={() => isTransferOpen = false} />
   <MockDataModal isOpen={isMockDataOpen} onClose={() => isMockDataOpen = false} />
