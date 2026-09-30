@@ -57,7 +57,7 @@ docker compose down
 ```
 
 **Pre-configured Local Connections:**
-- **PostgreSQL**: `localhost:5432` | User: `fugdb_user` | Pass: `fugdb_password` | DB: `fugdb_test`
+- **PostgreSQL**: `localhost:5433` | User: `fugdb_user` | Pass: `fugdb_password` | DB: `fugdb_test`
 - **MySQL**: `localhost:3306` | User: `fugdb_user` | Pass: `fugdb_password` | DB: `fugdb_test`
 
 ---

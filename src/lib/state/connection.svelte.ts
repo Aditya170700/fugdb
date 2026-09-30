@@ -9,7 +9,7 @@ export class ConnectionStore {
       driver: 'postgres',
       environment: 'dev',
       host: 'localhost',
-      port: 5432,
+      port: 5433,
       database: 'fugdb_test',
       username: 'fugdb_user',
     },
