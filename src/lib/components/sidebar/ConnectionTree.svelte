@@ -61,8 +61,9 @@
       </div>
 
       {#each connectionStore.filteredTables as table (table.name)}
-        <div 
-          class="group flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs text-slate-300 hover:bg-surface-800 hover:text-white cursor-pointer transition-colors"
+        <button 
+          type="button"
+          class="w-full group flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs text-slate-300 hover:bg-surface-800 hover:text-white cursor-pointer transition-colors text-left"
           ondblclick={() => tabsStore.openTableGridTab(table.name)}
           onclick={() => tabsStore.openTableGridTab(table.name)}
         >
@@ -80,7 +81,7 @@
               ~{table.rowCountEstimate.toLocaleString()}
             </span>
           {/if}
-        </div>
+        </button>
       {/each}
     {/if}
   </div>

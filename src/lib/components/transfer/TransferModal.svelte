@@ -76,14 +76,14 @@
           <div class="grid grid-cols-5 gap-3 items-center">
             <!-- Source DB -->
             <div class="col-span-2 space-y-1.5">
-              <label class="font-semibold text-slate-400 uppercase text-[10px]">Source Connection</label>
-              <select bind:value={sourceConnId} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+              <label for="src-conn-select" class="font-semibold text-slate-400 uppercase text-[10px]">Source Connection</label>
+              <select id="src-conn-select" bind:value={sourceConnId} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200 focus:outline-none focus:border-indigo-500">
                 {#each connectionStore.connections as conn}
                   <option value={conn.id}>{conn.name}</option>
                 {/each}
               </select>
-              <label class="font-semibold text-slate-400 uppercase text-[10px]">Table</label>
-              <input bind:value={selectedTable} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" placeholder="e.g. users" />
+              <label for="src-table-input" class="font-semibold text-slate-400 uppercase text-[10px]">Table</label>
+              <input id="src-table-input" bind:value={selectedTable} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" placeholder="e.g. users" />
             </div>
 
             <div class="flex justify-center text-indigo-400">
@@ -92,23 +92,24 @@
 
             <!-- Target DB -->
             <div class="col-span-2 space-y-1.5">
-              <label class="font-semibold text-slate-400 uppercase text-[10px]">Target Connection</label>
-              <select bind:value={targetConnId} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+              <label for="target-conn-select" class="font-semibold text-slate-400 uppercase text-[10px]">Target Connection</label>
+              <select id="target-conn-select" bind:value={targetConnId} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200 focus:outline-none focus:border-indigo-500">
                 {#each connectionStore.connections as conn}
                   <option value={conn.id}>{conn.name}</option>
                 {/each}
               </select>
-              <label class="font-semibold text-slate-400 uppercase text-[10px]">Target Table</label>
-              <input value={selectedTable} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
+              <label for="target-table-input" class="font-semibold text-slate-400 uppercase text-[10px]">Target Table</label>
+              <input id="target-table-input" value={selectedTable} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
             </div>
           </div>
         {:else}
           <!-- Format Selector for Export/Import -->
           <div class="space-y-2">
-            <label class="font-semibold text-slate-400 uppercase text-[10px]">Select Format</label>
+            <span class="font-semibold text-slate-400 uppercase text-[10px] block">Select Format</span>
             <div class="grid grid-cols-5 gap-2">
               {#each ['csv', 'json', 'excel', 'parquet', 'sql'] as fmt}
                 <button 
+                  type="button"
                   onclick={() => selectedFormat = fmt as any}
                   class="p-3 rounded-lg border text-center font-mono uppercase text-xs transition-all {selectedFormat === fmt ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold' : 'border-slate-800 text-slate-400 hover:border-slate-700'}"
                 >

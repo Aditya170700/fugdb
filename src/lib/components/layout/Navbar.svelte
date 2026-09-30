@@ -72,11 +72,15 @@
   <div class="flex-1 flex items-center gap-1.5 overflow-x-auto px-4 max-w-2xl scrollbar-none">
     {#each tabsStore.tabs as tab (tab.id)}
       <div 
+        role="button"
+        tabindex="0"
         class="group flex items-center gap-2 px-3 py-1 text-xs rounded-md border transition-all cursor-pointer select-none {tab.id === tabsStore.activeTabId ? 'bg-surface-800 text-indigo-300 border-indigo-500/40 shadow-sm' : 'text-slate-400 border-transparent hover:bg-surface-800/50 hover:text-slate-200'}"
         onclick={() => tabsStore.activeTabId = tab.id}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') tabsStore.activeTabId = tab.id; }}
       >
         <span class="truncate max-w-[130px] font-medium">{tab.title}</span>
         <button 
+          type="button"
           class="opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-opacity p-0.5 rounded"
           onclick={(e) => { e.stopPropagation(); tabsStore.closeTab(tab.id); }}
         >

@@ -42,13 +42,13 @@
 
       <div class="space-y-3">
         <div>
-          <label class="font-semibold text-slate-300 block mb-1">Target Table</label>
-          <input bind:value={targetTable} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
+          <label for="mock-target-table" class="font-semibold text-slate-300 block mb-1">Target Table</label>
+          <input id="mock-target-table" bind:value={targetTable} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
         </div>
 
         <div>
-          <label class="font-semibold text-slate-300 block mb-1">Number of Rows</label>
-          <select bind:value={rowCount} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200">
+          <label for="mock-row-count" class="font-semibold text-slate-300 block mb-1">Number of Rows</label>
+          <select id="mock-row-count" bind:value={rowCount} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200">
             <option value={10}>10 rows (Quick test)</option>
             <option value={50}>50 rows (Standard)</option>
             <option value={500}>500 rows (Load test)</option>
