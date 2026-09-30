@@ -1,0 +1,36 @@
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+.svelte-kit/
+*.local
+
+# Rust / Cargo
+src-tauri/target/
+target/
+**/*.rs.bk
+Cargo.lock.backup
+
+# Tauri
+src-tauri/gen/
+src-tauri/.tauri/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Test databases & data dumps
+docker/data/
+*.sqlite
+*.sqlite3
+*.db
+*.parquet
