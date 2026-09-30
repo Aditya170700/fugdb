@@ -29,7 +29,7 @@
 
   <!-- Main Content Layout (Sidebar + Split Editor/Grid Area) -->
   <div class="flex-1 flex overflow-hidden">
-    <ConnectionTree onOpenNewConnection={() => isNewConnOpen = true} />
+    <ConnectionTree />
 
     <section class="flex-1 flex flex-col overflow-hidden bg-surface-950">
       {#if activeTab}

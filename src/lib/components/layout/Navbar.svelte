@@ -83,15 +83,6 @@
         <ChevronDown size={13} class="text-slate-400 transition-transform {isConnDropdownOpen ? 'rotate-180 text-indigo-400' : ''}" />
       </button>
 
-      <button 
-        type="button"
-        onclick={onOpenNewConnection}
-        class="p-1 text-slate-400 hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors"
-        title="Add New Connection (+)"
-      >
-        <Plus size={14} />
-      </button>
-
       <!-- Dropdown Popover -->
       {#if isConnDropdownOpen}
         <div 
