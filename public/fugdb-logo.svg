@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#818cf8" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="#0f172a" />
+  <rect x="24" y="24" width="464" height="464" rx="104" fill="url(#grad)" fill-opacity="0.1" stroke="url(#grad)" stroke-width="8" />
+  
+  <!-- Database Stack -->
+  <g transform="translate(106, 96)">
+    <!-- Top Cylinder -->
+    <ellipse cx="150" cy="50" rx="120" ry="40" fill="url(#accent)" />
+    
+    <!-- Middle Layer -->
+    <path d="M 30,50 v 90 c 0,22 53.7,40 120,40 s 120,-18 120,-40 v -90" fill="url(#grad)" opacity="0.8" />
+    <ellipse cx="150" cy="140" rx="120" ry="40" fill="none" stroke="#e0e7ff" stroke-width="6" opacity="0.4" />
+    
+    <!-- Bottom Layer -->
+    <path d="M 30,140 v 90 c 0,22 53.7,40 120,40 s 120,-18 120,-40 v -90" fill="url(#grad)" />
+    <ellipse cx="150" cy="230" rx="120" ry="40" fill="none" stroke="#e0e7ff" stroke-width="6" opacity="0.6" />
+    
+    <!-- Lightning / Bolt Spark -->
+    <polygon points="175,70 125,170 155,170 125,250 205,145 165,145" fill="#facc15" stroke="#ca8a04" stroke-width="4" />
+  </g>
+</svg>

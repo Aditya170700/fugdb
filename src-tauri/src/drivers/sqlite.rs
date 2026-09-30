@@ -118,7 +118,7 @@ impl DatabaseAdapter for SqliteAdapter {
                 schema: "main".into(),
                 name,
                 table_type: if table_type == "view" { "view".into() } else { "table".into() },
-                rowCount_estimate: None,
+                row_count_estimate: None,
             });
         }
 

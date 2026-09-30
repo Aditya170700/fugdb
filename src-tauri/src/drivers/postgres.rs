@@ -137,7 +137,7 @@ impl DatabaseAdapter for PostgresAdapter {
                 schema,
                 name,
                 table_type: if table_type == "VIEW" { "view".into() } else { "table".into() },
-                rowCount_estimate: None,
+                row_count_estimate: None,
             });
         }
 
