@@ -43,7 +43,7 @@
             <p class="text-[11px] text-slate-400">Stream data between databases, CSV, JSON, Excel, or Parquet</p>
           </div>
         </div>
-        <button onclick={onClose} class="text-slate-400 hover:text-white p-1 rounded-md">
+        <button onclick={onClose} class="text-slate-400 hover:text-slate-100 hover:bg-surface-800 p-1.5 rounded-lg transition-colors" title="Close">
           <X size={16} />
         </button>
       </div>

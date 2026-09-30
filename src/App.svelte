@@ -129,7 +129,7 @@
       aria-label="Resize sidebar"
       onmousedown={handleSidebarMouseDown}
       ondblclick={resetSidebarWidth}
-      class="w-1.5 hover:w-1.5 -ml-[1px] bg-slate-800/80 hover:bg-indigo-500 active:bg-indigo-400 cursor-col-resize transition-colors shrink-0 z-20 relative flex items-center justify-center group {isDraggingSidebar ? '!bg-indigo-500' : ''}"
+      class="w-1.5 hover:w-1.5 -ml-[1px] bg-slate-800/80 hover:bg-indigo-500 active:bg-indigo-400 cursor-col-resize transition-colors shrink-0 z-10 relative flex items-center justify-center group {isDraggingSidebar ? '!bg-indigo-500' : ''}"
       title="Drag to resize sidebar (Double click to reset)"
     >
       <span class="w-[2px] h-8 rounded-full bg-slate-600/40 group-hover:bg-indigo-200 transition-colors pointer-events-none {isDraggingSidebar ? '!bg-white' : ''}"></span>
@@ -149,7 +149,7 @@
           aria-label="Resize editor and results panel"
           onmousedown={handleEditorMouseDown}
           ondblclick={resetEditorHeight}
-          class="h-1.5 hover:h-1.5 bg-slate-800/80 hover:bg-indigo-500 active:bg-indigo-400 cursor-row-resize transition-colors shrink-0 z-20 relative flex items-center justify-center group {isDraggingEditor ? '!bg-indigo-500' : ''}"
+          class="h-1.5 hover:h-1.5 bg-slate-800/80 hover:bg-indigo-500 active:bg-indigo-400 cursor-row-resize transition-colors shrink-0 z-10 relative flex items-center justify-center group {isDraggingEditor ? '!bg-indigo-500' : ''}"
           title="Drag to resize editor & result grid (Double click to reset)"
         >
           <span class="h-[2px] w-8 rounded-full bg-slate-600/40 group-hover:bg-indigo-200 transition-colors pointer-events-none {isDraggingEditor ? '!bg-white' : ''}"></span>

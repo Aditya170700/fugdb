@@ -1,6 +1,7 @@
 <script lang="ts">
   import { connectionStore } from '$lib/state/connection.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
+  import { themeStore, type ThemeMode } from '$lib/state/theme.svelte';
   import { 
     Database, 
     Play, 
@@ -13,7 +14,10 @@
     ShieldAlert,
     Share2,
     ChevronDown, 
-    Check
+    Check,
+    Sun,
+    Moon,
+    Monitor
   } from 'lucide-svelte';
 
   let { 
@@ -32,12 +36,13 @@
   const activeTab = $derived(tabsStore.activeTab);
 
   let isConnDropdownOpen = $state(false);
+  let isThemeDropdownOpen = $state(false);
 
   function getEnvBadgeColor(env?: string) {
     switch (env) {
-      case 'production': return 'bg-rose-500/20 text-rose-300 border-rose-500/30';
-      case 'staging': return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-      default: return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+      case 'production': return 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-500/40 font-bold';
+      case 'staging': return 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 font-bold';
+      default: return 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/40 font-bold';
     }
   }
 
@@ -53,7 +58,7 @@
   }
 </script>
 
-<header class="h-12 border-b border-slate-800/80 bg-surface-900/90 backdrop-blur-md flex items-center px-3 z-20 gap-2">
+<header class="h-12 border-b border-slate-800/80 bg-surface-900/90 backdrop-blur-md flex items-center px-3 z-40 relative gap-2">
   <!-- 1. Left Brand -->
   <div class="flex items-center gap-2 font-bold tracking-wider text-sm text-indigo-400 shrink-0">
     <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
@@ -69,12 +74,12 @@
     <button 
       type="button"
       onclick={() => isConnDropdownOpen = !isConnDropdownOpen}
-      class="bg-surface-800/90 text-slate-200 border border-slate-700/80 hover:border-indigo-500/80 rounded-lg px-2.5 py-1 text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+      class="bg-surface-800/90 text-slate-100 border border-slate-700/80 hover:border-indigo-500/80 rounded-lg px-2.5 py-1 text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
     >
       {#if activeConn}
         <span class="text-sm">{getDriverIcon(activeConn.driver)}</span>
-        <span class="font-medium max-w-[140px] truncate text-slate-100">{activeConn.name}</span>
-        <span class="px-1.5 py-0.2 text-[9px] font-semibold uppercase rounded-full border {getEnvBadgeColor(activeConn.environment)}">
+        <span class="font-bold max-w-[140px] truncate text-slate-100">{activeConn.name}</span>
+        <span class="px-1.5 py-0.2 text-[9px] uppercase rounded-full border {getEnvBadgeColor(activeConn.environment)}">
           {activeConn.environment}
         </span>
       {:else}
@@ -96,13 +101,13 @@
           <button
             type="button"
             onclick={() => { connectionStore.selectConnection(conn.id); isConnDropdownOpen = false; }}
-            class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors {conn.id === connectionStore.activeConnectionId ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30' : 'hover:bg-surface-800 text-slate-300'}"
+            class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors {conn.id === connectionStore.activeConnectionId ? 'bg-indigo-600/15 text-indigo-600 dark:text-indigo-300 font-bold border border-indigo-500/30' : 'hover:bg-surface-800 text-slate-200'}"
           >
             <div class="flex items-center gap-2 truncate">
               <span>{getDriverIcon(conn.driver)}</span>
               <span class="truncate">{conn.name}</span>
             </div>
-            <span class="px-1.5 py-0.2 text-[9px] font-semibold uppercase rounded-full border {getEnvBadgeColor(conn.environment)}">
+            <span class="px-1.5 py-0.2 text-[9px] uppercase rounded-full border {getEnvBadgeColor(conn.environment)}">
               {conn.environment}
             </span>
           </button>
@@ -112,7 +117,7 @@
           <button
             type="button"
             onclick={() => { isConnDropdownOpen = false; onOpenNewConnection(); }}
-            class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-indigo-400 hover:bg-surface-800 rounded-lg transition-colors font-medium"
+            class="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-surface-800 rounded-lg transition-colors font-semibold"
           >
             <Plus size={13} />
             <span>Create New Connection...</span>
@@ -130,11 +135,11 @@
       <div 
         role="button"
         tabindex="0"
-        class="group flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border transition-all cursor-pointer select-none shrink-0 {tab.id === tabsStore.activeTabId ? 'bg-surface-800 text-indigo-200 border-indigo-500/50 shadow-sm font-semibold' : 'bg-surface-950/40 text-slate-400 border-slate-800/80 hover:bg-surface-800/60 hover:text-slate-200'}"
+        class="group flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border transition-all cursor-pointer select-none shrink-0 {tab.id === tabsStore.activeTabId ? 'bg-indigo-50 dark:bg-surface-800 text-indigo-700 dark:text-indigo-200 border-indigo-400 dark:border-indigo-500/50 shadow-sm font-bold ring-1 ring-indigo-500/20' : 'bg-surface-900/40 text-slate-400 border-slate-700/60 dark:border-slate-800/80 hover:bg-surface-800/60 hover:text-slate-100'}"
         onclick={() => tabsStore.activeTabId = tab.id}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') tabsStore.activeTabId = tab.id; }}
       >
-        <span class="text-[11px] opacity-70">{tab.type === 'table_grid' ? '📋' : '📝'}</span>
+        <span class="text-[11px] opacity-80">{tab.type === 'table_grid' ? '📋' : '📝'}</span>
         <span class="truncate max-w-[120px]">{tab.title || 'Untitled Tab'}</span>
         <button 
           type="button"
@@ -151,7 +156,7 @@
     <button 
       type="button"
       onclick={() => tabsStore.openNewSqlTab()}
-      class="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-300 hover:bg-surface-800 border border-slate-800/80 hover:border-slate-700 transition-colors shrink-0"
+      class="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-surface-800 border border-slate-700/60 dark:border-slate-800/80 hover:border-slate-700 transition-colors shrink-0"
       title="New SQL Tab (Cmd+T)"
     >
       <Plus size={14} />
@@ -200,5 +205,71 @@
     >
       <Dices size={15} />
     </button>
+
+    <div class="h-4 w-[1px] bg-slate-700/60 mx-1"></div>
+
+    <!-- Theme Mode Switcher Dropdown (Dark / Light / Auto) -->
+    <div class="relative flex items-center">
+      <button 
+        type="button"
+        onclick={() => isThemeDropdownOpen = !isThemeDropdownOpen}
+        class="p-1.5 text-slate-300 hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors flex items-center gap-1" 
+        title="Change Theme ({themeStore.mode})"
+      >
+        {#if themeStore.mode === 'light'}
+          <Sun size={15} class="text-amber-400" />
+        {:else if themeStore.mode === 'dark'}
+          <Moon size={15} class="text-indigo-400" />
+        {:else}
+          <Monitor size={15} class="text-slate-400" />
+        {/if}
+      </button>
+
+      {#if isThemeDropdownOpen}
+        <div 
+          class="fixed inset-0 z-40" 
+          onclick={() => isThemeDropdownOpen = false}
+          role="presentation"
+        ></div>
+
+        <div class="absolute right-0 top-full mt-1.5 z-50 w-44 bg-surface-900 border border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 text-xs">
+          <button
+            type="button"
+            onclick={() => { themeStore.setMode('dark'); isThemeDropdownOpen = false; }}
+            class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors {themeStore.mode === 'dark' ? 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-bold' : 'hover:bg-surface-800 text-slate-100'}"
+          >
+            <div class="flex items-center gap-2">
+              <Moon size={13} class="text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span>Dark</span>
+            </div>
+            {#if themeStore.mode === 'dark'}<Check size={13} class="text-indigo-600 dark:text-indigo-400 shrink-0" />{/if}
+          </button>
+
+          <button
+            type="button"
+            onclick={() => { themeStore.setMode('light'); isThemeDropdownOpen = false; }}
+            class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors {themeStore.mode === 'light' ? 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-bold' : 'hover:bg-surface-800 text-slate-100'}"
+          >
+            <div class="flex items-center gap-2">
+              <Sun size={13} class="text-amber-500 shrink-0" />
+              <span>Light</span>
+            </div>
+            {#if themeStore.mode === 'light'}<Check size={13} class="text-indigo-600 dark:text-indigo-400 shrink-0" />{/if}
+          </button>
+
+          <button
+            type="button"
+            onclick={() => { themeStore.setMode('auto'); isThemeDropdownOpen = false; }}
+            class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-colors {themeStore.mode === 'auto' ? 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-bold' : 'hover:bg-surface-800 text-slate-100'}"
+          >
+            <div class="flex items-center gap-2">
+              <Monitor size={13} class="text-slate-400 shrink-0" />
+              <span>Auto (System)</span>
+            </div>
+            {#if themeStore.mode === 'auto'}<Check size={13} class="text-indigo-600 dark:text-indigo-400 shrink-0" />{/if}
+          </button>
+        </div>
+      {/if}
+    </div>
   </div>
 </header>

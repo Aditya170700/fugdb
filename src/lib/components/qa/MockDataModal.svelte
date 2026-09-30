@@ -37,7 +37,9 @@
             <p class="text-[11px] text-slate-400">Generate schema-aware realistic seed data via fake-rs</p>
           </div>
         </div>
-        <button onclick={onClose} class="text-slate-400 hover:text-white"><X size={16} /></button>
+        <button onclick={onClose} class="text-slate-400 hover:text-slate-100 hover:bg-surface-800 p-1.5 rounded-lg transition-colors" title="Close">
+          <X size={16} />
+        </button>
       </div>
 
       <div class="space-y-3">

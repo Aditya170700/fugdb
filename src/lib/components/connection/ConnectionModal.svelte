@@ -184,7 +184,7 @@
             <p class="text-[11px] text-slate-400">Configure PostgreSQL, MySQL, SQLite, MariaDB, or MSSQL database</p>
           </div>
         </div>
-        <button onclick={onClose} class="text-slate-400 hover:text-white p-1 rounded-md">
+        <button onclick={onClose} class="text-slate-400 hover:text-slate-100 hover:bg-surface-800 p-1.5 rounded-lg transition-colors" title="Close">
           <X size={16} />
         </button>
       </div>
@@ -217,7 +217,7 @@
           <button 
             type="button" 
             onclick={() => testResult = null}
-            class="text-slate-400 hover:text-slate-200 p-0.5 rounded transition-colors shrink-0"
+            class="text-slate-400 hover:text-slate-100 hover:bg-surface-800 p-1 rounded-md transition-colors shrink-0"
             title="Dismiss"
           >
             <X size={14} />
@@ -236,7 +236,7 @@
           id="engine-combobox-btn"
           type="button"
           onclick={() => isEngineDropdownOpen = !isEngineDropdownOpen}
-          class="w-full bg-surface-950 border border-slate-700 hover:border-indigo-500/80 rounded-lg px-3.5 py-2.5 flex items-center justify-between text-xs text-slate-200 transition-colors shadow-sm"
+          class="w-full bg-surface-950 border border-slate-700 hover:border-indigo-500/80 rounded-lg px-3.5 py-2.5 flex items-center justify-between text-xs text-slate-100 transition-colors shadow-sm"
         >
           <div class="flex items-center gap-2.5">
             <span class="text-lg">{selectedEngineIcon}</span>
@@ -261,34 +261,34 @@
                 type="text" 
                 bind:value={engineSearchQuery}
                 placeholder="Search database engine (e.g. postgres, mysql, sqlite)..." 
-                class="w-full bg-surface-950 border border-slate-800 text-xs rounded-lg pl-8 pr-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+                class="w-full bg-surface-950 border border-slate-700/80 text-xs rounded-lg pl-8 pr-3 py-2 text-slate-100 focus:outline-none focus:border-indigo-500 placeholder:text-slate-400"
               />
             </div>
 
             <!-- List of engines -->
             <div class="overflow-y-auto space-y-1 pr-1 max-h-52">
               {#if filteredEngines.length === 0}
-                <div class="p-4 text-center text-xs text-slate-500">No database engine found.</div>
+                <div class="p-4 text-center text-xs text-slate-400">No database engine found.</div>
               {:else}
                 {#each filteredEngines as engine}
                   <button 
                     type="button"
                     onclick={() => selectEngine(engine)}
-                    class="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors {selectedEngineLabel === engine.label ? 'bg-indigo-600/20 border border-indigo-500/40 text-indigo-200' : 'hover:bg-surface-800/80 text-slate-300'}"
+                    class="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors {selectedEngineLabel === engine.label ? 'bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-300 dark:border-indigo-500/40 text-indigo-900 dark:text-indigo-200' : 'hover:bg-surface-800 text-slate-100'}"
                   >
                     <div class="flex items-center gap-2.5 truncate">
                       <span class="text-base shrink-0">{engine.icon}</span>
                       <div class="truncate">
-                        <div class="font-semibold text-xs flex items-center gap-1.5">
-                          <span>{engine.label}</span>
-                          <span class="text-[10px] font-normal text-slate-500">({engine.category})</span>
+                        <div class="font-bold text-xs flex items-center gap-1.5">
+                          <span class={selectedEngineLabel === engine.label ? 'text-indigo-700 dark:text-indigo-200' : 'text-slate-100'}>{engine.label}</span>
+                          <span class="text-[10px] font-normal {selectedEngineLabel === engine.label ? 'text-indigo-600/80 dark:text-indigo-300/80' : 'text-slate-400'}">({engine.category})</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 truncate">{engine.description}</p>
+                        <p class="text-[10px] {selectedEngineLabel === engine.label ? 'text-indigo-800/80 dark:text-indigo-200/80' : 'text-slate-400'} truncate">{engine.description}</p>
                       </div>
                     </div>
 
                     {#if selectedEngineLabel === engine.label}
-                      <Check size={14} class="text-indigo-400 shrink-0 ml-2" />
+                      <Check size={14} class="text-indigo-600 dark:text-indigo-400 shrink-0 ml-2" />
                     {/if}
                   </button>
                 {/each}
@@ -337,32 +337,32 @@
             </div>
 
             <div class="space-y-1.5">
-              <span class="font-semibold text-slate-300 text-[11px] block">Environment & Safety Level</span>
+              <span class="font-semibold text-slate-100 text-[11px] block">Environment & Safety Level</span>
               <div class="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onclick={() => environment = 'dev'}
-                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all {environment === 'dev' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300 shadow-sm shadow-emerald-500/20' : 'bg-surface-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all {environment === 'dev' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-800 dark:text-emerald-300 shadow-sm shadow-emerald-500/20' : 'bg-surface-950/70 border-slate-700/60 dark:border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-100'}"
                 >
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 {environment === 'dev' ? 'animate-pulse' : ''}"></span>
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 {environment === 'dev' ? 'animate-pulse' : ''}"></span>
                   <span>Development</span>
                 </button>
 
                 <button
                   type="button"
                   onclick={() => environment = 'staging'}
-                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all {environment === 'staging' ? 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm shadow-amber-500/20' : 'bg-surface-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all {environment === 'staging' ? 'bg-amber-500/15 border-amber-500 text-amber-800 dark:text-amber-300 shadow-sm shadow-amber-500/20' : 'bg-surface-950/70 border-slate-700/60 dark:border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-100'}"
                 >
-                  <span class="w-2 h-2 rounded-full bg-amber-400 {environment === 'staging' ? 'animate-pulse' : ''}"></span>
+                  <span class="w-2 h-2 rounded-full bg-amber-500 {environment === 'staging' ? 'animate-pulse' : ''}"></span>
                   <span>Staging</span>
                 </button>
 
                 <button
                   type="button"
                   onclick={() => environment = 'production'}
-                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all {environment === 'production' ? 'bg-rose-500/15 border-rose-500 text-rose-300 shadow-sm shadow-rose-500/20' : 'bg-surface-950/70 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+                  class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-bold transition-all {environment === 'production' ? 'bg-rose-500/15 border-rose-500 text-rose-800 dark:text-rose-300 shadow-sm shadow-rose-500/20' : 'bg-surface-950/70 border-slate-700/60 dark:border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-100'}"
                 >
-                  <span class="w-2 h-2 rounded-full bg-rose-400 {environment === 'production' ? 'animate-pulse' : ''}"></span>
+                  <span class="w-2 h-2 rounded-full bg-rose-500 {environment === 'production' ? 'animate-pulse' : ''}"></span>
                   <span>Production</span>
                 </button>
               </div>

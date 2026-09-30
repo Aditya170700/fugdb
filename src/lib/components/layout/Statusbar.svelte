@@ -1,7 +1,8 @@
 <script lang="ts">
   import { connectionStore } from '$lib/state/connection.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
-  import { CheckCircle2, Clock, Layers, Cpu } from 'lucide-svelte';
+  import { themeStore } from '$lib/state/theme.svelte';
+  import { CheckCircle2, Clock, Layers, Cpu, Sun, Moon, Monitor } from 'lucide-svelte';
 
   const activeTab = $derived(tabsStore.activeTab);
   const result = $derived(activeTab?.queryResult);
@@ -32,6 +33,26 @@
       <Cpu size={12} />
       <span>Memory: ~34 MB RAM</span>
     </div>
-    <span class="text-indigo-400 font-mono">FugDB v0.1.0-alpha</span>
+
+    <!-- Theme quick cycle button in statusbar -->
+    <button 
+      type="button"
+      onclick={() => themeStore.toggleCycle()}
+      class="flex items-center gap-1 hover:text-indigo-300 transition-colors text-slate-400"
+      title="Theme: {themeStore.mode} (Click to toggle)"
+    >
+      {#if themeStore.mode === 'light'}
+        <Sun size={11} class="text-amber-400" />
+        <span class="capitalize">Light</span>
+      {:else if themeStore.mode === 'dark'}
+        <Moon size={11} class="text-indigo-400" />
+        <span class="capitalize">Dark</span>
+      {:else}
+        <Monitor size={11} class="text-slate-400" />
+        <span>Auto ({themeStore.resolvedTheme})</span>
+      {/if}
+    </button>
+
+    <span class="text-indigo-400 font-mono">FugDB v0.1.0</span>
   </div>
 </footer>

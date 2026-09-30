@@ -70,29 +70,29 @@
         No tables found.
       </div>
     {:else}
-      <div class="text-[11px] font-semibold text-slate-500 px-2 py-1 flex items-center gap-1">
-        <Folder size={12} />
+      <div class="text-[11px] font-bold text-slate-400 px-2 py-1 flex items-center gap-1.5 uppercase tracking-wider">
+        <Folder size={12} class="text-slate-400" />
         <span>PUBLIC ({connectionStore.filteredTables.length})</span>
       </div>
 
       {#each connectionStore.filteredTables as table (table.name)}
         <button 
           type="button"
-          class="w-full group flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs text-slate-300 hover:bg-surface-800 hover:text-white cursor-pointer transition-colors text-left"
+          class="w-full group flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs text-slate-100 hover:bg-surface-800 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left font-medium"
           ondblclick={() => tabsStore.openTableGridTab(table.name)}
           onclick={() => tabsStore.openTableGridTab(table.name)}
         >
           <div class="flex items-center gap-2 truncate">
             {#if table.tableType === 'view'}
-              <Eye size={14} class="text-amber-400 shrink-0" />
+              <Eye size={14} class="text-amber-500 dark:text-amber-400 shrink-0" />
             {:else}
-              <Table size={14} class="text-indigo-400 shrink-0" />
+              <Table size={14} class="text-indigo-600 dark:text-indigo-400 shrink-0" />
             {/if}
-            <span class="truncate font-medium">{table.name}</span>
+            <span class="truncate">{table.name}</span>
           </div>
 
           {#if table.rowCountEstimate != null}
-            <span class="text-[10px] text-slate-500 font-mono group-hover:text-slate-400">
+            <span class="text-[10px] text-slate-400 font-mono group-hover:text-slate-200">
               ~{table.rowCountEstimate.toLocaleString()}
             </span>
           {/if}
@@ -102,8 +102,8 @@
   </div>
 
   <!-- Footer Stats -->
-  <div class="p-2.5 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
-    <span>DB: <strong class="text-slate-300">{connectionStore.activeSchemaTree?.currentDatabase || 'None'}</strong></span>
-    <span class="font-mono text-emerald-400">Online</span>
+  <div class="p-2.5 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
+    <span>DB: <strong class="text-slate-100 font-semibold">{connectionStore.activeSchemaTree?.currentDatabase || 'None'}</strong></span>
+    <span class="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">Online</span>
   </div>
 </aside>

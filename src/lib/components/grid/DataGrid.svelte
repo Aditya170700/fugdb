@@ -99,31 +99,31 @@
       <table class="w-full text-left border-collapse font-mono text-xs">
         <thead class="bg-surface-900 sticky top-0 z-10 select-none shadow-sm">
           <tr class="border-b border-slate-800">
-            <th class="px-3 py-2 text-[11px] font-semibold text-slate-500 w-12 text-center border-r border-slate-800/60">#</th>
+            <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 w-12 text-center border-r border-slate-800/60">#</th>
             {#each result.columns as col (col.name)}
-              <th class="px-3 py-2 text-[11px] font-semibold text-slate-300 border-r border-slate-800/60 truncate">
+              <th class="px-3 py-2 text-[11px] font-semibold text-slate-100 border-r border-slate-800/60 truncate">
                 <div class="flex items-center justify-between gap-2">
-                  <span class="truncate font-semibold {col.isPrimaryKey ? 'text-amber-400' : ''}">{col.name}</span>
-                  <span class="text-[10px] text-slate-500 font-normal uppercase">{col.dataType}</span>
+                  <span class="truncate font-bold {col.isPrimaryKey ? 'text-amber-600 dark:text-amber-400' : 'text-slate-100'}">{col.name}</span>
+                  <span class="text-[10px] text-slate-400 font-normal uppercase">{col.dataType}</span>
                 </div>
               </th>
             {/each}
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-800/40 text-slate-200">
+        <tbody class="divide-y divide-slate-800/60 text-slate-100 font-normal">
           {#each result.rows as row, rowIdx (rowIdx)}
-            <tr class="hover:bg-indigo-950/20 group transition-colors">
-              <td class="px-3 py-1.5 text-center text-slate-600 bg-surface-950/80 border-r border-slate-800/60 select-none text-[10px]">
+            <tr class="hover:bg-indigo-500/10 group transition-colors">
+              <td class="px-3 py-1.5 text-center text-slate-400 bg-surface-900/60 border-r border-slate-800/60 select-none text-[10px]">
                 {rowIdx + 1}
               </td>
               {#each row as cell, cellIdx (cellIdx)}
-                <td class="px-3 py-1.5 border-r border-slate-800/40 truncate max-w-[240px] focus:outline-none focus:bg-indigo-900/30" contenteditable="true">
+                <td class="px-3 py-1.5 border-r border-slate-800/60 truncate max-w-[240px] focus:outline-none focus:bg-indigo-500/20 text-slate-100" contenteditable="true">
                   {#if cell === null}
-                    <span class="text-slate-600 italic">NULL</span>
+                    <span class="text-slate-400 italic">NULL</span>
                   {:else if typeof cell === 'boolean'}
-                    <span class={cell ? 'text-emerald-400' : 'text-rose-400'}>{cell ? 'TRUE' : 'FALSE'}</span>
+                    <span class={cell ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-600 dark:text-rose-400 font-bold'}>{cell ? 'TRUE' : 'FALSE'}</span>
                   {:else if typeof cell === 'object'}
-                    <span class="text-sky-400">{JSON.stringify(cell)}</span>
+                    <span class="text-sky-600 dark:text-sky-400">{JSON.stringify(cell)}</span>
                   {:else}
                     <span>{cell}</span>
                   {/if}

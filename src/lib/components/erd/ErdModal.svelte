@@ -43,10 +43,10 @@
           <Network size={18} class="text-indigo-400" />
           <h3 class="font-bold text-sm text-slate-100">Interactive Entity Relationship Diagram (ERD)</h3>
         </div>
-        <div class="flex items-center gap-2">
-          <button class="p-1 text-slate-400 hover:text-white rounded bg-surface-800"><ZoomIn size={14} /></button>
-          <button class="p-1 text-slate-400 hover:text-white rounded bg-surface-800"><ZoomOut size={14} /></button>
-          <button onclick={onClose} class="text-slate-400 hover:text-white p-1 rounded"><X size={16} /></button>
+        <div class="flex items-center gap-1.5">
+          <button class="p-1.5 text-slate-400 hover:text-slate-100 rounded-lg bg-surface-800 hover:bg-surface-700 transition-colors" title="Zoom In"><ZoomIn size={14} /></button>
+          <button class="p-1.5 text-slate-400 hover:text-slate-100 rounded-lg bg-surface-800 hover:bg-surface-700 transition-colors" title="Zoom Out"><ZoomOut size={14} /></button>
+          <button onclick={onClose} class="p-1.5 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-surface-800 transition-colors" title="Close"><X size={16} /></button>
         </div>
       </div>
 
