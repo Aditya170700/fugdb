@@ -109,7 +109,7 @@
   }
 </script>
 
-<main class="w-screen h-screen flex flex-col bg-surface-950 text-slate-100 overflow-hidden font-sans select-none">
+<main class="w-screen h-screen flex flex-col bg-surface-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none">
   <!-- Top Navigation Header -->
   <Navbar 
     onOpenNewConnection={() => isNewConnOpen = true}
@@ -129,10 +129,10 @@
       aria-label="Resize sidebar"
       onmousedown={handleSidebarMouseDown}
       ondblclick={resetSidebarWidth}
-      class="w-1.5 hover:w-1.5 -ml-[1px] bg-slate-800/80 hover:bg-indigo-500 active:bg-indigo-400 cursor-col-resize transition-colors shrink-0 z-10 relative flex items-center justify-center group {isDraggingSidebar ? '!bg-indigo-500' : ''}"
+      class="w-[1px] relative bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500 active:bg-indigo-500 cursor-col-resize transition-colors shrink-0 z-10 p-0 border-0 group {isDraggingSidebar ? '!bg-indigo-500' : ''}"
       title="Drag to resize sidebar (Double click to reset)"
     >
-      <span class="w-[2px] h-8 rounded-full bg-slate-600/40 group-hover:bg-indigo-200 transition-colors pointer-events-none {isDraggingSidebar ? '!bg-white' : ''}"></span>
+      <span class="absolute inset-y-0 -left-1 -right-1 cursor-col-resize"></span>
     </button>
 
     <!-- Right Workspace Area -->
@@ -149,15 +149,22 @@
           aria-label="Resize editor and results panel"
           onmousedown={handleEditorMouseDown}
           ondblclick={resetEditorHeight}
-          class="h-1.5 hover:h-1.5 bg-slate-800/80 hover:bg-indigo-500 active:bg-indigo-400 cursor-row-resize transition-colors shrink-0 z-10 relative flex items-center justify-center group {isDraggingEditor ? '!bg-indigo-500' : ''}"
+          class="h-[1px] relative bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500 active:bg-indigo-500 cursor-row-resize transition-colors shrink-0 z-10 p-0 border-0 group {isDraggingEditor ? '!bg-indigo-500' : ''}"
           title="Drag to resize editor & result grid (Double click to reset)"
         >
-          <span class="h-[2px] w-8 rounded-full bg-slate-600/40 group-hover:bg-indigo-200 transition-colors pointer-events-none {isDraggingEditor ? '!bg-white' : ''}"></span>
+          <span class="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize"></span>
         </button>
 
         <!-- Bottom Split: Results Data Grid -->
-        <div style="height: calc(100% - {editorHeightPercent}% - 6px);" class="min-h-[60px] overflow-hidden">
-          <DataGrid result={activeTab.queryResult} errorMessage={activeTab.errorMessage} />
+        <div style="height: calc(100% - {editorHeightPercent}% - 1px);" class="min-h-[60px] overflow-hidden">
+          <DataGrid 
+            tabId={activeTab.id}
+            sql={activeTab.sql}
+            tableName={activeTab.tableName}
+            connectionId={activeTab.connectionId}
+            result={activeTab.queryResult} 
+            errorMessage={activeTab.errorMessage} 
+          />
         </div>
       {:else}
         <div class="flex-1 flex items-center justify-center text-slate-500 text-sm">

@@ -83,7 +83,7 @@ impl DatabaseAdapter for SqliteAdapter {
         _offset: Option<u64>,
     ) -> Result<QueryResult, AppError> {
         let start = Instant::now();
-        let rows = sqlx::query(sql)
+        let rows = sqlx::raw_sql(sql)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| AppError::QueryError(e.to_string()))?;
@@ -94,10 +94,12 @@ impl DatabaseAdapter for SqliteAdapter {
 
         if let Some(first_row) = rows.first() {
             for col in first_row.columns() {
+                let name = col.name().to_string();
+                let is_primary_key = name.eq_ignore_ascii_case("id");
                 columns.push(ColumnMetadata {
-                    name: col.name().to_string(),
+                    name,
                     data_type: col.type_info().to_string(),
-                    is_primary_key: false,
+                    is_primary_key,
                     is_foreign_key: false,
                     nullable: true,
                 });

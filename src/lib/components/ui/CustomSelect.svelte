@@ -41,7 +41,7 @@
 
 <div class="relative w-full select-none">
   {#if label}
-    <label for={id} class="font-semibold text-slate-300 text-[11px] block mb-1">{label}</label>
+    <label for={id} class="font-semibold text-slate-700 dark:text-slate-300 text-[11px] block mb-1">{label}</label>
   {/if}
 
   <!-- Trigger Button -->
@@ -49,23 +49,23 @@
     {id}
     type="button"
     onclick={() => isOpen = !isOpen}
-    class="w-full bg-surface-950/90 border border-slate-700/80 hover:border-indigo-500/80 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs text-slate-200 transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
+    class="w-full bg-surface-900 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs text-slate-800 dark:text-slate-200 transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs"
   >
     <div class="flex items-center gap-2 truncate">
       {#if selectedOption?.dotColor}
         <span class="w-2 h-2 rounded-full {selectedOption.dotColor} shadow-sm shrink-0"></span>
       {/if}
-      <span class="truncate font-medium {selectedOption ? 'text-slate-100' : 'text-slate-500'}">
+      <span class="truncate font-semibold {selectedOption ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500'}">
         {selectedOption ? selectedOption.label : placeholder}
       </span>
       {#if selectedOption?.badge}
-        <span class="text-[10px] px-1.5 py-0.2 rounded font-semibold {selectedOption.badgeColor || 'bg-slate-800 text-slate-400'}">
+        <span class="text-[10px] px-1.5 py-0.2 rounded font-semibold {selectedOption.badgeColor || 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400'}">
           {selectedOption.badge}
         </span>
       {/if}
     </div>
 
-    <ChevronDown size={14} class="text-slate-400 transition-transform duration-200 shrink-0 {isOpen ? 'rotate-180 text-indigo-400' : ''}" />
+    <ChevronDown size={14} class="text-slate-500 dark:text-slate-400 transition-transform duration-200 shrink-0 {isOpen ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''}" />
   </button>
 
   <!-- Options Popover -->
@@ -76,12 +76,12 @@
       role="presentation"
     ></div>
 
-    <div class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-surface-900 border border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto">
+    <div class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto">
       {#each options as opt}
         <button
           type="button"
           onclick={() => handleSelect(opt.value)}
-          class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors {value === opt.value ? 'bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30' : 'hover:bg-surface-800 text-slate-300'}"
+          class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors {value === opt.value ? 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/30' : 'hover:bg-surface-800 text-slate-800 dark:text-slate-300'}"
         >
           <div class="flex items-center gap-2 truncate">
             {#if opt.dotColor}
@@ -91,7 +91,7 @@
           </div>
 
           {#if value === opt.value}
-            <Check size={13} class="text-indigo-400 shrink-0 ml-2" />
+            <Check size={13} class="text-indigo-600 dark:text-indigo-400 shrink-0 ml-2" />
           {/if}
         </button>
       {/each}
