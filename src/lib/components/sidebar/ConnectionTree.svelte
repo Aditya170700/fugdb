@@ -102,7 +102,7 @@
             <span class="truncate font-medium">{table.name}</span>
           </div>
 
-          {#if table.rowCountEstimate !== undefined}
+          {#if table.rowCountEstimate != null}
             <span class="text-[10px] text-slate-500 font-mono group-hover:text-slate-400">
               ~{table.rowCountEstimate.toLocaleString()}
             </span>
