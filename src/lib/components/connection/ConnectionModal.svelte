@@ -14,14 +14,43 @@
     CheckCircle2, 
     AlertCircle, 
     FolderOpen,
-    Server
+    Search,
+    ChevronDown,
+    Check
   } from 'lucide-svelte';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
+  interface EngineOption {
+    id: DriverType;
+    label: string;
+    icon: string;
+    category: string;
+    defaultPort?: number;
+    description: string;
+    isSupported: boolean;
+  }
+
+  const allEngines: EngineOption[] = [
+    { id: 'postgres', label: 'PostgreSQL', icon: '🐘', category: 'Relational (SQL)', defaultPort: 15432, description: 'Advanced open-source relational database', isSupported: true },
+    { id: 'mysql', label: 'MySQL', icon: '🐬', category: 'Relational (SQL)', defaultPort: 3306, description: 'The world\'s most popular open-source database', isSupported: true },
+    { id: 'mysql', label: 'MariaDB', icon: '🦭', category: 'Relational (SQL)', defaultPort: 3306, description: 'High-performance MySQL drop-in alternative', isSupported: true },
+    { id: 'sqlite', label: 'SQLite', icon: '🪶', category: 'Embedded / Local', description: 'Self-contained, serverless zero-configuration DB', isSupported: true },
+    { id: 'duckdb', label: 'DuckDB', icon: '🦆', category: 'Embedded / Analytics', description: 'Fast in-process analytical SQL database', isSupported: true },
+    { id: 'mssql', label: 'Microsoft SQL Server', icon: '🪟', category: 'Enterprise (SQL)', defaultPort: 1433, description: 'Enterprise relational database from Microsoft', isSupported: true },
+    { id: 'postgres', label: 'CockroachDB', icon: '🪳', category: 'Distributed SQL', defaultPort: 26257, description: 'Cloud-native distributed PostgreSQL-wire DB', isSupported: true },
+    { id: 'postgres', label: 'TimescaleDB', icon: '⏱️', category: 'Time-Series', defaultPort: 5432, description: 'Time-series database built on PostgreSQL', isSupported: true },
+  ];
+
+  let isEngineDropdownOpen = $state(false);
+  let engineSearchQuery = $state('');
+
   let activeTab = $state<'general' | 'ssh' | 'ssl'>('general');
   let selectedDriver = $state<DriverType>('postgres');
-  let name = $state('My Postgres DB');
+  let selectedEngineLabel = $state('PostgreSQL');
+  let selectedEngineIcon = $state('🐘');
+
+  let name = $state('My PostgreSQL');
   let environment = $state<Environment>('dev');
   let host = $state('localhost');
   let port = $state(15432);
@@ -46,22 +75,38 @@
   let testResult = $state<{ success: boolean; message: string; latencyMs?: number } | null>(null);
   let isSaving = $state(false);
 
-  function handleDriverChange(driver: DriverType) {
-    selectedDriver = driver;
-    if (driver === 'postgres') {
-      port = 15432;
+  const filteredEngines = $derived.by(() => {
+    if (!engineSearchQuery.trim()) return allEngines;
+    const q = engineSearchQuery.toLowerCase();
+    return allEngines.filter(e => 
+      e.label.toLowerCase().includes(q) || 
+      e.category.toLowerCase().includes(q) ||
+      e.description.toLowerCase().includes(q)
+    );
+  });
+
+  function selectEngine(engine: EngineOption) {
+    if (!engine.isSupported) return;
+    selectedDriver = engine.id;
+    selectedEngineLabel = engine.label;
+    selectedEngineIcon = engine.icon;
+    isEngineDropdownOpen = false;
+    engineSearchQuery = '';
+
+    if (engine.id === 'postgres') {
+      port = engine.defaultPort || 15432;
       database = 'fugdb_test';
       username = 'fugdb_user';
-      name = 'PostgreSQL Connection';
-    } else if (driver === 'mysql') {
-      port = 3306;
+      name = `${engine.label} Connection`;
+    } else if (engine.id === 'mysql') {
+      port = engine.defaultPort || 3306;
       database = 'fugdb_test';
       username = 'fugdb_user';
-      name = 'MySQL Connection';
-    } else if (driver === 'sqlite') {
-      name = 'SQLite Database';
-      filePath = 'local.sqlite';
-    } else if (driver === 'mssql') {
+      name = `${engine.label} Connection`;
+    } else if (engine.id === 'sqlite' || engine.id === 'duckdb') {
+      name = `${engine.label} Database`;
+      filePath = engine.id === 'duckdb' ? 'local.duckdb' : 'local.sqlite';
+    } else if (engine.id === 'mssql') {
       port = 1433;
       database = 'master';
       username = 'sa';
@@ -72,7 +117,7 @@
   function getFormConfig(): ConnectionConfig {
     return {
       id: `conn-${Date.now()}`,
-      name: name.trim() || `${selectedDriver.toUpperCase()} Database`,
+      name: name.trim() || `${selectedEngineLabel} Database`,
       driver: selectedDriver,
       environment,
       host: selectedDriver !== 'sqlite' && selectedDriver !== 'duckdb' ? host : undefined,
@@ -127,7 +172,7 @@
 
 {#if isOpen}
   <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-surface-900 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col">
+    <div class="bg-surface-900 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-visible flex flex-col">
       <!-- Header -->
       <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -136,7 +181,7 @@
           </div>
           <div>
             <h3 class="font-bold text-sm text-slate-100">Create New Connection</h3>
-            <p class="text-[11px] text-slate-400">Configure PostgreSQL, MySQL, SQLite, or MSSQL database</p>
+            <p class="text-[11px] text-slate-400">Configure PostgreSQL, MySQL, SQLite, MariaDB, or MSSQL database</p>
           </div>
         </div>
         <button onclick={onClose} class="text-slate-400 hover:text-white p-1 rounded-md">
@@ -144,27 +189,78 @@
         </button>
       </div>
 
-      <!-- Driver Selection Grid -->
-      <div class="px-6 pt-4 pb-2">
-        <span class="text-[10px] font-semibold uppercase text-slate-400 block mb-2">Select Database Engine</span>
-        <div class="grid grid-cols-5 gap-2">
-          {#each [
-            { id: 'postgres', label: 'PostgreSQL', icon: '🐘' },
-            { id: 'mysql', label: 'MySQL', icon: '🐬' },
-            { id: 'sqlite', label: 'SQLite', icon: '🪶' },
-            { id: 'mssql', label: 'SQL Server', icon: '🪟' },
-            { id: 'duckdb', label: 'DuckDB', icon: '🦆' }
-          ] as d}
-            <button 
-              type="button"
-              onclick={() => handleDriverChange(d.id as DriverType)}
-              class="p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 {selectedDriver === d.id ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold shadow-sm' : 'border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
-            >
-              <span class="text-lg">{d.icon}</span>
-              <span class="text-[11px]">{d.label}</span>
-            </button>
-          {/each}
-        </div>
+      <!-- Searchable Engine Combobox -->
+      <div class="px-6 pt-4 pb-2 relative">
+        <label for="engine-combobox-btn" class="text-[10px] font-semibold uppercase text-slate-400 block mb-1.5">
+          Database Engine
+        </label>
+        
+        <!-- Trigger Button -->
+        <button 
+          id="engine-combobox-btn"
+          type="button"
+          onclick={() => isEngineDropdownOpen = !isEngineDropdownOpen}
+          class="w-full bg-surface-950 border border-slate-700 hover:border-indigo-500/80 rounded-lg px-3.5 py-2.5 flex items-center justify-between text-xs text-slate-200 transition-colors shadow-sm"
+        >
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg">{selectedEngineIcon}</span>
+            <span class="font-bold text-slate-100">{selectedEngineLabel}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-surface-800 text-slate-400 font-normal">
+              {allEngines.find(e => e.label === selectedEngineLabel)?.category || 'SQL'}
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <span class="text-[11px]">Change</span>
+            <ChevronDown size={14} class="transition-transform duration-200 {isEngineDropdownOpen ? 'rotate-180' : ''}" />
+          </div>
+        </button>
+
+        <!-- Searchable Dropdown Popover -->
+        {#if isEngineDropdownOpen}
+          <div class="absolute left-6 right-6 top-[72px] z-50 bg-surface-900 border border-slate-700 rounded-xl shadow-2xl p-2.5 flex flex-col gap-2 max-h-72">
+            <!-- Search input inside dropdown -->
+            <div class="relative">
+              <Search size={13} class="absolute left-3 top-2.5 text-slate-500" />
+              <input 
+                type="text" 
+                bind:value={engineSearchQuery}
+                placeholder="Search database engine (e.g. postgres, mysql, sqlite)..." 
+                class="w-full bg-surface-950 border border-slate-800 text-xs rounded-lg pl-8 pr-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+                autofocus
+              />
+            </div>
+
+            <!-- List of engines -->
+            <div class="overflow-y-auto space-y-1 pr-1 max-h-52">
+              {#if filteredEngines.length === 0}
+                <div class="p-4 text-center text-xs text-slate-500">No database engine found.</div>
+              {:else}
+                {#each filteredEngines as engine}
+                  <button 
+                    type="button"
+                    onclick={() => selectEngine(engine)}
+                    class="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors {selectedEngineLabel === engine.label ? 'bg-indigo-600/20 border border-indigo-500/40 text-indigo-200' : 'hover:bg-surface-800/80 text-slate-300'}"
+                  >
+                    <div class="flex items-center gap-2.5 truncate">
+                      <span class="text-base shrink-0">{engine.icon}</span>
+                      <div class="truncate">
+                        <div class="font-semibold text-xs flex items-center gap-1.5">
+                          <span>{engine.label}</span>
+                          <span class="text-[10px] font-normal text-slate-500">({engine.category})</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 truncate">{engine.description}</p>
+                      </div>
+                    </div>
+
+                    {#if selectedEngineLabel === engine.label}
+                      <Check size={14} class="text-indigo-400 shrink-0 ml-2" />
+                    {/if}
+                  </button>
+                {/each}
+              {/if}
+            </div>
+          </div>
+        {/if}
       </div>
 
       <!-- Tabs Navigation -->
@@ -196,7 +292,7 @@
       </div>
 
       <!-- Tab Content Area -->
-      <div class="p-6 space-y-4 text-xs max-h-[380px] overflow-y-auto">
+      <div class="p-6 space-y-4 text-xs max-h-[360px] overflow-y-auto">
         {#if activeTab === 'general'}
           <!-- Name & Environment -->
           <div class="grid grid-cols-3 gap-3">
