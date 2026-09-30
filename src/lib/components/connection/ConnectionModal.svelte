@@ -327,7 +327,7 @@
       </div>
 
       <!-- Tab Content Area -->
-      <div class="p-6 space-y-4 text-xs max-h-[360px] overflow-y-auto">
+      <div class="p-6 space-y-4 text-xs min-h-[420px] max-h-[540px] overflow-y-auto">
         {#if activeTab === 'general'}
           <!-- Name & Environment -->
           <div class="space-y-3">
