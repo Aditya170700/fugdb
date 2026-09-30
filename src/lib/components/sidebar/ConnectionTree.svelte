@@ -12,12 +12,14 @@
     Sparkles
   } from 'lucide-svelte';
 
+  let { width = 260 }: { width?: number } = $props();
+
   onMount(() => {
     connectionStore.loadSchema(connectionStore.activeConnectionId);
   });
 </script>
 
-<aside class="w-64 border-r border-slate-800 bg-surface-900/50 flex flex-col h-full select-none">
+<aside style="width: {width}px;" class="bg-surface-900/50 flex flex-col h-full select-none shrink-0 overflow-hidden">
   <!-- Sidebar Header & Search -->
   <div class="p-3 border-b border-slate-800/80 flex flex-col gap-2">
     <div class="flex items-center justify-between">
