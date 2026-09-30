@@ -1,0 +1,382 @@
+<script lang="ts">
+  import type { ConnectionConfig, DriverType, Environment } from '$lib/api/types';
+  import { connectionStore } from '$lib/state/connection.svelte';
+  import { api } from '$lib/api/client';
+  import { 
+    Database, 
+    X, 
+    ShieldAlert, 
+    Key, 
+    Terminal, 
+    Lock, 
+    Eye, 
+    EyeOff, 
+    CheckCircle2, 
+    AlertCircle, 
+    FolderOpen,
+    Server
+  } from 'lucide-svelte';
+
+  let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
+
+  let activeTab = $state<'general' | 'ssh' | 'ssl'>('general');
+  let selectedDriver = $state<DriverType>('postgres');
+  let name = $state('My Postgres DB');
+  let environment = $state<Environment>('dev');
+  let host = $state('localhost');
+  let port = $state(15432);
+  let database = $state('fugdb_test');
+  let username = $state('fugdb_user');
+  let password = $state('fugdb_password');
+  let filePath = $state('');
+  let showPassword = $state(false);
+
+  // SSH Fields
+  let useSsh = $state(false);
+  let sshHost = $state('');
+  let sshPort = $state(22);
+  let sshUser = $state('');
+  let sshKeyPath = $state('');
+
+  // SSL Field
+  let sslMode = $state<'disable' | 'prefer' | 'require'>('prefer');
+
+  // Test Connection State
+  let isTesting = $state(false);
+  let testResult = $state<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+  let isSaving = $state(false);
+
+  function handleDriverChange(driver: DriverType) {
+    selectedDriver = driver;
+    if (driver === 'postgres') {
+      port = 15432;
+      database = 'fugdb_test';
+      username = 'fugdb_user';
+      name = 'PostgreSQL Connection';
+    } else if (driver === 'mysql') {
+      port = 3306;
+      database = 'fugdb_test';
+      username = 'fugdb_user';
+      name = 'MySQL Connection';
+    } else if (driver === 'sqlite') {
+      name = 'SQLite Database';
+      filePath = 'local.sqlite';
+    } else if (driver === 'mssql') {
+      port = 1433;
+      database = 'master';
+      username = 'sa';
+      name = 'MSSQL Connection';
+    }
+  }
+
+  function getFormConfig(): ConnectionConfig {
+    return {
+      id: `conn-${Date.now()}`,
+      name: name.trim() || `${selectedDriver.toUpperCase()} Database`,
+      driver: selectedDriver,
+      environment,
+      host: selectedDriver !== 'sqlite' && selectedDriver !== 'duckdb' ? host : undefined,
+      port: selectedDriver !== 'sqlite' && selectedDriver !== 'duckdb' ? port : undefined,
+      database: selectedDriver !== 'sqlite' && selectedDriver !== 'duckdb' ? database : undefined,
+      username: selectedDriver !== 'sqlite' && selectedDriver !== 'duckdb' ? username : undefined,
+      password: selectedDriver !== 'sqlite' && selectedDriver !== 'duckdb' ? password : undefined,
+      filePath: selectedDriver === 'sqlite' || selectedDriver === 'duckdb' ? filePath : undefined,
+      useSsh,
+      sshHost: useSsh ? sshHost : undefined,
+      sshPort: useSsh ? sshPort : undefined,
+      sshUser: useSsh ? sshUser : undefined,
+      sshKeyPath: useSsh ? sshKeyPath : undefined,
+      sslMode,
+    };
+  }
+
+  async function handleTest() {
+    isTesting = true;
+    testResult = null;
+    try {
+      const config = getFormConfig();
+      const res = await api.testConnection(config);
+      testResult = res;
+    } catch (err: any) {
+      testResult = {
+        success: false,
+        message: err?.toString() || 'Connection failed.',
+      };
+    } finally {
+      isTesting = false;
+    }
+  }
+
+  async function handleSaveAndConnect() {
+    isSaving = true;
+    try {
+      const config = getFormConfig();
+      await api.connect(config);
+      connectionStore.addConnection(config);
+      onClose();
+    } catch (err: any) {
+      testResult = {
+        success: false,
+        message: `Failed to connect: ${err?.toString() || err}`,
+      };
+    } finally {
+      isSaving = false;
+    }
+  }
+</script>
+
+{#if isOpen}
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-surface-900 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col">
+      <!-- Header -->
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/30">
+            <Database size={18} />
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-slate-100">Create New Connection</h3>
+            <p class="text-[11px] text-slate-400">Configure PostgreSQL, MySQL, SQLite, or MSSQL database</p>
+          </div>
+        </div>
+        <button onclick={onClose} class="text-slate-400 hover:text-white p-1 rounded-md">
+          <X size={16} />
+        </button>
+      </div>
+
+      <!-- Driver Selection Grid -->
+      <div class="px-6 pt-4 pb-2">
+        <span class="text-[10px] font-semibold uppercase text-slate-400 block mb-2">Select Database Engine</span>
+        <div class="grid grid-cols-5 gap-2">
+          {#each [
+            { id: 'postgres', label: 'PostgreSQL', icon: '🐘' },
+            { id: 'mysql', label: 'MySQL', icon: '🐬' },
+            { id: 'sqlite', label: 'SQLite', icon: '🪶' },
+            { id: 'mssql', label: 'SQL Server', icon: '🪟' },
+            { id: 'duckdb', label: 'DuckDB', icon: '🦆' }
+          ] as d}
+            <button 
+              type="button"
+              onclick={() => handleDriverChange(d.id as DriverType)}
+              class="p-2.5 rounded-lg border text-center transition-all flex flex-col items-center gap-1 {selectedDriver === d.id ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 font-bold shadow-sm' : 'border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'}"
+            >
+              <span class="text-lg">{d.icon}</span>
+              <span class="text-[11px]">{d.label}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Tabs Navigation -->
+      <div class="flex border-b border-slate-800 px-6 gap-6 text-xs font-medium">
+        <button 
+          type="button"
+          onclick={() => activeTab = 'general'}
+          class="py-2.5 border-b-2 transition-colors {activeTab === 'general' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'}"
+        >
+          General Settings
+        </button>
+        <button 
+          type="button"
+          onclick={() => activeTab = 'ssh'}
+          class="py-2.5 border-b-2 transition-colors flex items-center gap-1.5 {activeTab === 'ssh' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'}"
+        >
+          <Terminal size={13} />
+          <span>SSH Tunnel</span>
+          {#if useSsh}<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>{/if}
+        </button>
+        <button 
+          type="button"
+          onclick={() => activeTab = 'ssl'}
+          class="py-2.5 border-b-2 transition-colors flex items-center gap-1.5 {activeTab === 'ssl' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400 hover:text-slate-200'}"
+        >
+          <Lock size={13} />
+          <span>SSL / TLS</span>
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="p-6 space-y-4 text-xs max-h-[380px] overflow-y-auto">
+        {#if activeTab === 'general'}
+          <!-- Name & Environment -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2 space-y-1">
+              <label for="conn-name" class="font-semibold text-slate-300 text-[11px]">Connection Name</label>
+              <input id="conn-name" bind:value={name} class="w-full bg-surface-950 border border-slate-800 rounded-md px-3 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div class="space-y-1">
+              <label for="conn-env" class="font-semibold text-slate-300 text-[11px]">Environment</label>
+              <select id="conn-env" bind:value={environment} class="w-full bg-surface-950 border border-slate-800 rounded-md px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                <option value="dev">🟢 Dev</option>
+                <option value="staging">🟡 Staging</option>
+                <option value="production">🔴 Production</option>
+              </select>
+            </div>
+          </div>
+
+          {#if environment === 'production'}
+            <div class="p-2.5 bg-rose-500/10 border border-rose-500/30 rounded-lg flex items-center gap-2 text-rose-300 text-[11px]">
+              <ShieldAlert size={15} class="shrink-0" />
+              <span>Production Safety Guard will prompt before executing destructive queries (DROP/TRUNCATE/DELETE).</span>
+            </div>
+          {/if}
+
+          {#if selectedDriver === 'sqlite' || selectedDriver === 'duckdb'}
+            <!-- File-based DB -->
+            <div class="space-y-1">
+              <label for="conn-filepath" class="font-semibold text-slate-300 text-[11px]">Database File Path</label>
+              <div class="flex gap-2">
+                <input id="conn-filepath" bind:value={filePath} placeholder="/path/to/database.sqlite" class="flex-1 bg-surface-950 border border-slate-800 rounded-md px-3 py-1.5 text-slate-200" />
+                <button type="button" class="px-3 bg-surface-800 hover:bg-surface-700 text-slate-300 rounded-md flex items-center gap-1.5 text-xs">
+                  <FolderOpen size={14} /> Browse
+                </button>
+              </div>
+            </div>
+          {:else}
+            <!-- Host & Port -->
+            <div class="grid grid-cols-4 gap-3">
+              <div class="col-span-3 space-y-1">
+                <label for="conn-host" class="font-semibold text-slate-300 text-[11px]">Host / IP Address</label>
+                <input id="conn-host" bind:value={host} placeholder="localhost" class="w-full bg-surface-950 border border-slate-800 rounded-md px-3 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="space-y-1">
+                <label for="conn-port" class="font-semibold text-slate-300 text-[11px]">Port</label>
+                <input id="conn-port" type="number" bind:value={port} class="w-full bg-surface-950 border border-slate-800 rounded-md px-3 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500" />
+              </div>
+            </div>
+
+            <!-- Database Name -->
+            <div class="space-y-1">
+              <label for="conn-db" class="font-semibold text-slate-300 text-[11px]">Database</label>
+              <input id="conn-db" bind:value={database} placeholder="Database Name" class="w-full bg-surface-950 border border-slate-800 rounded-md px-3 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500" />
+            </div>
+
+            <!-- Username & Password -->
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label for="conn-user" class="font-semibold text-slate-300 text-[11px]">Username</label>
+                <input id="conn-user" bind:value={username} placeholder="postgres / root" class="w-full bg-surface-950 border border-slate-800 rounded-md px-3 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500" />
+              </div>
+              <div class="space-y-1">
+                <label for="conn-pass" class="font-semibold text-slate-300 text-[11px]">Password</label>
+                <div class="relative">
+                  <input 
+                    id="conn-pass"
+                    type={showPassword ? 'text' : 'password'} 
+                    bind:value={password} 
+                    placeholder="••••••••" 
+                    class="w-full bg-surface-950 border border-slate-800 rounded-md pl-3 pr-8 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500" 
+                  />
+                  <button 
+                    type="button"
+                    onclick={() => showPassword = !showPassword}
+                    class="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300"
+                  >
+                    {#if showPassword}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
+                  </button>
+                </div>
+              </div>
+            </div>
+          {/if}
+
+        {:else if activeTab === 'ssh'}
+          <!-- SSH Tab -->
+          <div class="space-y-4">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" bind:checked={useSsh} class="rounded border-slate-800 text-indigo-600 focus:ring-0" />
+              <span class="font-semibold text-slate-200">Use SSH Tunnel (Bastion Host)</span>
+            </label>
+
+            {#if useSsh}
+              <div class="grid grid-cols-4 gap-3">
+                <div class="col-span-3 space-y-1">
+                  <label for="ssh-host" class="font-semibold text-slate-400 text-[10px] uppercase">SSH Host</label>
+                  <input id="ssh-host" bind:value={sshHost} placeholder="ssh.example.com" class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
+                </div>
+                <div class="space-y-1">
+                  <label for="ssh-port" class="font-semibold text-slate-400 text-[10px] uppercase">SSH Port</label>
+                  <input id="ssh-port" type="number" bind:value={sshPort} class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
+                </div>
+              </div>
+
+              <div class="space-y-1">
+                <label for="ssh-user" class="font-semibold text-slate-400 text-[10px] uppercase">SSH User</label>
+                <input id="ssh-user" bind:value={sshUser} placeholder="ubuntu" class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
+              </div>
+
+              <div class="space-y-1">
+                <label for="ssh-key" class="font-semibold text-slate-400 text-[10px] uppercase">Private Key Path</label>
+                <input id="ssh-key" bind:value={sshKeyPath} placeholder="~/.ssh/id_rsa" class="w-full bg-surface-950 border border-slate-800 rounded-md p-2 text-slate-200" />
+              </div>
+            {/if}
+          </div>
+
+        {:else if activeTab === 'ssl'}
+          <!-- SSL Tab -->
+          <div class="space-y-3">
+            <span class="font-semibold text-slate-400 text-[10px] uppercase block">SSL Mode</span>
+            <div class="space-y-2">
+              {#each [
+                { id: 'disable', label: 'Disable', desc: 'No SSL encryption (local dev only)' },
+                { id: 'prefer', label: 'Prefer', desc: 'Try SSL if supported, fallback to plaintext' },
+                { id: 'require', label: 'Require', desc: 'Force SSL connection without certificate validation' }
+              ] as opt}
+                <label class="flex items-start gap-2.5 p-3 rounded-lg border border-slate-800/80 bg-surface-950/40 cursor-pointer hover:border-slate-700">
+                  <input type="radio" name="ssl" value={opt.id} bind:group={sslMode} class="mt-0.5 text-indigo-600" />
+                  <div>
+                    <span class="font-semibold text-slate-200 block">{opt.label}</span>
+                    <span class="text-[11px] text-slate-500">{opt.desc}</span>
+                  </div>
+                </label>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Test Result Banner -->
+        {#if testResult}
+          <div class="p-3 rounded-lg flex items-center gap-2.5 {testResult.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border border-rose-500/30 text-rose-300'}">
+            {#if testResult.success}
+              <CheckCircle2 size={16} class="shrink-0 text-emerald-400" />
+              <div>
+                <span class="font-bold">{testResult.message}</span>
+                {#if testResult.latencyMs !== undefined}
+                  <span class="ml-2 font-mono text-[11px]">({testResult.latencyMs}ms latency)</span>
+                {/if}
+              </div>
+            {:else}
+              <AlertCircle size={16} class="shrink-0 text-rose-400" />
+              <span class="text-xs">{testResult.message}</span>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="px-6 py-3 border-t border-slate-800 bg-surface-950/50 flex items-center justify-between">
+        <button 
+          type="button"
+          onclick={handleTest}
+          disabled={isTesting}
+          class="px-3.5 py-1.5 text-xs font-semibold text-slate-300 bg-surface-800 hover:bg-surface-700 hover:text-white rounded-md border border-slate-700 transition-colors disabled:opacity-50"
+        >
+          {isTesting ? 'Testing...' : 'Test Connection'}
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick={onClose} class="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200">
+            Cancel
+          </button>
+          <button 
+            type="button"
+            onclick={handleSaveAndConnect}
+            disabled={isSaving}
+            class="px-4 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-slate-800 transition-all shadow-md shadow-indigo-600/20"
+          >
+            {isSaving ? 'Connecting...' : 'Save & Connect'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}

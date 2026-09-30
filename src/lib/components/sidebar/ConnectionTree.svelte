@@ -13,6 +13,8 @@
     Plus
   } from 'lucide-svelte';
 
+  let { onOpenNewConnection }: { onOpenNewConnection?: () => void } = $props();
+
   onMount(() => {
     connectionStore.loadSchema(connectionStore.activeConnectionId);
   });
@@ -23,13 +25,24 @@
   <div class="p-3 border-b border-slate-800/80 flex flex-col gap-2">
     <div class="flex items-center justify-between">
       <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Schema Explorer</span>
-      <button 
-        onclick={() => connectionStore.loadSchema(connectionStore.activeConnectionId)}
-        class="text-slate-400 hover:text-indigo-400 transition-colors p-1"
-        title="Refresh Schema"
-      >
-        <RefreshCw size={13} class={connectionStore.isLoading ? 'animate-spin' : ''} />
-      </button>
+      <div class="flex items-center gap-1">
+        <button 
+          type="button"
+          onclick={onOpenNewConnection}
+          class="text-slate-400 hover:text-indigo-400 transition-colors p-1 rounded hover:bg-surface-800"
+          title="New Connection (+)"
+        >
+          <Plus size={14} />
+        </button>
+        <button 
+          type="button"
+          onclick={() => connectionStore.loadSchema(connectionStore.activeConnectionId)}
+          class="text-slate-400 hover:text-indigo-400 transition-colors p-1 rounded hover:bg-surface-800"
+          title="Refresh Schema"
+        >
+          <RefreshCw size={13} class={connectionStore.isLoading ? 'animate-spin' : ''} />
+        </button>
+      </div>
     </div>
 
     <!-- Quick Search Input -->

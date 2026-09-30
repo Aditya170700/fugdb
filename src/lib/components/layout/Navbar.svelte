@@ -17,11 +17,13 @@
   let { 
     onOpenErd, 
     onOpenTransfer, 
-    onOpenMockData 
+    onOpenMockData,
+    onOpenNewConnection
   }: { 
     onOpenErd: () => void; 
     onOpenTransfer: () => void; 
     onOpenMockData: () => void; 
+    onOpenNewConnection: () => void;
   } = $props();
 
   const activeConn = $derived(connectionStore.activeConnection);
@@ -50,15 +52,25 @@
 
     <!-- Active Connection Selector & Environment Safety Badge -->
     <div class="flex items-center gap-2 text-xs">
-      <select 
-        value={connectionStore.activeConnectionId}
-        onchange={(e) => connectionStore.selectConnection((e.target as HTMLSelectElement).value)}
-        class="bg-surface-800/90 text-slate-200 border border-slate-700/80 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:border-indigo-500 hover:border-slate-600 cursor-pointer"
-      >
-        {#each connectionStore.connections as conn (conn.id)}
-          <option value={conn.id}>{conn.name} ({conn.driver})</option>
-        {/each}
-      </select>
+      <div class="flex items-center gap-1">
+        <select 
+          value={connectionStore.activeConnectionId}
+          onchange={(e) => connectionStore.selectConnection((e.target as HTMLSelectElement).value)}
+          class="bg-surface-800/90 text-slate-200 border border-slate-700/80 rounded-md px-2.5 py-1 text-xs focus:outline-none focus:border-indigo-500 hover:border-slate-600 cursor-pointer"
+        >
+          {#each connectionStore.connections as conn (conn.id)}
+            <option value={conn.id}>{conn.name} ({conn.driver})</option>
+          {/each}
+        </select>
+        <button 
+          type="button"
+          onclick={onOpenNewConnection}
+          class="p-1 text-slate-400 hover:text-indigo-300 hover:bg-surface-800 rounded transition-colors"
+          title="Add New Connection"
+        >
+          <Plus size={14} />
+        </button>
+      </div>
 
       {#if activeConn}
         <span class="px-2 py-0.5 text-[10px] font-semibold uppercase rounded-full border {getEnvBadgeColor(activeConn.environment)}">
