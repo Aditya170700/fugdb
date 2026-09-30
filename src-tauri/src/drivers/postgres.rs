@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use sqlx::{
-    postgres::{PgConnectOptions, PgPoolOptions, PgSslMode},
+    postgres::{PgColumn, PgConnectOptions, PgPoolOptions, PgRow, PgSslMode},
     PgPool, Row, Column,
 };
 use std::time::{Duration, Instant};
@@ -48,7 +48,7 @@ impl PostgresAdapter {
 
         let pool = PgPoolOptions::new()
             .max_connections(5)
-            .acquire_timeout(Duration::from_secs(5))
+            .acquire_timeout(Duration::from_secs(6))
             .connect_with(connect_opts)
             .await
             .map_err(|e| AppError::ConnectionError(format!("PostgreSQL connection failed: {}", e)))?;
@@ -58,6 +58,52 @@ impl PostgresAdapter {
             database_name: database.to_string(),
         })
     }
+}
+
+fn extract_pg_value(row: &PgRow, col: &PgColumn) -> serde_json::Value {
+    let name = col.name();
+
+    if let Ok(val) = row.try_get::<Option<String>, _>(name) {
+        return val.map(serde_json::Value::String).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<i64>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<i32>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<i16>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<bool>, _>(name) {
+        return val.map(serde_json::Value::Bool).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<f64>, _>(name) {
+        return val.and_then(|v| serde_json::Number::from_f64(v).map(serde_json::Value::Number)).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<serde_json::Value>, _>(name) {
+        return val.unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>(name) {
+        return val.map(|v| serde_json::Value::String(v.to_rfc3339())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<chrono::NaiveDateTime>, _>(name) {
+        return val.map(|v| serde_json::Value::String(v.to_string())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<chrono::NaiveDate>, _>(name) {
+        return val.map(|v| serde_json::Value::String(v.to_string())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<Vec<u8>>, _>(name) {
+        return val.map(|b| {
+            if let Ok(s) = String::from_utf8(b.clone()) {
+                serde_json::Value::String(s)
+            } else {
+                serde_json::Value::String(format!("<binary {} bytes>", b.len()))
+            }
+        }).unwrap_or(serde_json::Value::Null);
+    }
+
+    serde_json::Value::Null
 }
 
 #[async_trait]
@@ -101,11 +147,7 @@ impl DatabaseAdapter for PostgresAdapter {
         for row in &rows {
             let mut row_values = Vec::new();
             for col in row.columns() {
-                let val: Option<String> = row.try_get(col.name()).ok();
-                row_values.push(match val {
-                    Some(v) => serde_json::Value::String(v),
-                    None => serde_json::Value::Null,
-                });
+                row_values.push(extract_pg_value(row, col));
             }
             result_rows.push(row_values);
         }
@@ -123,7 +165,10 @@ impl DatabaseAdapter for PostgresAdapter {
 
     async fn fetch_schema_tree(&self) -> Result<SchemaTree, AppError> {
         let sql = r#"
-            SELECT table_schema, table_name, table_type
+            SELECT 
+                COALESCE(table_schema::text, 'public') AS table_schema,
+                COALESCE(table_name::text, '') AS table_name,
+                COALESCE(table_type::text, 'BASE TABLE') AS table_type
             FROM information_schema.tables
             WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
             ORDER BY table_schema, table_name;
@@ -136,16 +181,18 @@ impl DatabaseAdapter for PostgresAdapter {
 
         let mut tables = Vec::new();
         for row in rows {
-            let schema: String = row.get("table_schema");
-            let name: String = row.get("table_name");
-            let table_type: String = row.get("table_type");
+            let schema: String = row.try_get("table_schema").unwrap_or_else(|_| "public".into());
+            let name: String = row.try_get("table_name").unwrap_or_default();
+            let table_type: String = row.try_get("table_type").unwrap_or_else(|_| "table".into());
 
-            tables.push(TableItem {
-                schema,
-                name,
-                table_type: if table_type == "VIEW" { "view".into() } else { "table".into() },
-                row_count_estimate: None,
-            });
+            if !name.is_empty() {
+                tables.push(TableItem {
+                    schema,
+                    name,
+                    table_type: if table_type.contains("VIEW") { "view".into() } else { "table".into() },
+                    row_count_estimate: None,
+                });
+            }
         }
 
         Ok(SchemaTree {

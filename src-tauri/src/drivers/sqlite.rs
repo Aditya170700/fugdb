@@ -1,5 +1,8 @@
 use async_trait::async_trait;
-use sqlx::{sqlite::SqlitePoolOptions, SqlitePool, Row, Column};
+use sqlx::{
+    sqlite::{SqliteColumn, SqlitePoolOptions, SqliteRow},
+    SqlitePool, Row, Column,
+};
 use std::time::Instant;
 use tokio::sync::mpsc;
 
@@ -14,7 +17,7 @@ use crate::models::{
 
 pub struct SqliteAdapter {
     pool: SqlitePool,
-    db_path: String,
+    _db_path: String,
 }
 
 impl SqliteAdapter {
@@ -30,9 +33,37 @@ impl SqliteAdapter {
 
         Ok(Self {
             pool,
-            db_path: path.to_string(),
+            _db_path: path.to_string(),
         })
     }
+}
+
+fn extract_sqlite_value(row: &SqliteRow, col: &SqliteColumn) -> serde_json::Value {
+    let name = col.name();
+
+    if let Ok(val) = row.try_get::<Option<String>, _>(name) {
+        return val.map(serde_json::Value::String).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<i64>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<f64>, _>(name) {
+        return val.and_then(|v| serde_json::Number::from_f64(v).map(serde_json::Value::Number)).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<bool>, _>(name) {
+        return val.map(serde_json::Value::Bool).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<Vec<u8>>, _>(name) {
+        return val.map(|b| {
+            if let Ok(s) = String::from_utf8(b.clone()) {
+                serde_json::Value::String(s)
+            } else {
+                serde_json::Value::String(format!("<binary {} bytes>", b.len()))
+            }
+        }).unwrap_or(serde_json::Value::Null);
+    }
+
+    serde_json::Value::Null
 }
 
 #[async_trait]
@@ -76,11 +107,7 @@ impl DatabaseAdapter for SqliteAdapter {
         for row in &rows {
             let mut row_values = Vec::new();
             for col in row.columns() {
-                let val: Option<String> = row.try_get(col.name()).ok();
-                row_values.push(match val {
-                    Some(v) => serde_json::Value::String(v),
-                    None => serde_json::Value::Null,
-                });
+                row_values.push(extract_sqlite_value(row, col));
             }
             result_rows.push(row_values);
         }
@@ -111,15 +138,17 @@ impl DatabaseAdapter for SqliteAdapter {
 
         let mut tables = Vec::new();
         for row in rows {
-            let name: String = row.get("name");
-            let table_type: String = row.get("type");
+            let name: String = row.try_get("name").unwrap_or_default();
+            let table_type: String = row.try_get("type").unwrap_or_else(|_| "table".into());
 
-            tables.push(TableItem {
-                schema: "main".into(),
-                name,
-                table_type: if table_type == "view" { "view".into() } else { "table".into() },
-                row_count_estimate: None,
-            });
+            if !name.is_empty() {
+                tables.push(TableItem {
+                    schema: "main".into(),
+                    name,
+                    table_type: if table_type == "view" { "view".into() } else { "table".into() },
+                    row_count_estimate: None,
+                });
+            }
         }
 
         Ok(SchemaTree {

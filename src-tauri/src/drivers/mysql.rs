@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use sqlx::{
-    mysql::{MySqlConnectOptions, MySqlPoolOptions, MySqlSslMode},
+    mysql::{MySqlColumn, MySqlConnectOptions, MySqlPoolOptions, MySqlRow, MySqlSslMode},
     MySqlPool, Row, Column,
 };
 use std::time::{Duration, Instant};
@@ -46,7 +46,7 @@ impl MySqlAdapter {
 
         let pool = MySqlPoolOptions::new()
             .max_connections(5)
-            .acquire_timeout(Duration::from_secs(5))
+            .acquire_timeout(Duration::from_secs(6))
             .connect_with(connect_opts)
             .await
             .map_err(|e| AppError::ConnectionError(format!("MySQL connection failed: {}", e)))?;
@@ -56,6 +56,49 @@ impl MySqlAdapter {
             database_name: database.to_string(),
         })
     }
+}
+
+fn extract_mysql_value(row: &MySqlRow, col: &MySqlColumn) -> serde_json::Value {
+    let name = col.name();
+
+    if let Ok(val) = row.try_get::<Option<String>, _>(name) {
+        return val.map(serde_json::Value::String).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<i64>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<u64>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<i32>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<u32>, _>(name) {
+        return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<bool>, _>(name) {
+        return val.map(serde_json::Value::Bool).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<f64>, _>(name) {
+        return val.and_then(|v| serde_json::Number::from_f64(v).map(serde_json::Value::Number)).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<serde_json::Value>, _>(name) {
+        return val.unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<chrono::NaiveDateTime>, _>(name) {
+        return val.map(|v| serde_json::Value::String(v.to_string())).unwrap_or(serde_json::Value::Null);
+    }
+    if let Ok(val) = row.try_get::<Option<Vec<u8>>, _>(name) {
+        return val.map(|b| {
+            if let Ok(s) = String::from_utf8(b.clone()) {
+                serde_json::Value::String(s)
+            } else {
+                serde_json::Value::String(format!("<binary {} bytes>", b.len()))
+            }
+        }).unwrap_or(serde_json::Value::Null);
+    }
+
+    serde_json::Value::Null
 }
 
 #[async_trait]
@@ -99,11 +142,7 @@ impl DatabaseAdapter for MySqlAdapter {
         for row in &rows {
             let mut row_values = Vec::new();
             for col in row.columns() {
-                let val: Option<String> = row.try_get(col.name()).ok();
-                row_values.push(match val {
-                    Some(v) => serde_json::Value::String(v),
-                    None => serde_json::Value::Null,
-                });
+                row_values.push(extract_mysql_value(row, col));
             }
             result_rows.push(row_values);
         }
@@ -121,7 +160,10 @@ impl DatabaseAdapter for MySqlAdapter {
 
     async fn fetch_schema_tree(&self) -> Result<SchemaTree, AppError> {
         let sql = r#"
-            SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE
+            SELECT 
+                CAST(TABLE_SCHEMA AS CHAR) AS table_schema, 
+                CAST(TABLE_NAME AS CHAR) AS table_name, 
+                CAST(TABLE_TYPE AS CHAR) AS table_type
             FROM information_schema.tables
             WHERE TABLE_SCHEMA = DATABASE()
             ORDER BY TABLE_NAME;
@@ -134,16 +176,26 @@ impl DatabaseAdapter for MySqlAdapter {
 
         let mut tables = Vec::new();
         for row in rows {
-            let schema: String = row.get("TABLE_SCHEMA");
-            let name: String = row.get("TABLE_NAME");
-            let table_type: String = row.get("TABLE_TYPE");
+            let schema = row.try_get::<String, _>("table_schema")
+                .or_else(|_| row.try_get::<Vec<u8>, _>("table_schema").map(|b| String::from_utf8_lossy(&b).to_string()))
+                .unwrap_or_else(|_| self.database_name.clone());
 
-            tables.push(TableItem {
-                schema,
-                name,
-                table_type: if table_type == "VIEW" { "view".into() } else { "table".into() },
-                row_count_estimate: None,
-            });
+            let name = row.try_get::<String, _>("table_name")
+                .or_else(|_| row.try_get::<Vec<u8>, _>("table_name").map(|b| String::from_utf8_lossy(&b).to_string()))
+                .unwrap_or_default();
+
+            let table_type = row.try_get::<String, _>("table_type")
+                .or_else(|_| row.try_get::<Vec<u8>, _>("table_type").map(|b| String::from_utf8_lossy(&b).to_string()))
+                .unwrap_or_else(|_| "BASE TABLE".into());
+
+            if !name.is_empty() {
+                tables.push(TableItem {
+                    schema,
+                    name,
+                    table_type: if table_type.contains("VIEW") { "view".into() } else { "table".into() },
+                    row_count_estimate: None,
+                });
+            }
         }
 
         Ok(SchemaTree {
