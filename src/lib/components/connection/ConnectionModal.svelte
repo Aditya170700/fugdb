@@ -191,33 +191,33 @@
 
       <!-- Test Connection Result Alert Banner (Above Database Engine) -->
       {#if testResult}
-        <div class="mx-6 mt-4 p-3 rounded-xl flex items-start justify-between gap-3 text-xs {testResult.success ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-800 dark:text-emerald-200' : 'bg-rose-500/15 border border-rose-500/40 text-rose-800 dark:text-rose-200'}">
+        <div class="mx-6 mt-4 p-3 rounded-xl flex items-start justify-between gap-3 text-xs {testResult.success ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-200' : 'bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/30 dark:border-rose-500/40 text-rose-950 dark:text-rose-200'}">
           <div class="flex items-start gap-2.5 min-w-0">
             {#if testResult.success}
               <CheckCircle2 size={17} class="shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
               <div class="space-y-0.5">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <span class="font-bold text-emerald-700 dark:text-emerald-300">Connection Successful!</span>
+                  <span class="font-bold text-emerald-900 dark:text-emerald-300">Connection Successful!</span>
                   {#if testResult.latencyMs !== undefined}
-                    <span class="px-1.5 py-0.5 rounded bg-emerald-500/25 text-[10px] font-mono font-semibold text-emerald-300 border border-emerald-500/40">
+                    <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-[10px] font-mono font-semibold text-emerald-800 dark:text-emerald-300 border border-emerald-500/40">
                       ⚡ {testResult.latencyMs}ms latency
                     </span>
                   {/if}
                 </div>
-                <p class="text-[11px] text-emerald-300/90 leading-snug">{testResult.message}</p>
+                <p class="text-[11px] text-emerald-800 dark:text-emerald-300/90 leading-snug">{testResult.message}</p>
               </div>
             {:else}
-              <AlertCircle size={17} class="shrink-0 text-rose-400 mt-0.5" />
+              <AlertCircle size={17} class="shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
               <div class="space-y-0.5 min-w-0">
-                <span class="font-bold text-rose-300 block">Connection Failed</span>
-                <p class="text-[11px] text-rose-200/90 leading-snug break-words whitespace-pre-wrap">{testResult.message}</p>
+                <span class="font-bold text-rose-900 dark:text-rose-300 block">Connection Failed</span>
+                <p class="text-[11px] text-rose-800 dark:text-rose-200/90 leading-snug break-words whitespace-pre-wrap">{testResult.message}</p>
               </div>
             {/if}
           </div>
           <button 
             type="button" 
             onclick={() => testResult = null}
-            class="text-slate-400 hover:text-slate-100 hover:bg-surface-800 p-1 rounded-md transition-colors shrink-0"
+            class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-surface-800 p-1 rounded-md transition-colors shrink-0"
             title="Dismiss"
           >
             <X size={14} />
