@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use sqlx::{
-    sqlite::{SqliteColumn, SqlitePoolOptions, SqliteRow},
+    sqlite::{SqlitePoolOptions, SqliteRow},
     SqlitePool, Row, Column,
 };
 use std::time::Instant;
@@ -38,22 +38,20 @@ impl SqliteAdapter {
     }
 }
 
-fn extract_sqlite_value(row: &SqliteRow, col: &SqliteColumn) -> serde_json::Value {
-    let name = col.name();
-
-    if let Ok(val) = row.try_get::<Option<String>, _>(name) {
+fn extract_sqlite_value(row: &SqliteRow, col_idx: usize) -> serde_json::Value {
+    if let Ok(val) = row.try_get::<Option<String>, _>(col_idx) {
         return val.map(serde_json::Value::String).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<i64>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<i64>, _>(col_idx) {
         return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<f64>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<f64>, _>(col_idx) {
         return val.and_then(|v| serde_json::Number::from_f64(v).map(serde_json::Value::Number)).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<bool>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<bool>, _>(col_idx) {
         return val.map(serde_json::Value::Bool).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<Vec<u8>>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<Vec<u8>>, _>(col_idx) {
         return val.map(|b| {
             if let Ok(s) = String::from_utf8(b.clone()) {
                 serde_json::Value::String(s)
@@ -108,8 +106,8 @@ impl DatabaseAdapter for SqliteAdapter {
 
         for row in &rows {
             let mut row_values = Vec::new();
-            for col in row.columns() {
-                row_values.push(extract_sqlite_value(row, col));
+            for col_idx in 0..row.columns().len() {
+                row_values.push(extract_sqlite_value(row, col_idx));
             }
             result_rows.push(row_values);
         }

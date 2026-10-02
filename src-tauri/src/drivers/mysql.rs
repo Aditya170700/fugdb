@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use sqlx::{
-    mysql::{MySqlColumn, MySqlConnectOptions, MySqlPoolOptions, MySqlRow, MySqlSslMode},
+    mysql::{MySqlConnectOptions, MySqlPoolOptions, MySqlRow, MySqlSslMode},
     MySqlPool, Row, Column,
 };
 use std::time::{Duration, Instant};
@@ -58,37 +58,35 @@ impl MySqlAdapter {
     }
 }
 
-fn extract_mysql_value(row: &MySqlRow, col: &MySqlColumn) -> serde_json::Value {
-    let name = col.name();
-
-    if let Ok(val) = row.try_get::<Option<String>, _>(name) {
+fn extract_mysql_value(row: &MySqlRow, col_idx: usize) -> serde_json::Value {
+    if let Ok(val) = row.try_get::<Option<String>, _>(col_idx) {
         return val.map(serde_json::Value::String).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<i64>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<i64>, _>(col_idx) {
         return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<u64>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<u64>, _>(col_idx) {
         return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<i32>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<i32>, _>(col_idx) {
         return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<u32>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<u32>, _>(col_idx) {
         return val.map(|v| serde_json::Value::Number(v.into())).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<bool>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<bool>, _>(col_idx) {
         return val.map(serde_json::Value::Bool).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<f64>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<f64>, _>(col_idx) {
         return val.and_then(|v| serde_json::Number::from_f64(v).map(serde_json::Value::Number)).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<serde_json::Value>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<serde_json::Value>, _>(col_idx) {
         return val.unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<chrono::NaiveDateTime>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<chrono::NaiveDateTime>, _>(col_idx) {
         return val.map(|v| serde_json::Value::String(v.to_string())).unwrap_or(serde_json::Value::Null);
     }
-    if let Ok(val) = row.try_get::<Option<Vec<u8>>, _>(name) {
+    if let Ok(val) = row.try_get::<Option<Vec<u8>>, _>(col_idx) {
         return val.map(|b| {
             if let Ok(s) = String::from_utf8(b.clone()) {
                 serde_json::Value::String(s)
@@ -143,8 +141,8 @@ impl DatabaseAdapter for MySqlAdapter {
 
         for row in &rows {
             let mut row_values = Vec::new();
-            for col in row.columns() {
-                row_values.push(extract_mysql_value(row, col));
+            for col_idx in 0..row.columns().len() {
+                row_values.push(extract_mysql_value(row, col_idx));
             }
             result_rows.push(row_values);
         }
