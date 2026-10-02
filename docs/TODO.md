@@ -60,10 +60,12 @@
   - [x] Toolbar SQL editor dengan indikator real-time Production Guard dan badge risiko destruktif.
   - *Files Terkait*: `src/lib/state/tabs.svelte.ts`, `src/lib/state/safety.svelte.ts`, `src/lib/utils/safetyGuard.ts`, `src/lib/components/ui/SafetyModal.svelte`, `src/lib/components/editor/SqlEditor.svelte`
 
-- [ ] **1.3 Persistent Query History & Favorites**
-  - [ ] Simpan histori eksekusi query (SQL, timestamp, duration ms, status, row count) ke SQLite lokal / IndexedDB.
-  - [ ] Sediakan UI drawer / tab riwayat dengan fitur filter (success/error), full-text search, dan bookmark/pin query favorit.
-  - *Files Terkait*: `src/lib/state/history.svelte.ts`, `src/lib/components/editor/QueryHistoryDrawer.svelte`
+- [x] **1.3 Persistent Query History & Favorites**
+  - [x] Simpan histori eksekusi query (SQL, timestamp, duration ms, status, row count, database name) ke persistent storage (localStorage up to 500 items).
+  - [x] UI drawer riwayat (Cmd+H / Ctrl+H) dengan status filter (All, Favorites, Success, Error), connection filter, full-text search.
+  - [x] Bookmark / pin query favorit lengkap dengan tag custom label editing (e.g. "Monthly Active Users").
+  - [x] Fitur 1-click "Use Query", "Open in Tab", "Copy SQL", dan "Delete/Clear".
+  - *Files Terkait*: `src/lib/state/history.svelte.ts`, `src/lib/components/editor/QueryHistoryDrawer.svelte`, `src/lib/components/layout/Navbar.svelte`, `src/lib/components/editor/SqlEditor.svelte`, `src/App.svelte`
 
 - [ ] **1.4 Rich Cell Inspectors (Data Grid)**
   - [ ] **JSON Viewer & Editor**: Tree view interaktif dengan syntax formatting & validation.

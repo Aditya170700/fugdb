@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { connectionStore } from './connection.svelte';
 import { assessSqlRisk } from '../utils/safetyGuard';
 import { safetyStore } from './safety.svelte';
+import { historyStore } from './history.svelte';
 
 export interface TabItem {
   id: string;
@@ -114,15 +115,41 @@ export class TabsStore {
       }
     }
 
+    const start = Date.now();
     tab.isExecuting = true;
     tab.errorMessage = undefined;
     try {
       const result = await api.executeQuery(tab.connectionId, tab.sql);
       tab.queryResult = result;
+
+      // Log successful execution into persistent history
+      historyStore.addEntry({
+        sql: tab.sql,
+        connectionId: tab.connectionId,
+        connectionName: conn?.name || 'Database',
+        database: databaseName,
+        executedAt: start,
+        durationMs: result.executionTimeMs || (Date.now() - start),
+        status: 'success',
+        rowCount: result.affectedRows
+      });
     } catch (err: any) {
       console.error('Execution error:', err);
-      tab.errorMessage = typeof err === 'string' ? err : err?.message || JSON.stringify(err);
+      const errMsg = typeof err === 'string' ? err : err?.message || JSON.stringify(err);
+      tab.errorMessage = errMsg;
       tab.queryResult = undefined;
+
+      // Log failed execution into persistent history
+      historyStore.addEntry({
+        sql: tab.sql,
+        connectionId: tab.connectionId,
+        connectionName: conn?.name || 'Database',
+        database: databaseName,
+        executedAt: start,
+        durationMs: Date.now() - start,
+        status: 'error',
+        errorMessage: errMsg
+      });
     } finally {
       tab.isExecuting = false;
     }

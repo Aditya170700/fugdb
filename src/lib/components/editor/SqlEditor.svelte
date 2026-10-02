@@ -7,10 +7,11 @@
   import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
   import { oneDark } from '@codemirror/theme-one-dark';
-  import { Play, ShieldAlert, AlertTriangle } from 'lucide-svelte';
+  import { Play, ShieldAlert, AlertTriangle, History } from 'lucide-svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
+  import { historyStore } from '$lib/state/history.svelte';
   import { assessSqlRisk } from '$lib/utils/safetyGuard';
   import { createSqlLanguageSupport } from './sqlCompletion';
 
@@ -249,6 +250,17 @@
           </div>
         {/if}
       {/if}
+
+      <button 
+        type="button"
+        onclick={() => historyStore.toggleDrawer()}
+        class="flex items-center gap-1.5 px-2 py-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-surface-800 rounded text-xs transition-colors cursor-pointer"
+        title="Open Query History & Favorites (Cmd+H / Ctrl+H)"
+      >
+        <History size={13} />
+        <span>History</span>
+        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">⌘H</span>
+      </button>
     </div>
 
     <div class="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 font-mono">

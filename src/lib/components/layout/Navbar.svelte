@@ -17,8 +17,10 @@
     Check,
     Sun,
     Moon,
-    Monitor
+    Monitor,
+    History as HistoryIcon
   } from 'lucide-svelte';
+  import { historyStore } from '$lib/state/history.svelte';
 
   let { 
     onOpenErd, 
@@ -176,6 +178,17 @@
     </button>
 
     <!-- Power Tools Icons -->
+    <button 
+      onclick={() => historyStore.toggleDrawer()}
+      class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors relative" 
+      title="Query History & Favorites (Cmd+H / Ctrl+H)"
+    >
+      <HistoryIcon size={15} />
+      {#if historyStore.items.length > 0}
+        <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>
+      {/if}
+    </button>
+
     <button 
       onclick={onOpenTransfer}
       class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors" 

@@ -10,7 +10,9 @@
   import TransferModal from '$lib/components/transfer/TransferModal.svelte';
   import MockDataModal from '$lib/components/qa/MockDataModal.svelte';
   import SafetyModal from '$lib/components/ui/SafetyModal.svelte';
+  import QueryHistoryDrawer from '$lib/components/editor/QueryHistoryDrawer.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
+  import { historyStore } from '$lib/state/history.svelte';
 
   let isNewConnOpen = $state(false);
   let isErdOpen = $state(false);
@@ -18,6 +20,14 @@
   let isMockDataOpen = $state(false);
 
   const activeTab = $derived(tabsStore.activeTab);
+
+  // Global Keyboard Shortcuts (Cmd+H for history, etc.)
+  function handleGlobalKeyDown(e: KeyboardEvent) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h') {
+      e.preventDefault();
+      historyStore.toggleDrawer();
+    }
+  }
 
   // Resizable state
   let sidebarWidth = $state(260);
@@ -188,10 +198,13 @@
   <!-- Bottom Status Bar -->
   <Statusbar />
 
-  <!-- Modals -->
+  <!-- Modals & Drawers -->
   <ConnectionModal isOpen={isNewConnOpen} onClose={() => isNewConnOpen = false} />
   <ErdModal isOpen={isErdOpen} onClose={() => isErdOpen = false} />
   <TransferModal isOpen={isTransferOpen} onClose={() => isTransferOpen = false} />
   <MockDataModal isOpen={isMockDataOpen} onClose={() => isMockDataOpen = false} />
   <SafetyModal />
+  <QueryHistoryDrawer />
 </main>
+
+<svelte:window onkeydown={handleGlobalKeyDown} />
