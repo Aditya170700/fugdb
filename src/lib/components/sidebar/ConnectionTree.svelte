@@ -102,7 +102,7 @@
         <span>TABLES & VIEWS ({connectionStore.filteredTables.length})</span>
       </div>
 
-      {#each connectionStore.filteredTables as table (table.name)}
+      {#each connectionStore.filteredTables as table (table.schema + '.' + table.name)}
         {@const isExpanded = !!expandedTables[table.name]}
         {@const cols = table.columns || []}
 
@@ -158,7 +158,7 @@
           <!-- Expanded Columns List -->
           {#if isExpanded && cols.length > 0}
             <div class="pl-6 pr-1 py-1 space-y-0.5 border-l border-slate-200 dark:border-slate-800 ml-3.5 my-0.5">
-              {#each cols as col (col.name)}
+              {#each cols as col, colIdx (col.name + '_' + colIdx)}
                 {@const TypeIcon = getColumnTypeIcon(col.dataType)}
                 <div 
                   class="flex items-center justify-between px-2 py-1 rounded text-[11px] text-slate-600 dark:text-slate-300 hover:bg-surface-800/80 hover:text-slate-900 dark:hover:text-slate-100 group/col transition-colors"

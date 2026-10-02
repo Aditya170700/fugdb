@@ -504,7 +504,7 @@
         <thead class="bg-surface-900 sticky top-0 z-10 select-none shadow-sm">
           <tr class="border-b border-slate-200 dark:border-slate-800">
             <th class="px-3 py-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400 w-12 text-center border-r border-slate-200 dark:border-slate-800/60">#</th>
-            {#each result.columns as col, colIdx (col.name)}
+            {#each result.columns as col, colIdx (col.name + '_' + colIdx)}
               <th class="px-3 py-2 text-[11px] font-semibold border-r border-slate-200 dark:border-slate-800/60 truncate {col.isPrimaryKey || col.name.toLowerCase() === 'id' ? 'bg-amber-500/5' : ''}">
                 <div class="flex items-center justify-between gap-2">
                   <div class="flex items-center gap-1 truncate">
@@ -560,7 +560,7 @@
               </td>
 
               <!-- Data Cells -->
-              {#each result.columns as col, colIdx (col.name)}
+              {#each result.columns as col, colIdx (col.name + '_' + colIdx)}
                 {@const modified = isCellModified(row, rowIdx, col.name)}
                 {@const cellVal = getEffectiveCellValue(row, rowIdx, col.name, colIdx)}
                 {@const isEditingThis = editingCell && !editingCell.isInserted && editingCell.rowKey === rowKey && editingCell.colName === col.name}
@@ -651,7 +651,7 @@
               </td>
 
               <!-- Inserted Cells -->
-              {#each result.columns as col, colIdx (col.name)}
+              {#each result.columns as col, colIdx (col.name + '_' + colIdx)}
                 {@const cellVal = newRow.values[col.name]}
                 {@const isEditingThis = editingCell && editingCell.isInserted && editingCell.tempId === newRow.tempId && editingCell.colName === col.name}
 
