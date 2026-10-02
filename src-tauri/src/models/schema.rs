@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::models::query::ColumnMetadata;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -7,6 +8,8 @@ pub struct TableItem {
     pub name: String,
     pub table_type: String, // "table" | "view" | "materialized_view"
     pub row_count_estimate: Option<i64>,
+    #[serde(default)]
+    pub columns: Vec<ColumnMetadata>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -15,6 +18,8 @@ pub struct SchemaTree {
     pub databases: Vec<String>,
     pub current_database: String,
     pub tables: Vec<TableItem>,
+    #[serde(default)]
+    pub relations: Vec<RelationEdge>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

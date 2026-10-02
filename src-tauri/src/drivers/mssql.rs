@@ -176,6 +176,80 @@ impl DatabaseAdapter for MssqlAdapter {
         let tbl_rows = tbl_stream.into_first_result().await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
+        // 3. Fetch columns
+        let col_sql = r#"
+            SELECT 
+                COALESCE(TABLE_SCHEMA, 'dbo') AS table_schema,
+                COALESCE(TABLE_NAME, '') AS table_name,
+                COALESCE(COLUMN_NAME, '') AS column_name,
+                COALESCE(DATA_TYPE, 'varchar') AS data_type,
+                COALESCE(IS_NULLABLE, 'YES') AS is_nullable
+            FROM INFORMATION_SCHEMA.COLUMNS
+            ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION;
+        "#;
+
+        let col_stream = conn.simple_query(col_sql).await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+        let col_rows = col_stream.into_first_result().await
+            .unwrap_or_default();
+
+        // 4. Fetch Foreign Keys
+        let fk_sql = r#"
+            SELECT 
+                f.name AS id,
+                OBJECT_NAME(f.parent_object_id) AS from_table,
+                COL_NAME(fc.parent_object_id, fc.parent_column_id) AS from_column,
+                OBJECT_NAME(f.referenced_object_id) AS to_table,
+                COL_NAME(fc.referenced_object_id, fc.referenced_column_id) AS to_column
+            FROM sys.foreign_keys AS f
+            INNER JOIN sys.foreign_key_columns AS fc
+                ON f.object_id = fc.constraint_object_id;
+        "#;
+
+        let mut relations = Vec::new();
+        let mut fk_col_set = std::collections::HashSet::new();
+        if let Ok(fk_stream) = conn.simple_query(fk_sql).await {
+            if let Ok(fk_rows) = fk_stream.into_first_result().await {
+                for r in fk_rows {
+                    let id = r.get::<&str, _>("id").unwrap_or_default().to_string();
+                    let from_table = r.get::<&str, _>("from_table").unwrap_or_default().to_string();
+                    let from_column = r.get::<&str, _>("from_column").unwrap_or_default().to_string();
+                    let to_table = r.get::<&str, _>("to_table").unwrap_or_default().to_string();
+                    let to_column = r.get::<&str, _>("to_column").unwrap_or_default().to_string();
+
+                    fk_col_set.insert(format!("{}.{}", from_table, from_column));
+                    relations.push(RelationEdge {
+                        id,
+                        from_table,
+                        from_column,
+                        to_table,
+                        to_column,
+                    });
+                }
+            }
+        }
+
+        let mut col_map: std::collections::HashMap<String, Vec<ColumnMetadata>> = std::collections::HashMap::new();
+        for r in col_rows {
+            let schema = r.get::<&str, _>("table_schema").unwrap_or("dbo").to_string();
+            let table = r.get::<&str, _>("table_name").unwrap_or_default().to_string();
+            let col_name = r.get::<&str, _>("column_name").unwrap_or_default().to_string();
+            let data_type = r.get::<&str, _>("data_type").unwrap_or("varchar").to_string();
+            let is_nullable = r.get::<&str, _>("is_nullable").unwrap_or("YES").to_string();
+
+            let is_pk = col_name.eq_ignore_ascii_case("id");
+            let is_fk = fk_col_set.contains(&format!("{}.{}", table, col_name)) || col_name.ends_with("_id");
+
+            let key = format!("{}.{}", schema, table);
+            col_map.entry(key).or_default().push(ColumnMetadata {
+                name: col_name,
+                data_type,
+                is_primary_key: is_pk,
+                is_foreign_key: is_fk,
+                nullable: is_nullable.eq_ignore_ascii_case("YES"),
+            });
+        }
+
         let mut tables = Vec::new();
         for row in tbl_rows {
             let schema = row.get::<&str, _>("table_schema").unwrap_or("dbo").to_string();
@@ -183,11 +257,14 @@ impl DatabaseAdapter for MssqlAdapter {
             let table_type = row.get::<&str, _>("table_type").unwrap_or("BASE TABLE").to_string();
 
             if !name.is_empty() {
+                let key = format!("{}.{}", schema, name);
+                let columns = col_map.remove(&key).unwrap_or_default();
                 tables.push(TableItem {
                     schema,
                     name,
                     table_type: if table_type.contains("VIEW") { "view".into() } else { "table".into() },
                     row_count_estimate: None,
+                    columns,
                 });
             }
         }
@@ -196,11 +273,13 @@ impl DatabaseAdapter for MssqlAdapter {
             databases,
             current_database: self.database_name.clone(),
             tables,
+            relations,
         })
     }
 
     async fn generate_erd_metadata(&self) -> Result<Vec<RelationEdge>, AppError> {
-        Ok(vec![])
+        let tree = self.fetch_schema_tree().await?;
+        Ok(tree.relations)
     }
 
     async fn insert_mock_batch(&self, _table: &str, count: u64) -> Result<u64, AppError> {

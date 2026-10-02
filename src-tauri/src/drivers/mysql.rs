@@ -161,7 +161,7 @@ impl DatabaseAdapter for MySqlAdapter {
     }
 
     async fn fetch_schema_tree(&self) -> Result<SchemaTree, AppError> {
-        let sql = r#"
+        let tables_sql = r#"
             SELECT 
                 CAST(TABLE_SCHEMA AS CHAR) AS table_schema, 
                 CAST(TABLE_NAME AS CHAR) AS table_name, 
@@ -171,13 +171,86 @@ impl DatabaseAdapter for MySqlAdapter {
             ORDER BY TABLE_NAME;
         "#;
 
-        let rows = sqlx::query(sql)
+        let table_rows = sqlx::query(tables_sql)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
+        let columns_sql = r#"
+            SELECT 
+                CAST(TABLE_SCHEMA AS CHAR) AS table_schema, 
+                CAST(TABLE_NAME AS CHAR) AS table_name, 
+                CAST(COLUMN_NAME AS CHAR) AS column_name, 
+                CAST(DATA_TYPE AS CHAR) AS data_type, 
+                CAST(COLUMN_KEY AS CHAR) AS column_key, 
+                CAST(IS_NULLABLE AS CHAR) AS is_nullable
+            FROM information_schema.columns
+            WHERE TABLE_SCHEMA = DATABASE()
+            ORDER BY TABLE_NAME, ORDINAL_POSITION;
+        "#;
+
+        let col_rows = sqlx::query(columns_sql)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+        let fk_sql = r#"
+            SELECT
+                CAST(CONSTRAINT_NAME AS CHAR) AS id,
+                CAST(TABLE_NAME AS CHAR) AS from_table,
+                CAST(COLUMN_NAME AS CHAR) AS from_column,
+                CAST(REFERENCED_TABLE_NAME AS CHAR) AS to_table,
+                CAST(REFERENCED_COLUMN_NAME AS CHAR) AS to_column
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND REFERENCED_TABLE_NAME IS NOT NULL;
+        "#;
+
+        let fk_rows = sqlx::query(fk_sql)
+            .fetch_all(&self.pool)
+            .await
+            .unwrap_or_default();
+
+        let mut relations = Vec::new();
+        let mut fk_col_set = std::collections::HashSet::new();
+        for r in fk_rows {
+            let id = r.try_get::<String, _>("id").unwrap_or_default();
+            let from_table = r.try_get::<String, _>("from_table").unwrap_or_default();
+            let from_column = r.try_get::<String, _>("from_column").unwrap_or_default();
+            let to_table = r.try_get::<String, _>("to_table").unwrap_or_default();
+            let to_column = r.try_get::<String, _>("to_column").unwrap_or_default();
+            fk_col_set.insert(format!("{}.{}", from_table, from_column));
+            relations.push(RelationEdge {
+                id,
+                from_table,
+                from_column,
+                to_table,
+                to_column,
+            });
+        }
+
+        let mut col_map: std::collections::HashMap<String, Vec<ColumnMetadata>> = std::collections::HashMap::new();
+        for r in col_rows {
+            let table = r.try_get::<String, _>("table_name").unwrap_or_default();
+            let col_name = r.try_get::<String, _>("column_name").unwrap_or_default();
+            let data_type = r.try_get::<String, _>("data_type").unwrap_or_default();
+            let col_key = r.try_get::<String, _>("column_key").unwrap_or_default();
+            let is_nullable = r.try_get::<String, _>("is_nullable").unwrap_or_else(|_| "YES".into());
+
+            let is_pk = col_key.eq_ignore_ascii_case("PRI") || col_name.eq_ignore_ascii_case("id");
+            let is_fk = col_key.eq_ignore_ascii_case("MUL") || fk_col_set.contains(&format!("{}.{}", table, col_name)) || col_name.ends_with("_id");
+
+            col_map.entry(table).or_default().push(ColumnMetadata {
+                name: col_name,
+                data_type,
+                is_primary_key: is_pk,
+                is_foreign_key: is_fk,
+                nullable: is_nullable.eq_ignore_ascii_case("YES"),
+            });
+        }
+
         let mut tables = Vec::new();
-        for row in rows {
+        for row in table_rows {
             let schema = row.try_get::<String, _>("table_schema")
                 .or_else(|_| row.try_get::<Vec<u8>, _>("table_schema").map(|b| String::from_utf8_lossy(&b).to_string()))
                 .unwrap_or_else(|_| self.database_name.clone());
@@ -191,11 +264,13 @@ impl DatabaseAdapter for MySqlAdapter {
                 .unwrap_or_else(|_| "BASE TABLE".into());
 
             if !name.is_empty() {
+                let columns = col_map.remove(&name).unwrap_or_default();
                 tables.push(TableItem {
                     schema,
                     name,
                     table_type: if table_type.contains("VIEW") { "view".into() } else { "table".into() },
                     row_count_estimate: None,
+                    columns,
                 });
             }
         }
@@ -204,11 +279,13 @@ impl DatabaseAdapter for MySqlAdapter {
             databases: vec![self.database_name.clone()],
             current_database: self.database_name.clone(),
             tables,
+            relations,
         })
     }
 
     async fn generate_erd_metadata(&self) -> Result<Vec<RelationEdge>, AppError> {
-        Ok(vec![])
+        let tree = self.fetch_schema_tree().await?;
+        Ok(tree.relations)
     }
 
     async fn insert_mock_batch(&self, _table: &str, count: u64) -> Result<u64, AppError> {

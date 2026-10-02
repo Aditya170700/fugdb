@@ -42,12 +42,14 @@ export interface TableItem {
   name: string;
   tableType: 'table' | 'view' | 'materialized_view';
   rowCountEstimate?: number;
+  columns?: ColumnMetadata[];
 }
 
 export interface SchemaTree {
   databases: string[];
   currentDatabase: string;
   tables: TableItem[];
+  relations?: RelationEdge[];
 }
 
 export interface RelationEdge {

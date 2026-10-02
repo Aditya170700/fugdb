@@ -7,12 +7,39 @@
     Search, 
     RefreshCw, 
     Eye, 
-    Database, 
     Folder, 
-    Sparkles
+    ChevronRight,
+    ChevronDown,
+    KeyRound,
+    Link2,
+    Hash,
+    Type,
+    Calendar,
+    Check
   } from 'lucide-svelte';
 
   let { width = 260 }: { width?: number } = $props();
+
+  let expandedTables = $state<Record<string, boolean>>({});
+
+  function toggleTable(tableName: string, e: MouseEvent) {
+    e.stopPropagation();
+    expandedTables[tableName] = !expandedTables[tableName];
+  }
+
+  function getColumnTypeIcon(dataType: string) {
+    const dt = dataType.toLowerCase();
+    if (dt.includes('int') || dt.includes('number') || dt.includes('decimal') || dt.includes('numeric') || dt.includes('float')) {
+      return Hash;
+    }
+    if (dt.includes('date') || dt.includes('time')) {
+      return Calendar;
+    }
+    if (dt.includes('bool') || dt.includes('bit')) {
+      return Check;
+    }
+    return Type;
+  }
 
   onMount(() => {
     connectionStore.loadSchema(connectionStore.activeConnectionId);
@@ -27,7 +54,7 @@
       <button 
         type="button"
         onclick={() => connectionStore.loadSchema(connectionStore.activeConnectionId)}
-        class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1 rounded hover:bg-surface-800"
+        class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1 rounded hover:bg-surface-800 cursor-pointer"
         title="Refresh Schema"
       >
         <RefreshCw size={13} class={connectionStore.isLoading ? 'animate-spin' : ''} />
@@ -60,7 +87,7 @@
         <button 
           type="button"
           onclick={() => connectionStore.loadSchema(connectionStore.activeConnectionId)}
-          class="self-start px-2 py-1 bg-rose-600/20 hover:bg-rose-600/40 text-rose-800 dark:text-rose-200 rounded text-[10px] font-semibold transition-colors border border-rose-500/30"
+          class="self-start px-2 py-1 bg-rose-600/20 hover:bg-rose-600/40 text-rose-800 dark:text-rose-200 rounded text-[10px] font-semibold transition-colors border border-rose-500/30 cursor-pointer"
         >
           Retry Connect
         </button>
@@ -72,31 +99,89 @@
     {:else}
       <div class="text-[11px] font-bold text-slate-600 dark:text-slate-400 px-2 py-1.5 flex items-center gap-1.5 uppercase tracking-wider">
         <Folder size={12} class="text-slate-500 dark:text-slate-400" />
-        <span>PUBLIC ({connectionStore.filteredTables.length})</span>
+        <span>TABLES & VIEWS ({connectionStore.filteredTables.length})</span>
       </div>
 
       {#each connectionStore.filteredTables as table (table.name)}
-        <button 
-          type="button"
-          class="w-full group flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs text-slate-800 dark:text-slate-200 hover:bg-surface-800 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left font-medium"
-          ondblclick={() => tabsStore.openTableGridTab(table.name, table.schema)}
-          onclick={() => tabsStore.openTableGridTab(table.name, table.schema)}
-        >
-          <div class="flex items-center gap-2 truncate">
-            {#if table.tableType === 'view'}
-              <Eye size={14} class="text-amber-500 dark:text-amber-400 shrink-0" />
-            {:else}
-              <Table size={14} class="text-indigo-600 dark:text-indigo-400 shrink-0" />
-            {/if}
-            <span class="truncate">{table.name}</span>
+        {@const isExpanded = !!expandedTables[table.name]}
+        {@const cols = table.columns || []}
+
+        <div class="flex flex-col">
+          <div 
+            class="w-full group flex items-center justify-between px-2 py-1.5 rounded-md text-xs text-slate-800 dark:text-slate-200 hover:bg-surface-800 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition-colors font-medium"
+            role="button"
+            tabindex="0"
+            onclick={() => tabsStore.openTableGridTab(table.name, table.schema)}
+            onkeydown={(e) => { if (e.key === 'Enter') tabsStore.openTableGridTab(table.name, table.schema); }}
+          >
+            <div class="flex items-center gap-1.5 truncate">
+              <!-- Expand toggle -->
+              {#if cols.length > 0}
+                <button 
+                  type="button"
+                  class="p-0.5 -ml-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer rounded"
+                  onclick={(e) => toggleTable(table.name, e)}
+                  title={isExpanded ? "Collapse Columns" : "Expand Columns"}
+                >
+                  {#if isExpanded}
+                    <ChevronDown size={13} />
+                  {:else}
+                    <ChevronRight size={13} />
+                  {/if}
+                </button>
+              {:else}
+                <div class="w-3"></div>
+              {/if}
+
+              {#if table.tableType === 'view'}
+                <Eye size={13} class="text-amber-500 dark:text-amber-400 shrink-0" />
+              {:else}
+                <Table size={13} class="text-indigo-600 dark:text-indigo-400 shrink-0" />
+              {/if}
+              <span class="truncate">{table.name}</span>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              {#if cols.length > 0}
+                <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                  {cols.length} cols
+                </span>
+              {/if}
+              {#if table.rowCountEstimate != null}
+                <span class="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                  ~{table.rowCountEstimate.toLocaleString()}
+                </span>
+              {/if}
+            </div>
           </div>
 
-          {#if table.rowCountEstimate != null}
-            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-mono group-hover:text-slate-800 dark:group-hover:text-slate-200">
-              ~{table.rowCountEstimate.toLocaleString()}
-            </span>
+          <!-- Expanded Columns List -->
+          {#if isExpanded && cols.length > 0}
+            <div class="pl-6 pr-1 py-1 space-y-0.5 border-l border-slate-200 dark:border-slate-800 ml-3.5 my-0.5">
+              {#each cols as col (col.name)}
+                {@const TypeIcon = getColumnTypeIcon(col.dataType)}
+                <div 
+                  class="flex items-center justify-between px-2 py-1 rounded text-[11px] text-slate-600 dark:text-slate-300 hover:bg-surface-800/80 hover:text-slate-900 dark:hover:text-slate-100 group/col transition-colors"
+                  title={`${col.name} (${col.dataType})${col.isPrimaryKey ? ' [Primary Key]' : ''}${col.isForeignKey ? ' [Foreign Key]' : ''}`}
+                >
+                  <div class="flex items-center gap-1.5 truncate">
+                    {#if col.isPrimaryKey}
+                      <KeyRound size={11} class="text-amber-500 shrink-0" />
+                    {:else if col.isForeignKey}
+                      <Link2 size={11} class="text-sky-500 shrink-0" />
+                    {:else}
+                      <TypeIcon size={11} class="text-slate-400 dark:text-slate-500 shrink-0" />
+                    {/if}
+                    <span class="truncate {col.isPrimaryKey ? 'font-semibold text-slate-800 dark:text-slate-100' : ''}">{col.name}</span>
+                  </div>
+                  <span class="text-[9.5px] font-mono text-slate-400 dark:text-slate-500 group-hover/col:text-slate-600 dark:group-hover/col:text-slate-300 truncate max-w-[80px]">
+                    {col.dataType}
+                  </span>
+                </div>
+              {/each}
+            </div>
           {/if}
-        </button>
+        </div>
       {/each}
     {/if}
   </div>

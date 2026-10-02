@@ -139,16 +139,63 @@ impl DatabaseAdapter for SqliteAdapter {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         let mut tables = Vec::new();
+        let mut relations = Vec::new();
+
         for row in rows {
             let name: String = row.try_get("name").unwrap_or_default();
             let table_type: String = row.try_get("type").unwrap_or_else(|_| "table".into());
 
             if !name.is_empty() {
+                // Fetch columns via PRAGMA table_info
+                let pragma_sql = format!("PRAGMA table_info(\"{}\");", name);
+                let col_rows = sqlx::query(&pragma_sql)
+                    .fetch_all(&self.pool)
+                    .await
+                    .unwrap_or_default();
+
+                let mut columns = Vec::new();
+                for cr in col_rows {
+                    let col_name: String = cr.try_get("name").unwrap_or_default();
+                    let data_type: String = cr.try_get("type").unwrap_or_else(|_| "TEXT".into());
+                    let not_null: i64 = cr.try_get("notnull").unwrap_or(0);
+                    let is_pk: i64 = cr.try_get("pk").unwrap_or(0);
+
+                    columns.push(ColumnMetadata {
+                        name: col_name.clone(),
+                        data_type,
+                        is_primary_key: is_pk > 0 || col_name.eq_ignore_ascii_case("id"),
+                        is_foreign_key: col_name.ends_with("_id"),
+                        nullable: not_null == 0,
+                    });
+                }
+
+                // Fetch foreign keys via PRAGMA foreign_key_list
+                let fk_pragma = format!("PRAGMA foreign_key_list(\"{}\");", name);
+                if let Ok(fk_rows) = sqlx::query(&fk_pragma).fetch_all(&self.pool).await {
+                    for fkr in fk_rows {
+                        let id: i64 = fkr.try_get("id").unwrap_or(0);
+                        let to_table: String = fkr.try_get("table").unwrap_or_default();
+                        let from_col: String = fkr.try_get("from").unwrap_or_default();
+                        let to_col: String = fkr.try_get("to").unwrap_or_default();
+
+                        if !to_table.is_empty() {
+                            relations.push(RelationEdge {
+                                id: format!("fk_{}_{}_{}", name, from_col, id),
+                                from_table: name.clone(),
+                                from_column: from_col,
+                                to_table,
+                                to_column: to_col,
+                            });
+                        }
+                    }
+                }
+
                 tables.push(TableItem {
                     schema: "main".into(),
                     name,
                     table_type: if table_type == "view" { "view".into() } else { "table".into() },
                     row_count_estimate: None,
+                    columns,
                 });
             }
         }
@@ -157,11 +204,13 @@ impl DatabaseAdapter for SqliteAdapter {
             databases: vec!["main".into()],
             current_database: "main".into(),
             tables,
+            relations,
         })
     }
 
     async fn generate_erd_metadata(&self) -> Result<Vec<RelationEdge>, AppError> {
-        Ok(vec![])
+        let tree = self.fetch_schema_tree().await?;
+        Ok(tree.relations)
     }
 
     async fn insert_mock_batch(&self, _table: &str, count: u64) -> Result<u64, AppError> {

@@ -46,11 +46,12 @@
 
 ### ⚡ Phase 1: Editor Ergonomics & Core Safety (Immediate Priority)
 
-- [ ] **1.1 Schema-Aware Contextual Autocomplete (SQL Editor)**
-  - [ ] Ambil metadata skema aktif (`tables`, `columns`, `views`, `functions`) dari `connectionStore.activeSchemaTree`.
-  - [ ] Integrasikan schema completions ke `@codemirror/autocomplete` dan `@codemirror/lang-sql`.
-  - [ ] Tambahkan auto-suggest klausa `JOIN ... ON ...` cerdas berdasarkan relasi Foreign Key.
-  - *Files Terkait*: `src/lib/components/editor/SqlEditor.svelte`, `src/lib/state/connection.svelte.ts`
+- [x] **1.1 Schema-Aware Contextual Autocomplete (SQL Editor)**
+  - [x] Ambil metadata skema aktif (`tables`, `columns`, `views`, `functions`) dari `connectionStore.activeSchemaTree`.
+  - [x] Integrasikan schema completions ke `@codemirror/autocomplete` dan `@codemirror/lang-sql`.
+  - [x] Tambahkan auto-suggest klausa `JOIN ... ON ...` cerdas berdasarkan relasi Foreign Key.
+  - [x] Expandable sidebar schema tree untuk eksplorasi kolom langsung dengan indikator PK/FK.
+  - *Files Terkait*: `src/lib/components/editor/SqlEditor.svelte`, `src/lib/components/editor/sqlCompletion.ts`, `src/lib/components/sidebar/ConnectionTree.svelte`
 
 - [ ] **1.2 Production Safety Guard Interceptor**
   - [ ] Deteksi environment koneksi (`production` / badge merah).
