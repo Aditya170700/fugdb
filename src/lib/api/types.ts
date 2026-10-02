@@ -91,6 +91,20 @@ export interface ImportJobRequest {
   createTableIfMissing?: boolean;
 }
 
+export interface DbToDbTransferRequest {
+  sourceConnectionId: string;
+  sourceSchema?: string;
+  sourceTable?: string;
+  sourceQuery?: string;
+  targetConnectionId: string;
+  targetSchema?: string;
+  targetTable: string;
+  conflictStrategy?: ConflictStrategy;
+  createTableIfMissing?: boolean;
+  truncateTargetFirst?: boolean;
+  batchSize?: number;
+}
+
 export interface TransferProgressEvent {
   jobId: string;
   rowsProcessed: number;

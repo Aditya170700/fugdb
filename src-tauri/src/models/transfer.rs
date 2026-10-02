@@ -73,6 +73,22 @@ pub struct ImportJobRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct DbToDbTransferRequest {
+    pub source_connection_id: String,
+    pub source_schema: Option<String>,
+    pub source_table: Option<String>,
+    pub source_query: Option<String>,
+    pub target_connection_id: String,
+    pub target_schema: Option<String>,
+    pub target_table: String,
+    pub conflict_strategy: Option<ConflictStrategy>,
+    pub create_table_if_missing: Option<bool>,
+    pub truncate_target_first: Option<bool>,
+    pub batch_size: Option<usize>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferProgressEvent {
     pub job_id: String,
     pub rows_processed: u64,

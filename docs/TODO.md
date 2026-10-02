@@ -105,10 +105,13 @@
   - [x] **Real-time Tokio Progress Monitor**: Event background streaming dengan metrik live (*rows/sec, bytes processed, percent complete, ETA countdown*) dan tombol **Cancel Job** seketika.
   - *Files Terkait*: `src-tauri/src/transfer/`, `src-tauri/src/commands/transfer.rs`, `src/lib/components/transfer/TransferModal.svelte`, `src/lib/api/client.ts`
 
-- [ ] **2.3 Cross-Database Direct Transfer (DB-to-DB Streaming)**
-  - [ ] Migrasi langsung dari Source Connection $\rightarrow$ Target Connection tanpa file perantara.
-  - [ ] Pemetaan tipe data otomatis (Smart Type Mapping) & penanganan konflik (*Fail*, *Ignore*, *Upsert*).
-  - *Files Terkait*: `src-tauri/src/transfer/db_to_db.rs`, `src/lib/components/transfer/TransferModal.svelte`
+- [x] **2.3 Cross-Database Direct Transfer (DB-to-DB Streaming)**
+  - [x] **Zero-Intermediate-File Streaming**: Pipeline transfer langsung dari Source Connection $\rightarrow$ Target Connection via saluran memory-bounded Tokio channel tanpa file perantara.
+  - [x] **Smart Type Mapping**: Konversi tipe data otomatis lintas engine (PostgreSQL, MySQL, SQLite, SQL Server) untuk integer, floats, timestamps, JSON, UUID, dan boolean.
+  - [x] **Auto-create Target Table & Truncate Support**: Otomatis membuat tabel target jika belum ada (`CREATE TABLE IF NOT EXISTS`) serta opsi truncate tabel tujuan sebelum migrasi.
+  - [x] **Conflict Handling & Batching**: Pilihan resolusi konflik (*Fail*, *Ignore / Skip duplicates*, *Upsert*) dengan ukuran batch yang dapat disesuaikan (250 s/d 2.500 baris per batch).
+  - [x] **Real-time Pipeline Monitor**: Dashboard pemantauan kecepatan live (*rows/sec*), progres baris, estimasi waktu (ETA), dan pembatalan instan.
+  - *Files Terkait*: `src-tauri/src/transfer/db_to_db.rs`, `src-tauri/src/commands/transfer.rs`, `src/lib/components/transfer/TransferModal.svelte`, `src/lib/api/client.ts`
 
 - [ ] **2.4 1-Click Data Dictionary Generator**
   - [ ] Ekspor dokumentasi skema lengkap (daftar tabel, tipe kolom, nullability, PK/FK, indeks, deskripsi) ke format **Markdown** dan **HTML**.

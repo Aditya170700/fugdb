@@ -8,6 +8,7 @@ import type {
   RelationEdge, 
   ExportJobRequest,
   ImportJobRequest,
+  DbToDbTransferRequest,
   TransferProgressEvent,
   FileInspectionResult
 } from './types';
@@ -138,6 +139,13 @@ export const api = {
       return await invoke('start_import_job', { request });
     }
     return 'mock_import_job_1';
+  },
+
+  async startDbToDbTransfer(request: DbToDbTransferRequest): Promise<string> {
+    if (isTauri) {
+      return await invoke('start_db_to_db_job', { request });
+    }
+    return 'mock_db2db_job_1';
   },
 
   async cancelTransferJob(jobId: string): Promise<boolean> {

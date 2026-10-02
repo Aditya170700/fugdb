@@ -8,6 +8,7 @@
     FileCode, 
     Database, 
     ArrowRight, 
+    ArrowLeftRight,
     CheckCircle2, 
     AlertCircle, 
     X, 
@@ -20,7 +21,9 @@
     Sparkles,
     Check,
     HelpCircle,
-    Eye
+    Eye,
+    Layers,
+    Trash2
   } from 'lucide-svelte';
 
   import { connectionStore } from '$lib/state/connection.svelte';
@@ -31,14 +34,28 @@
     TransferProgressEvent, 
     FileInspectionResult, 
     ExportJobRequest, 
-    ImportJobRequest 
+    ImportJobRequest,
+    DbToDbTransferRequest
   } from '$lib/api/types';
   import type { UnlistenFn } from '@tauri-apps/api/event';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
-  // Mode: 'export' | 'import'
-  let activeTab = $state<'export' | 'import'>('export');
+  // Active Tab: 'cross_db' | 'export' | 'import'
+  let activeTab = $state<'cross_db' | 'export' | 'import'>('cross_db');
+
+  // --- Cross-DB Direct Migration State ---
+  let crossSrcConnId = $state<string>('');
+  let crossSrcMode = $state<'table' | 'query'>('table');
+  let crossSrcTable = $state<string>('');
+  let crossSrcQuery = $state<string>('SELECT * FROM users LIMIT 10000;');
+  let crossTargetConnId = $state<string>('');
+  let crossTargetSchema = $state<string>('public');
+  let crossTargetTable = $state<string>('');
+  let crossConflictStrategy = $state<'fail' | 'ignore' | 'upsert'>('fail');
+  let crossCreateTable = $state<boolean>(true);
+  let crossTruncateTarget = $state<boolean>(false);
+  let crossBatchSize = $state<number>(500);
 
   // --- Export State ---
   let exportConnId = $state<string>('');
@@ -74,17 +91,25 @@
   let transferError = $state<string | null>(null);
   let unlistenProgress: UnlistenFn | null = null;
 
-  // Active Connection & Schema derived
+  // Active Connections & Schema derived
   const connections = $derived(connectionStore.connections);
   const activeConn = $derived(connectionStore.activeConnection);
   const activeSchema = $derived(connectionStore.activeSchemaTree);
 
   $effect(() => {
     if (isOpen && activeConn) {
+      if (!crossSrcConnId) crossSrcConnId = activeConn.id;
+      if (!crossTargetConnId) {
+        const secondConn = connections.find(c => c.id !== activeConn.id);
+        crossTargetConnId = secondConn?.id || activeConn.id;
+      }
       if (!exportConnId) exportConnId = activeConn.id;
       if (!importConnId) importConnId = activeConn.id;
-      if (activeSchema?.tables && activeSchema.tables.length > 0 && !exportSelectedTable) {
-        exportSelectedTable = activeSchema.tables[0].name;
+
+      if (activeSchema?.tables && activeSchema.tables.length > 0) {
+        if (!crossSrcTable) crossSrcTable = activeSchema.tables[0].name;
+        if (!crossTargetTable) crossTargetTable = activeSchema.tables[0].name;
+        if (!exportSelectedTable) exportSelectedTable = activeSchema.tables[0].name;
         if (!importTargetTable) importTargetTable = activeSchema.tables[0].name;
       }
     }
@@ -107,6 +132,57 @@
       unlistenProgress();
     }
   });
+
+  // --- Handlers: Cross-DB Migration ---
+  async function startDbToDb() {
+    if (!crossSrcConnId || !crossTargetConnId) {
+      transferError = 'Please select both source and target connections';
+      return;
+    }
+    if (crossSrcConnId === crossTargetConnId && crossSrcTable === crossTargetTable && crossSrcMode === 'table') {
+      transferError = 'Source and target cannot be the identical table on the same connection. Specify a different target table or connection.';
+      return;
+    }
+    if (!crossTargetTable) {
+      transferError = 'Please enter a target table name';
+      return;
+    }
+
+    isRunning = true;
+    transferError = null;
+    progressEvent = null;
+
+    let conflictStrategy: ConflictStrategy;
+    if (crossConflictStrategy === 'ignore') {
+      conflictStrategy = 'ignore';
+    } else if (crossConflictStrategy === 'upsert') {
+      conflictStrategy = { upsert: { matchColumns: ['id'] } };
+    } else {
+      conflictStrategy = 'fail';
+    }
+
+    const req: DbToDbTransferRequest = {
+      sourceConnectionId: crossSrcConnId,
+      sourceSchema: 'public',
+      sourceTable: crossSrcMode === 'table' ? crossSrcTable : undefined,
+      sourceQuery: crossSrcMode === 'query' ? crossSrcQuery : undefined,
+      targetConnectionId: crossTargetConnId,
+      targetSchema: crossTargetSchema,
+      targetTable: crossTargetTable,
+      conflictStrategy,
+      createTableIfMissing: crossCreateTable,
+      truncateTargetFirst: crossTruncateTarget,
+      batchSize: crossBatchSize,
+    };
+
+    try {
+      const jobId = await api.startDbToDbTransfer(req);
+      activeJobId = jobId;
+    } catch (err: any) {
+      isRunning = false;
+      transferError = err?.message || String(err);
+    }
+  }
 
   // --- Handlers: Export ---
   async function handleBrowseSave() {
@@ -190,7 +266,6 @@
       const res = await api.inspectFile(filePath);
       inspectionResult = res;
 
-      // Auto-configure format from inspection
       if (res.detectedFormat === 'csv' || res.detectedFormat === 'tsv') {
         importFormatType = res.detectedFormat as any;
         if (res.delimiter) importCsvDelimiter = res.delimiter;
@@ -200,7 +275,6 @@
         importFormatType = 'excel';
       }
 
-      // Suggest table name from filename
       const baseName = filePath.split('/').pop()?.split('\\').pop()?.split('.')[0];
       if (baseName && !importTargetTable) {
         importTargetTable = baseName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
@@ -302,19 +376,19 @@
       <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-surface-950/80">
         <div class="flex items-center gap-3">
           <div class="p-2 bg-gradient-to-tr from-indigo-600 to-violet-500 text-white rounded-xl shadow-md shadow-indigo-500/20 shrink-0">
-            <Upload size={18} />
+            <ArrowLeftRight size={18} />
           </div>
           <div>
             <div class="flex items-center gap-2">
               <h3 class="font-bold text-sm text-slate-900 dark:text-white">
-                Streaming Data Transfer & ETL Engine
+                Multi-Source Data Transfer & ETL Engine
               </h3>
               <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30">
-                Tokio Streaming Channels
+                Tokio Streaming Pipelines
               </span>
             </div>
             <p class="text-[11px] text-slate-500 dark:text-slate-400">
-              High-performance batch import & export for CSV, TSV, JSON, Excel (.xlsx), and SQL Dumps
+              Zero-intermediate-file DB-to-DB migration & streaming import/export for CSV, JSON, Excel, and SQL
             </p>
           </div>
         </div>
@@ -329,15 +403,23 @@
         </button>
       </div>
 
-      <!-- Mode Selector Tabs -->
+      <!-- Mode Selector 3 Tabs -->
       <div class="flex border-b border-slate-200 dark:border-slate-800 bg-surface-950/50 px-5 pt-2 gap-2 text-xs font-semibold">
+        <button 
+          type="button"
+          onclick={() => activeTab = 'cross_db'}
+          class="flex items-center gap-2 px-4 py-2 border-b-2 transition-all cursor-pointer {activeTab === 'cross_db' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-surface-900/60 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-300'}"
+        >
+          <ArrowLeftRight size={14} />
+          <span>Direct DB ➔ DB Migration</span>
+        </button>
         <button 
           type="button"
           onclick={() => activeTab = 'export'}
           class="flex items-center gap-2 px-4 py-2 border-b-2 transition-all cursor-pointer {activeTab === 'export' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-surface-900/60 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-300'}"
         >
           <Download size={14} />
-          <span>Export from Database</span>
+          <span>Export to File</span>
         </button>
         <button 
           type="button"
@@ -345,13 +427,201 @@
           class="flex items-center gap-2 px-4 py-2 border-b-2 transition-all cursor-pointer {activeTab === 'import' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-surface-900/60 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-300'}"
         >
           <Upload size={14} />
-          <span>Import to Database</span>
+          <span>Import from File</span>
         </button>
       </div>
 
       <!-- Modal Body (Scrollable) -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs">
-        {#if activeTab === 'export'}
+        {#if activeTab === 'cross_db'}
+          <!-- ================= CROSS-DB DIRECT MIGRATION TAB ================= -->
+          <div class="space-y-5">
+            <div class="grid grid-cols-1 lg:grid-cols-11 gap-3 items-center">
+              <!-- Left: Source Database Card -->
+              <div class="lg:col-span-5 bg-surface-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                    <Database size={13} class="text-indigo-400" />
+                    Source Connection
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 font-bold border border-indigo-500/30">
+                    Extractor
+                  </span>
+                </div>
+
+                <div>
+                  <label for="cross-src-conn" class="text-[11px] font-medium text-slate-400 block mb-1">Database</label>
+                  <select
+                    id="cross-src-conn"
+                    bind:value={crossSrcConnId}
+                    class="w-full bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  >
+                    {#each connections as conn (conn.id)}
+                      <option value={conn.id}>{conn.name} ({conn.driver} • {conn.environment})</option>
+                    {/each}
+                  </select>
+                </div>
+
+                <div>
+                  <span class="text-[11px] font-medium text-slate-400 block mb-1">Data Selection</span>
+                  <div class="flex gap-2">
+                    <button
+                      type="button"
+                      onclick={() => crossSrcMode = 'table'}
+                      class="flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all {crossSrcMode === 'table' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400' : 'bg-surface-900 border-slate-700 text-slate-400'}"
+                    >
+                      Entire Table
+                    </button>
+                    <button
+                      type="button"
+                      onclick={() => crossSrcMode = 'query'}
+                      class="flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all {crossSrcMode === 'query' ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400' : 'bg-surface-900 border-slate-700 text-slate-400'}"
+                    >
+                      Custom Query
+                    </button>
+                  </div>
+                </div>
+
+                {#if crossSrcMode === 'table'}
+                  <div>
+                    <label for="cross-src-table" class="text-[11px] font-medium text-slate-400 block mb-1">Source Table</label>
+                    <select
+                      id="cross-src-table"
+                      bind:value={crossSrcTable}
+                      class="w-full bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                    >
+                      {#if activeSchema?.tables}
+                        {#each activeSchema.tables as tbl}
+                          <option value={tbl.name}>{tbl.schema}.{tbl.name} ({tbl.rowCountEstimate || 0} rows)</option>
+                        {/each}
+                      {:else}
+                        <option value="users">users</option>
+                      {/if}
+                    </select>
+                  </div>
+                {:else}
+                  <div>
+                    <label for="cross-src-query" class="text-[11px] font-medium text-slate-400 block mb-1">SQL Query to Stream</label>
+                    <textarea
+                      id="cross-src-query"
+                      bind:value={crossSrcQuery}
+                      rows="3"
+                      class="w-full bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 font-mono text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    ></textarea>
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Center Streaming Pipeline Visual Indicator -->
+              <div class="lg:col-span-1 flex flex-col items-center justify-center py-2 text-indigo-400 gap-1">
+                <div class="w-9 h-9 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shadow-lg shadow-indigo-500/20 {isRunning ? 'animate-pulse' : ''}">
+                  <ArrowRight size={18} class={isRunning ? 'animate-pulse' : ''} />
+                </div>
+                <span class="text-[9px] font-mono text-slate-500 uppercase tracking-tighter">Zero Copy</span>
+              </div>
+
+              <!-- Right: Target Database Card -->
+              <div class="lg:col-span-5 bg-surface-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                    <Database size={13} class="text-emerald-400" />
+                    Target Connection
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
+                    Loader
+                  </span>
+                </div>
+
+                <div>
+                  <label for="cross-tgt-conn" class="text-[11px] font-medium text-slate-400 block mb-1">Database</label>
+                  <select
+                    id="cross-tgt-conn"
+                    bind:value={crossTargetConnId}
+                    class="w-full bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  >
+                    {#each connections as conn (conn.id)}
+                      <option value={conn.id}>{conn.name} ({conn.driver} • {conn.environment})</option>
+                    {/each}
+                  </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label for="cross-tgt-schema" class="text-[11px] font-medium text-slate-400 block mb-1">Schema</label>
+                    <input
+                      id="cross-tgt-schema"
+                      type="text"
+                      bind:value={crossTargetSchema}
+                      class="w-full bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label for="cross-tgt-table" class="text-[11px] font-medium text-slate-400 block mb-1">Target Table</label>
+                    <input
+                      id="cross-tgt-table"
+                      type="text"
+                      bind:value={crossTargetTable}
+                      placeholder="e.g. users_backup"
+                      class="w-full bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 font-mono font-bold text-emerald-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label for="cross-conflict" class="text-[11px] font-medium text-slate-400 block mb-1">Conflict Strategy</label>
+                  <select
+                    id="cross-conflict"
+                    bind:value={crossConflictStrategy}
+                    class="w-full bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-200"
+                  >
+                    <option value="fail">Fail on duplicate / constraint error</option>
+                    <option value="ignore">Ignore duplicates (Skip conflicting rows)</option>
+                    <option value="upsert">Upsert / Overwrite existing records</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Migration Advanced Settings Card -->
+            <div class="bg-surface-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80 space-y-3">
+              <span class="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider block">
+                Pipeline Optimization & Schema Mapping
+              </span>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="cross-create"
+                    bind:checked={crossCreateTable}
+                    class="rounded text-indigo-600 bg-surface-900 border-slate-700"
+                  />
+                  <label for="cross-create" class="text-[11px] text-slate-300">Auto-create Target Table with Smart Type Mapping</label>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="cross-truncate"
+                    bind:checked={crossTruncateTarget}
+                    class="rounded text-indigo-600 bg-surface-900 border-slate-700"
+                  />
+                  <label for="cross-truncate" class="text-[11px] text-slate-300">Truncate target table before migration</label>
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <label for="cross-batch" class="text-[11px] text-slate-400 shrink-0">Batch Chunk Size:</label>
+                  <select id="cross-batch" bind:value={crossBatchSize} class="bg-surface-900 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+                    <option value={250}>250 rows / batch</option>
+                    <option value={500}>500 rows / batch (Recommended)</option>
+                    <option value={1000}>1,000 rows / batch</option>
+                    <option value={2500}>2,500 rows / batch</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        {:else if activeTab === 'export'}
           <!-- ================= EXPORT TAB ================= -->
           <div class="space-y-5">
             <!-- 1. Source Database & Query/Table Selection -->
@@ -715,7 +985,7 @@
                 <span class="font-bold text-slate-200">{progressEvent?.rowsProcessed.toLocaleString() || 0}</span>
               </div>
               <div class="bg-surface-900 p-2 rounded-lg border border-slate-800/80">
-                <span class="text-slate-500 block text-[10px]">BYTES STREAMED</span>
+                <span class="text-slate-500 block text-[10px]">BYTES / BANDWIDTH</span>
                 <span class="font-bold text-slate-200">{((progressEvent?.bytesProcessed || 0) / 1024).toFixed(1)} KB</span>
               </div>
               <div class="bg-surface-900 p-2 rounded-lg border border-slate-800/80">
@@ -741,7 +1011,7 @@
       <!-- Modal Footer -->
       <div class="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-surface-950/70 flex items-center justify-between">
         <div class="text-[11px] text-slate-500">
-          Powered by Rust Tokio Async Streams & Calamine Engine
+          Powered by Rust Tokio Async Streams & Zero-Copy Pipelines
         </div>
 
         <div class="flex items-center gap-2">
@@ -763,7 +1033,16 @@
               Close
             </button>
 
-            {#if activeTab === 'export'}
+            {#if activeTab === 'cross_db'}
+              <button
+                type="button"
+                onclick={startDbToDb}
+                class="px-5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/25 transition-all"
+              >
+                <ArrowLeftRight size={14} />
+                <span>Start Direct Migration</span>
+              </button>
+            {:else if activeTab === 'export'}
               <button
                 type="button"
                 onclick={startExport}

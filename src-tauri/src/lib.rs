@@ -10,7 +10,7 @@ use commands::{
     mock_data::generate_mock_batch,
     query::execute_query,
     schema::{fetch_schema_tree, generate_erd_metadata},
-    transfer::{cancel_transfer_job, inspect_file, start_export_job, start_import_job},
+    transfer::{cancel_transfer_job, inspect_file, start_db_to_db_job, start_export_job, start_import_job},
 };
 use state::AppState;
 
@@ -30,6 +30,7 @@ pub fn run() {
             inspect_file,
             start_export_job,
             start_import_job,
+            start_db_to_db_job,
             cancel_transfer_job
         ])
         .run(tauri::generate_context!())
