@@ -11,6 +11,7 @@
   import MockDataModal from '$lib/components/qa/MockDataModal.svelte';
   import SafetyModal from '$lib/components/ui/SafetyModal.svelte';
   import QueryHistoryDrawer from '$lib/components/editor/QueryHistoryDrawer.svelte';
+  import CellInspectorModal from '$lib/components/inspectors/CellInspectorModal.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { historyStore } from '$lib/state/history.svelte';
 
@@ -205,6 +206,7 @@
   <MockDataModal isOpen={isMockDataOpen} onClose={() => isMockDataOpen = false} />
   <SafetyModal />
   <QueryHistoryDrawer />
+  <CellInspectorModal />
 </main>
 
 <svelte:window onkeydown={handleGlobalKeyDown} />

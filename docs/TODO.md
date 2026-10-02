@@ -67,12 +67,13 @@
   - [x] Fitur 1-click "Use Query", "Open in Tab", "Copy SQL", dan "Delete/Clear".
   - *Files Terkait*: `src/lib/state/history.svelte.ts`, `src/lib/components/editor/QueryHistoryDrawer.svelte`, `src/lib/components/layout/Navbar.svelte`, `src/lib/components/editor/SqlEditor.svelte`, `src/App.svelte`
 
-- [ ] **1.4 Rich Cell Inspectors (Data Grid)**
-  - [ ] **JSON Viewer & Editor**: Tree view interaktif dengan syntax formatting & validation.
-  - [ ] **Date & Timezone Inspector**: Konversi real-time UTC $\leftrightarrow$ Local Time.
-  - [ ] **Binary & Hash Decoder**: Preview UUID, Base64, dan Hex string.
-  - [ ] **Blob & Long Text Previewer**: Preview file gambar, SVG, atau teks Markdown.
-  - *Files Terkait*: `src/lib/components/inspectors/`, `src/lib/components/grid/DataGrid.svelte`
+- [x] **1.4 Rich Cell Inspectors (Data Grid)**
+  - [x] **JSON Viewer & Editor**: Tree view interaktif dengan syntax formatting, collapse/expand, prettify/minify, filter key search, dan real-time validation editor.
+  - [x] **Date & Timezone Inspector**: Konversi real-time UTC $\leftrightarrow$ Local Time $\leftrightarrow$ Global Timezones (WIB, SGT, JST, EST, GMT), relative time ("3 hours ago"), dan Unix Epoch seconds/ms.
+  - [x] **Binary & Hash Decoder**: UUID v1/v4/v7 validator & generator, Base64 encoder/decoder (UTF-8 $\leftrightarrow$ Base64), dan Hexadecimal memory dump view (offset, bytes, ASCII).
+  - [x] **Blob & Long Text Previewer**: Markdown rich preview, Image/SVG live previewer, character/word statistics, dan Download as file.
+  - [x] **Data Grid Integration**: Right-click context menu, shortcut keyboard (<kbd>Cmd+I</kbd> / <kbd>Ctrl+I</kbd>), quick click badge JSON/Date, dan 1-click **Apply to Cell** yang tersinkronisasi langsung ke Staged Mutations buffer.
+  - *Files Terkait*: `src/lib/state/inspector.svelte.ts`, `src/lib/components/inspectors/`, `src/lib/components/grid/DataGrid.svelte`, `src/App.svelte`
 
 - [ ] **1.5 Grid Instant Column Filter & Multi-Column Sorting**
   - [ ] Filter bar per kolom (*contains, equals, regex, is null, not null*).

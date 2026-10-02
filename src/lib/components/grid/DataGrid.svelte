@@ -17,10 +17,16 @@
     CornerDownLeft,
     CheckCircle2,
     X,
-    Eye
+    Eye,
+    Maximize2,
+    Code,
+    Clock,
+    Binary,
+    FileText
   } from 'lucide-svelte';
   import { mutationStore, TabMutationState } from '$lib/state/mutations.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
+  import { inspectorStore } from '$lib/state/inspector.svelte';
   import MutationReviewDrawer from './MutationReviewDrawer.svelte';
 
   let { 
@@ -48,8 +54,21 @@
   );
 
   let selectedRowIdx = $state<number | null>(null);
+  let selectedColIdx = $state<number | null>(null);
   let filterText = $state('');
   let copied = $state(false);
+
+  // Cell Context Menu State
+  let contextMenu = $state<{
+    x: number;
+    y: number;
+    row: any[];
+    rowIdx: number;
+    colName: string;
+    colIdx: number;
+    isInserted?: boolean;
+    tempId?: string;
+  } | null>(null);
 
   // Virtual Scrolling State
   let scrollContainer = $state<HTMLDivElement | null>(null);
@@ -137,6 +156,13 @@
             resolvedTableName
           );
         }
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'i') {
+        if (selectedRowIdx !== null && selectedColIdx !== null && result && result.rows[selectedRowIdx]) {
+          e.preventDefault();
+          const row = result.rows[selectedRowIdx];
+          const col = result.columns[selectedColIdx];
+          openCellInspector(row, selectedRowIdx, col.name, selectedColIdx);
+        }
       }
     };
 
@@ -145,6 +171,77 @@
       window.removeEventListener('keydown', handleKeyDown);
     };
   });
+
+  function openCellInspector(
+    row: any[], 
+    rowIdx: number, 
+    colName: string, 
+    colIdx: number, 
+    isInserted = false, 
+    tempId?: string,
+    preferredTab: 'auto' | 'json' | 'datetime' | 'binary' | 'text' = 'auto'
+  ) {
+    if (isRowDeleted(row, rowIdx)) return;
+
+    let cellVal: any;
+    let rowKey: string;
+    let origVal: any;
+
+    if (isInserted && tempId) {
+      const insertedRow = mutationState.insertedRows.find(r => r.tempId === tempId);
+      cellVal = insertedRow?.values[colName];
+      rowKey = tempId;
+      origVal = null;
+    } else {
+      rowKey = getRowKey(row, rowIdx);
+      origVal = row[colIdx];
+      cellVal = getEffectiveCellValue(row, rowIdx, colName, colIdx);
+    }
+
+    const col = result?.columns[colIdx];
+
+    inspectorStore.open({
+      columnName: colName,
+      dataType: col?.dataType,
+      tableName: resolvedTableName,
+      rowKey,
+      colIdx,
+      isInserted,
+      tempId,
+      value: cellVal,
+      onApply: (newVal) => {
+        if (isInserted && tempId) {
+          mutationState.updateInsertedRowCell(tempId, colName, newVal);
+        } else {
+          mutationState.setCell(rowKey, colName, colIdx, origVal, newVal);
+        }
+      }
+    }, preferredTab);
+  }
+
+  function handleCellContextMenu(
+    e: MouseEvent,
+    row: any[],
+    rowIdx: number,
+    colName: string,
+    colIdx: number,
+    isInserted = false,
+    tempId?: string
+  ) {
+    e.preventDefault();
+    selectedRowIdx = rowIdx;
+    selectedColIdx = colIdx;
+    contextMenu = {
+      x: Math.min(window.innerWidth - 220, e.clientX),
+      y: Math.min(window.innerHeight - 260, e.clientY),
+      row,
+      rowIdx,
+      colName,
+      colIdx,
+      isInserted,
+      tempId
+    };
+  }
 
   function getPrimaryKeyColIdx(): number {
     if (!result) return -1;
@@ -564,10 +661,13 @@
                 {@const modified = isCellModified(row, rowIdx, col.name)}
                 {@const cellVal = getEffectiveCellValue(row, rowIdx, col.name, colIdx)}
                 {@const isEditingThis = editingCell && !editingCell.isInserted && editingCell.rowKey === rowKey && editingCell.colName === col.name}
+                {@const isCellSelected = isSelected && selectedColIdx === colIdx}
 
                 <td 
+                  onclick={() => { selectedRowIdx = rowIdx; selectedColIdx = colIdx; }}
                   ondblclick={() => startEditing(row, rowIdx, col.name, colIdx)}
-                  class="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800/60 truncate max-w-[260px] relative text-slate-900 dark:text-slate-100 transition-colors {modified ? 'bg-amber-500/20 dark:bg-amber-500/20 text-amber-950 dark:text-amber-200 font-medium' : ''}"
+                  oncontextmenu={(e) => handleCellContextMenu(e, row, rowIdx, col.name, colIdx)}
+                  class="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800/60 truncate max-w-[260px] relative text-slate-900 dark:text-slate-100 transition-colors group/cell {modified ? 'bg-amber-500/20 dark:bg-amber-500/20 text-amber-950 dark:text-amber-200 font-medium' : ''} {isCellSelected ? 'ring-1 ring-inset ring-indigo-500 bg-indigo-500/10' : ''}"
                   title={modified ? `Modified (Original: ${formatVal(row[colIdx])})` : ''}
                 >
                   {#if isEditingThis && editingCell}
@@ -617,10 +717,34 @@
                         </span>
                       </button>
                     {:else if typeof cellVal === 'object'}
-                      <span class="text-sky-700 dark:text-sky-400">{JSON.stringify(cellVal)}</span>
+                      <button
+                        type="button"
+                        onclick={(e) => {
+                          e.stopPropagation();
+                          openCellInspector(row, rowIdx, col.name, colIdx, false, undefined, 'json');
+                        }}
+                        class="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400 hover:underline cursor-pointer truncate max-w-full text-left"
+                        title="Click to open in JSON Inspector"
+                      >
+                        <span class="px-1 py-0.2 rounded bg-sky-500/10 text-sky-400 font-bold text-[10px] border border-sky-500/20">JSON</span>
+                        <span class="truncate">{JSON.stringify(cellVal)}</span>
+                      </button>
                     {:else}
                       <span>{cellVal}</span>
                     {/if}
+
+                    <!-- Hover Quick Inspect Button -->
+                    <button
+                      type="button"
+                      onclick={(e) => {
+                        e.stopPropagation();
+                        openCellInspector(row, rowIdx, col.name, colIdx);
+                      }}
+                      class="hidden group-hover/cell:flex absolute right-1 top-1.5 p-0.5 rounded bg-surface-800 text-slate-400 hover:text-indigo-400 shadow-xs border border-slate-700/80 items-center justify-center cursor-pointer z-1"
+                      title="Inspect Cell Value (JSON / Date / UUID / Text)"
+                    >
+                      <Maximize2 size={10} />
+                    </button>
                   {/if}
                 </td>
               {/each}
@@ -657,7 +781,8 @@
 
                 <td 
                   ondblclick={() => startEditing([], -1, col.name, colIdx, true, newRow.tempId)}
-                  class="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800/60 truncate max-w-[260px] relative font-medium text-slate-900 dark:text-slate-100"
+                  oncontextmenu={(e) => handleCellContextMenu(e, [], -1, col.name, colIdx, true, newRow.tempId)}
+                  class="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800/60 truncate max-w-[260px] relative font-medium text-slate-900 dark:text-slate-100 group/cell"
                 >
                   {#if isEditingThis && editingCell}
                     <div class="flex items-center gap-1 -my-1 -mx-2">
@@ -686,6 +811,19 @@
                     {:else}
                       <span class="text-emerald-800 dark:text-emerald-300 font-medium">{cellVal}</span>
                     {/if}
+
+                    <!-- Hover Quick Inspect Button -->
+                    <button
+                      type="button"
+                      onclick={(e) => {
+                        e.stopPropagation();
+                        openCellInspector([], -1, col.name, colIdx, true, newRow.tempId);
+                      }}
+                      class="hidden group-hover/cell:flex absolute right-1 top-1.5 p-0.5 rounded bg-surface-800 text-slate-400 hover:text-indigo-400 shadow-xs border border-slate-700/80 items-center justify-center cursor-pointer z-1"
+                      title="Inspect Cell Value"
+                    >
+                      <Maximize2 size={10} />
+                    </button>
                   {/if}
                 </td>
               {/each}
@@ -694,6 +832,105 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Floating Right-Click Context Menu -->
+    {#if contextMenu}
+      <div 
+        class="fixed inset-0 z-50 select-none" 
+        onclick={() => contextMenu = null}
+        oncontextmenu={(e) => { e.preventDefault(); contextMenu = null; }}
+        role="presentation"
+      ></div>
+
+      <div 
+        style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+        class="fixed z-50 w-56 bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 text-xs space-y-0.5 font-sans animate-in fade-in-50 zoom-in-95 duration-100 select-none text-slate-800 dark:text-slate-200"
+      >
+        <div class="px-2.5 py-1.5 text-[10px] text-slate-400 font-mono border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <span class="font-bold truncate">{contextMenu.colName}</span>
+          <span>{contextMenu.isInserted ? 'Inserted' : `Row #${contextMenu.rowIdx + 1}`}</span>
+        </div>
+
+        <button
+          type="button"
+          onclick={() => {
+            const { row, rowIdx, colName, colIdx, isInserted, tempId } = contextMenu!;
+            contextMenu = null;
+            openCellInspector(row, rowIdx, colName, colIdx, isInserted, tempId);
+          }}
+          class="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-indigo-600 hover:text-white rounded-lg transition-colors text-left cursor-pointer font-semibold text-indigo-600 dark:text-indigo-400"
+        >
+          <Maximize2 size={13} />
+          <span>Inspect Cell Value...</span>
+          <span class="text-[10px] opacity-75 font-mono ml-auto">⌘I</span>
+        </button>
+
+        <div class="border-t border-slate-200 dark:border-slate-800 my-0.5"></div>
+
+        <button
+          type="button"
+          onclick={() => {
+            const { row, rowIdx, colName, colIdx, isInserted, tempId } = contextMenu!;
+            contextMenu = null;
+            startEditing(row, rowIdx, colName, colIdx, isInserted, tempId);
+          }}
+          class="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-surface-800 rounded-lg transition-colors text-left cursor-pointer"
+        >
+          <Sparkles size={13} class="text-slate-400" />
+          <span>Edit In-Place (Double-Click)</span>
+        </button>
+
+        <button
+          type="button"
+          onclick={() => {
+            const { row, rowIdx, colName, colIdx, isInserted, tempId } = contextMenu!;
+            contextMenu = null;
+            if (isInserted && tempId) {
+              mutationState.updateInsertedRowCell(tempId, colName, null);
+            } else {
+              setCellNull(row, rowIdx, colName, colIdx);
+            }
+          }}
+          class="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-surface-800 rounded-lg transition-colors text-left cursor-pointer"
+        >
+          <Undo size={13} class="text-amber-500" />
+          <span>Set value to NULL</span>
+        </button>
+
+        <button
+          type="button"
+          onclick={() => {
+            const { row, rowIdx, colName, colIdx, isInserted, tempId } = contextMenu!;
+            const val = isInserted && tempId 
+              ? mutationState.insertedRows.find(r => r.tempId === tempId)?.values[colName]
+              : getEffectiveCellValue(row, rowIdx, colName, colIdx);
+            navigator.clipboard.writeText(val === null ? 'NULL' : typeof val === 'object' ? JSON.stringify(val) : String(val));
+            contextMenu = null;
+          }}
+          class="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-surface-800 rounded-lg transition-colors text-left cursor-pointer"
+        >
+          <Copy size={13} class="text-slate-400" />
+          <span>Copy Value</span>
+        </button>
+
+        {#if !contextMenu.isInserted}
+          <div class="border-t border-slate-200 dark:border-slate-800 my-0.5"></div>
+
+          <button
+            type="button"
+            onclick={() => {
+              const { row, rowIdx } = contextMenu!;
+              contextMenu = null;
+              mutationState.toggleRowDeleted(getRowKey(row, rowIdx), getRowObject(row));
+            }}
+            class="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-rose-500/10 hover:text-rose-400 text-rose-500 rounded-lg transition-colors text-left cursor-pointer font-semibold"
+          >
+            <Trash2 size={13} />
+            <span>Delete Row</span>
+          </button>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Bottom Staged Mutation Review Panel / SQL Diff Drawer -->
     {#if mutationState.hasChanges && mutationState.isDrawerOpen}
