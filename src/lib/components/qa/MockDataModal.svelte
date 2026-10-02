@@ -2,6 +2,7 @@
   import { Dices, Sparkles, X } from 'lucide-svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { api } from '$lib/api/client';
+  import CustomSelect from '$lib/components/ui/CustomSelect.svelte';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
 
@@ -49,13 +50,17 @@
         </div>
 
         <div>
-          <label for="mock-row-count" class="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Number of Rows</label>
-          <select id="mock-row-count" bind:value={rowCount} class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md p-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500">
-            <option value={10}>10 rows (Quick test)</option>
-            <option value={50}>50 rows (Standard)</option>
-            <option value={500}>500 rows (Load test)</option>
-            <option value={5000}>5,000 rows (Stress test)</option>
-          </select>
+          <CustomSelect
+            id="mock-row-count"
+            label="Number of Rows"
+            bind:value={rowCount}
+            options={[
+              { value: 10, label: '10 rows (Quick test)' },
+              { value: 50, label: '50 rows (Standard)' },
+              { value: 500, label: '500 rows (Load test)' },
+              { value: 5000, label: '5,000 rows (Stress test)' }
+            ]}
+          />
         </div>
 
         {#if successMessage}

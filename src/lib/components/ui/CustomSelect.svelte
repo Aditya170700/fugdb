@@ -1,9 +1,10 @@
 <script lang="ts">
   import { ChevronDown, Check } from 'lucide-svelte';
 
-  interface SelectOption {
-    value: string;
+  export interface SelectOption<T = any> {
+    value: T;
     label: string;
+    desc?: string;
     badge?: string;
     badgeColor?: string;
     icon?: any;
@@ -13,33 +14,46 @@
   let { 
     id,
     options = [],
-    value = $bindable(''),
+    value = $bindable(),
     label = '',
     placeholder = 'Select option...',
+    fontMono = false,
+    disabled = false,
     onchange
   }: {
     id?: string;
     options: SelectOption[];
-    value: string;
+    value: any;
     label?: string;
     placeholder?: string;
-    onchange?: (val: string) => void;
+    fontMono?: boolean;
+    disabled?: boolean;
+    onchange?: (val: any) => void;
   } = $props();
 
   let isOpen = $state(false);
 
   const selectedOption = $derived(
-    options.find(o => o.value === value)
+    options.find(o => String(o.value) === String(value))
   );
 
-  function handleSelect(optValue: string) {
+  function handleSelect(optValue: any) {
     value = optValue;
     isOpen = false;
     onchange?.(optValue);
   }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && isOpen) {
+      isOpen = false;
+      e.stopPropagation();
+    }
+  }
 </script>
 
-<div class="relative w-full select-none">
+<svelte:window onkeydown={handleKeydown} />
+
+<div class="relative w-full select-none text-left">
   {#if label}
     <label for={id} class="font-semibold text-slate-700 dark:text-slate-300 text-[11px] block mb-1">{label}</label>
   {/if}
@@ -48,24 +62,25 @@
   <button
     {id}
     type="button"
-    onclick={() => isOpen = !isOpen}
-    class="w-full bg-surface-900 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs text-slate-800 dark:text-slate-200 transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs"
+    {disabled}
+    onclick={() => { if (!disabled) isOpen = !isOpen; }}
+    class="w-full bg-slate-50 hover:bg-slate-100/80 dark:bg-surface-900 dark:hover:bg-surface-800/80 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs text-slate-900 dark:text-slate-100 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed {fontMono ? 'font-mono' : ''}"
   >
-    <div class="flex items-center gap-2 truncate">
+    <div class="flex items-center gap-2 truncate pr-2">
       {#if selectedOption?.dotColor}
-        <span class="w-2 h-2 rounded-full {selectedOption.dotColor} shadow-sm shrink-0"></span>
+        <span class="w-2 h-2 rounded-full {selectedOption.dotColor} shadow-xs shrink-0"></span>
       {/if}
-      <span class="truncate font-semibold {selectedOption ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500'}">
+      <span class="truncate font-medium {selectedOption ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}">
         {selectedOption ? selectedOption.label : placeholder}
       </span>
       {#if selectedOption?.badge}
-        <span class="text-[10px] px-1.5 py-0.2 rounded font-semibold {selectedOption.badgeColor || 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400'}">
+        <span class="text-[10px] font-sans px-1.5 py-0.2 rounded font-semibold {selectedOption.badgeColor || 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400'}">
           {selectedOption.badge}
         </span>
       {/if}
     </div>
 
-    <ChevronDown size={14} class="text-slate-500 dark:text-slate-400 transition-transform duration-200 shrink-0 {isOpen ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''}" />
+    <ChevronDown size={14} class="text-slate-400 dark:text-slate-500 transition-transform duration-200 shrink-0 {isOpen ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''}" />
   </button>
 
   <!-- Options Popover -->
@@ -76,21 +91,32 @@
       role="presentation"
     ></div>
 
-    <div class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto">
+    <div class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
       {#each options as opt}
+        {@const isSelected = String(opt.value) === String(value)}
         <button
           type="button"
           onclick={() => handleSelect(opt.value)}
-          class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors {value === opt.value ? 'bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/30' : 'hover:bg-surface-800 text-slate-800 dark:text-slate-300'}"
+          class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer {isSelected ? 'bg-indigo-50 dark:bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 font-bold' : 'hover:bg-slate-100 dark:hover:bg-surface-800 text-slate-700 dark:text-slate-300'} {fontMono ? 'font-mono' : ''}"
         >
           <div class="flex items-center gap-2 truncate">
             {#if opt.dotColor}
-              <span class="w-2 h-2 rounded-full {opt.dotColor} shadow-sm shrink-0"></span>
+              <span class="w-2 h-2 rounded-full {opt.dotColor} shadow-xs shrink-0"></span>
             {/if}
-            <span class="truncate">{opt.label}</span>
+            <div class="truncate text-left">
+              <span class="truncate block">{opt.label}</span>
+              {#if opt.desc}
+                <span class="text-[10px] text-slate-500 dark:text-slate-400 block font-normal">{opt.desc}</span>
+              {/if}
+            </div>
+            {#if opt.badge}
+              <span class="text-[10px] font-sans px-1.5 py-0.2 rounded font-semibold {opt.badgeColor || 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-400'}">
+                {opt.badge}
+              </span>
+            {/if}
           </div>
 
-          {#if value === opt.value}
+          {#if isSelected}
             <Check size={13} class="text-indigo-600 dark:text-indigo-400 shrink-0 ml-2" />
           {/if}
         </button>
