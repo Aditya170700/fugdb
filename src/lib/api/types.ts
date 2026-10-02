@@ -61,18 +61,55 @@ export interface RelationEdge {
 }
 
 export type TransferFormat = 
-  | { type: 'csv'; delimiter: string; hasHeader: boolean }
-  | { type: 'json'; isNdjson: boolean }
+  | { type: 'csv'; delimiter?: string; hasHeader?: boolean; quoteChar?: string }
+  | { type: 'tsv'; hasHeader?: boolean }
+  | { type: 'json'; isNdjson?: boolean; pretty?: boolean }
   | { type: 'excel'; sheetName?: string }
-  | { type: 'parquet' }
-  | { type: 'sqlDump'; includeDdl: boolean; batchSize: number };
+  | { type: 'sqlDump'; includeDdl?: boolean; batchSize?: number };
+
+export type ConflictStrategy = 
+  | 'fail' 
+  | 'ignore' 
+  | { upsert: { matchColumns: string[] } };
+
+export interface ExportJobRequest {
+  connectionId: string;
+  schema?: string;
+  table?: string;
+  query?: string;
+  targetPath: string;
+  format: TransferFormat;
+}
+
+export interface ImportJobRequest {
+  connectionId: string;
+  schema?: string;
+  table: string;
+  sourcePath: string;
+  format: TransferFormat;
+  conflictStrategy?: ConflictStrategy;
+  createTableIfMissing?: boolean;
+}
 
 export interface TransferProgressEvent {
   jobId: string;
   rowsProcessed: number;
+  totalRowsEstimated?: number;
   bytesProcessed: number;
   rowsPerSecond: number;
   estimatedSecondsRemaining?: number;
+  percentage?: number;
   status: 'running' | 'completed' | 'failed' | 'cancelled';
+  message?: string;
   errorMessage?: string;
+}
+
+export interface FileInspectionResult {
+  detectedFormat: string;
+  delimiter?: string;
+  hasHeader: boolean;
+  columns: string[];
+  sampleRows: any[][];
+  totalBytes: number;
+  sheetNames?: string[];
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type", content = "config", rename_all = "camelCase")]
 pub enum TransferSource {
     File { path: String, format: TransferFormat },
-    Table { connection_id: String, schema: String, table: String },
+    Table { connection_id: String, schema: Option<String>, table: String },
     Query { connection_id: String, sql: String },
     Url { url: String, format: TransferFormat },
 }
@@ -13,17 +13,31 @@ pub enum TransferSource {
 #[serde(tag = "type", content = "config", rename_all = "camelCase")]
 pub enum TransferTarget {
     File { path: String, format: TransferFormat },
-    Table { connection_id: String, schema: String, table: String, conflict_strategy: ConflictStrategy },
+    Table { connection_id: String, schema: Option<String>, table: String, conflict_strategy: Option<ConflictStrategy> },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum TransferFormat {
-    Csv { delimiter: char, has_header: bool },
-    Json { is_ndjson: bool },
-    Excel { sheet_name: Option<String> },
-    Parquet,
-    SqlDump { include_ddl: bool, batch_size: usize },
+    Csv { 
+        delimiter: Option<String>, 
+        has_header: Option<bool>, 
+        quote_char: Option<char> 
+    },
+    Tsv { 
+        has_header: Option<bool> 
+    },
+    Json { 
+        is_ndjson: Option<bool>, 
+        pretty: Option<bool> 
+    },
+    Excel { 
+        sheet_name: Option<String> 
+    },
+    SqlDump { 
+        include_ddl: Option<bool>, 
+        batch_size: Option<usize> 
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -36,12 +50,50 @@ pub enum ConflictStrategy {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ExportJobRequest {
+    pub connection_id: String,
+    pub schema: Option<String>,
+    pub table: Option<String>,
+    pub query: Option<String>,
+    pub target_path: String,
+    pub format: TransferFormat,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportJobRequest {
+    pub connection_id: String,
+    pub schema: Option<String>,
+    pub table: String,
+    pub source_path: String,
+    pub format: TransferFormat,
+    pub conflict_strategy: Option<ConflictStrategy>,
+    pub create_table_if_missing: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferProgressEvent {
     pub job_id: String,
     pub rows_processed: u64,
+    pub total_rows_estimated: Option<u64>,
     pub bytes_processed: u64,
     pub rows_per_second: f64,
     pub estimated_seconds_remaining: Option<u64>,
-    pub status: String,
+    pub percentage: Option<f64>,
+    pub status: String, // "running", "completed", "cancelled", "failed"
+    pub message: Option<String>,
     pub error_message: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FileInspectionResult {
+    pub detected_format: String,
+    pub delimiter: Option<String>,
+    pub has_header: bool,
+    pub columns: Vec<String>,
+    pub sample_rows: Vec<Vec<serde_json::Value>>,
+    pub total_bytes: u64,
+    pub sheet_names: Option<Vec<String>>,
 }

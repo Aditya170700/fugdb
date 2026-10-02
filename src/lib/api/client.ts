@@ -1,10 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import type { 
   ConnectionConfig, 
   QueryResult, 
   SchemaTree, 
   RelationEdge, 
-  TransferProgressEvent 
+  ExportJobRequest,
+  ImportJobRequest,
+  TransferProgressEvent,
+  FileInspectionResult
 } from './types';
 
 // Check if running in Tauri environment
@@ -101,5 +106,90 @@ export const api = {
     }
     await new Promise(r => setTimeout(r, 350));
     return count;
-  }
+  },
+
+  // Transfer & ETL Engine API
+  async inspectFile(path: string): Promise<FileInspectionResult> {
+    if (isTauri) {
+      return await invoke('inspect_file', { path });
+    }
+    return {
+      detectedFormat: path.endsWith('.json') ? 'json' : path.endsWith('.xlsx') ? 'excel' : 'csv',
+      delimiter: ',',
+      hasHeader: true,
+      columns: ['id', 'name', 'email', 'status', 'created_at'],
+      sampleRows: [
+        [1, 'Aditya', 'aditya@fugdb.dev', 'active', '2026-09-30'],
+        [2, 'Budi', 'budi@example.com', 'pending', '2026-09-30'],
+      ],
+      totalBytes: 1024 * 450,
+    };
+  },
+
+  async startExportJob(request: ExportJobRequest): Promise<string> {
+    if (isTauri) {
+      return await invoke('start_export_job', { request });
+    }
+    return 'mock_export_job_1';
+  },
+
+  async startImportJob(request: ImportJobRequest): Promise<string> {
+    if (isTauri) {
+      return await invoke('start_import_job', { request });
+    }
+    return 'mock_import_job_1';
+  },
+
+  async cancelTransferJob(jobId: string): Promise<boolean> {
+    if (isTauri) {
+      return await invoke('cancel_transfer_job', { jobId });
+    }
+    return true;
+  },
+
+  async onTransferProgress(callback: (event: TransferProgressEvent) => void): Promise<UnlistenFn> {
+    if (isTauri) {
+      return await listen<TransferProgressEvent>('transfer-progress', (e) => {
+        callback(e.payload);
+      });
+    }
+    return () => {};
+  },
+
+  // Native File Pickers via Dialog Plugin
+  async pickOpenFile(filters?: { name: string; extensions: string[] }[]): Promise<string | null> {
+    if (isTauri) {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: filters || [
+          { name: 'All Data Files', extensions: ['csv', 'tsv', 'json', 'ndjson', 'xlsx', 'sql'] },
+          { name: 'CSV & TSV Files', extensions: ['csv', 'tsv'] },
+          { name: 'JSON & NDJSON', extensions: ['json', 'ndjson', 'jsonl'] },
+          { name: 'Excel Spreadsheets', extensions: ['xlsx', 'xls'] },
+          { name: 'SQL Scripts', extensions: ['sql'] },
+        ],
+      });
+      return selected as string | null;
+    }
+    return '/Users/fugdb/data/sample_dataset.csv';
+  },
+
+  async pickSaveFile(defaultName?: string, filters?: { name: string; extensions: string[] }[]): Promise<string | null> {
+    if (isTauri) {
+      const selected = await save({
+        defaultPath: defaultName || 'export_data.csv',
+        filters: filters || [
+          { name: 'CSV Comma Separated', extensions: ['csv'] },
+          { name: 'TSV Tab Separated', extensions: ['tsv'] },
+          { name: 'JSON Document', extensions: ['json'] },
+          { name: 'JSON Lines (ndjson)', extensions: ['ndjson'] },
+          { name: 'Excel Spreadsheet', extensions: ['xlsx'] },
+          { name: 'SQL Dump Script', extensions: ['sql'] },
+        ],
+      });
+      return selected as string | null;
+    }
+    return `/Users/fugdb/downloads/${defaultName || 'export_data.csv'}`;
+  },
 };

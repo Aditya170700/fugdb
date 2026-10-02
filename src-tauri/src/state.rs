@@ -3,15 +3,18 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::drivers::DatabaseAdapter;
+use crate::transfer::JobManager;
 
 pub struct AppState {
-    pub pools: Arc<RwLock<HashMap<String, Box<dyn DatabaseAdapter>>>>,
+    pub pools: Arc<RwLock<HashMap<String, Arc<Box<dyn DatabaseAdapter>>>>>,
+    pub job_manager: JobManager,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
             pools: Arc::new(RwLock::new(HashMap::new())),
+            job_manager: JobManager::new(),
         }
     }
 }

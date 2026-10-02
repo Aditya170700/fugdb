@@ -1,5 +1,6 @@
 use tauri::State;
 use std::time::Instant;
+use std::sync::Arc;
 
 use crate::drivers::{
     postgres::PostgresAdapter, 
@@ -47,7 +48,7 @@ pub async fn connect_database(
     };
 
     let mut pools = state.pools.write().await;
-    pools.insert(config.id.clone(), adapter);
+    pools.insert(config.id.clone(), Arc::new(adapter));
 
     Ok(())
 }

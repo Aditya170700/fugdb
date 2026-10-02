@@ -96,13 +96,14 @@
   - [x] **MiniMap & Interactive Controls**: Zoom, pan, fit view, stats pill count (tabel & relasi), dan SvelteFlow store synchronization.
   - *Files Terkait*: `src/lib/components/erd/ErdModal.svelte`, `src/lib/components/erd/ErdTableNode.svelte`, `src/lib/components/erd/erdLayout.ts`
 
-- [ ] **2.2 High-Performance Streaming Import / Export Engine**
-  - [ ] **CSV / TSV**: Stream parser dengan auto-detect delimiter dan type guessing (`csv-async`).
-  - [ ] **JSON & ndjson**: Streaming import & export array of objects.
-  - [ ] **Excel (.xlsx)**: Parser & generator multi-sheet (`calamine`).
-  - [ ] **SQL Dump**: Generator DDL + batch `INSERT INTO` statements.
-  - [ ] Background worker via Tokio channels dengan event progress realtime (*rows/sec, bytes processed, ETA, cancel button*).
-  - *Files Terkait*: `src-tauri/src/transfer/`, `src-tauri/src/commands/transfer.rs`, `src/lib/components/transfer/TransferModal.svelte`
+- [x] **2.2 High-Performance Streaming Import / Export Engine**
+  - [x] **CSV / TSV Streaming Engine**: Stream parser & writer dengan auto-detect delimiter (comma, semicolon, tab, pipe), custom quotes, dan header row toggle.
+  - [x] **JSON & NDJSON**: Streaming import & export untuk array of objects dan line-delimited JSON (NDJSON/JSONL) dengan opsi pretty-print.
+  - [x] **Excel (.xlsx) Multi-Engine**: Parser lembar kerja menggunakan `calamine` dan generator spreadsheet berperforma tinggi via `rust_xlsxwriter` (auto column width & header styling).
+  - [x] **SQL Dump Generator**: Ekspor DDL `CREATE TABLE` skema lengkap + batch parameterized `INSERT INTO` statements dengan ukuran chunk dinamis.
+  - [x] **File Inspector & Preview**: Deteksi format file instan, ekstraksi skema kolom, dan tabel preview 10-baris sebelum proses import dimulai.
+  - [x] **Real-time Tokio Progress Monitor**: Event background streaming dengan metrik live (*rows/sec, bytes processed, percent complete, ETA countdown*) dan tombol **Cancel Job** seketika.
+  - *Files Terkait*: `src-tauri/src/transfer/`, `src-tauri/src/commands/transfer.rs`, `src/lib/components/transfer/TransferModal.svelte`, `src/lib/api/client.ts`
 
 - [ ] **2.3 Cross-Database Direct Transfer (DB-to-DB Streaming)**
   - [ ] Migrasi langsung dari Source Connection $\rightarrow$ Target Connection tanpa file perantara.
