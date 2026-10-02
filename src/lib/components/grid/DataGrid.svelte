@@ -22,7 +22,13 @@
     Code,
     Clock,
     Binary,
-    FileText
+    FileText,
+    ArrowUp,
+    ArrowDown,
+    ArrowUpDown,
+    Search,
+    FilterX,
+    SlidersHorizontal
   } from 'lucide-svelte';
   import { mutationStore, TabMutationState } from '$lib/state/mutations.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
@@ -55,8 +61,13 @@
 
   let selectedRowIdx = $state<number | null>(null);
   let selectedColIdx = $state<number | null>(null);
-  let filterText = $state('');
   let copied = $state(false);
+
+  // Filter & Multi-Column Sorting States
+  let isFilterRowVisible = $state(false);
+  let globalQuickSearch = $state('');
+  let columnFilters = $state<Record<string, { operator: string; value: string }>>({});
+  let sortCriteria = $state<Array<{ columnName: string; colIdx: number; direction: 'asc' | 'desc' }>>([]);
 
   // Cell Context Menu State
   let contextMenu = $state<{
@@ -83,22 +94,147 @@
   const ROW_HEIGHT = 33;
   const BUFFER_COUNT = 15;
 
+  // Filter & Sort Pipeline
+  const processedRows = $derived.by(() => {
+    if (!result?.rows) return [];
+
+    // Map each row with its original row index
+    let rows = result.rows.map((row, idx) => ({
+      originalRowIdx: idx,
+      row
+    }));
+
+    // 1. Global Quick Search
+    if (globalQuickSearch.trim()) {
+      const q = globalQuickSearch.trim().toLowerCase();
+      rows = rows.filter(({ row, originalRowIdx }) => {
+        return result.columns.some((col, colIdx) => {
+          const val = getEffectiveCellValue(row, originalRowIdx, col.name, colIdx);
+          if (val === null || val === undefined) return false;
+          return String(val).toLowerCase().includes(q);
+        });
+      });
+    }
+
+    // 2. Column Filters
+    const activeFilters = Object.entries(columnFilters).filter(([_, f]) => {
+      if (f.operator === 'is_null' || f.operator === 'not_null') return true;
+      return f.value.trim().length > 0;
+    });
+
+    if (activeFilters.length > 0) {
+      rows = rows.filter(({ row, originalRowIdx }) => {
+        return activeFilters.every(([colName, filter]) => {
+          const colIdx = result.columns.findIndex(c => c.name === colName);
+          if (colIdx === -1) return true;
+
+          const rawVal = getEffectiveCellValue(row, originalRowIdx, colName, colIdx);
+          const filterVal = filter.value.trim().toLowerCase();
+
+          if (filter.operator === 'is_null') {
+            return rawVal === null || rawVal === undefined;
+          }
+          if (filter.operator === 'not_null') {
+            return rawVal !== null && rawVal !== undefined;
+          }
+
+          if (rawVal === null || rawVal === undefined) {
+            return false;
+          }
+
+          const cellStr = String(rawVal).toLowerCase();
+
+          // Numeric comparisons if both are numbers
+          const numCell = Number(rawVal);
+          const numFilter = Number(filter.value);
+          const areBothNumeric = !isNaN(numCell) && !isNaN(numFilter) && filter.value.trim() !== '';
+
+          switch (filter.operator) {
+            case 'contains':
+              return cellStr.includes(filterVal);
+            case 'equals':
+              return areBothNumeric ? numCell === numFilter : cellStr === filterVal;
+            case 'neq':
+              return areBothNumeric ? numCell !== numFilter : cellStr !== filterVal;
+            case 'starts_with':
+              return cellStr.startsWith(filterVal);
+            case 'ends_with':
+              return cellStr.endsWith(filterVal);
+            case 'gt':
+              return areBothNumeric ? numCell > numFilter : cellStr > filterVal;
+            case 'gte':
+              return areBothNumeric ? numCell >= numFilter : cellStr >= filterVal;
+            case 'lt':
+              return areBothNumeric ? numCell < numFilter : cellStr < filterVal;
+            case 'lte':
+              return areBothNumeric ? numCell <= numFilter : cellStr <= filterVal;
+            case 'regex':
+              try {
+                const re = new RegExp(filter.value, 'i');
+                return re.test(String(rawVal));
+              } catch {
+                return false;
+              }
+            default:
+              return cellStr.includes(filterVal);
+          }
+        });
+      });
+    }
+
+    // 3. Multi-Column Sorting
+    if (sortCriteria.length > 0) {
+      rows = [...rows].sort((a, b) => {
+        for (const sort of sortCriteria) {
+          const valA = getEffectiveCellValue(a.row, a.originalRowIdx, sort.columnName, sort.colIdx);
+          const valB = getEffectiveCellValue(b.row, b.originalRowIdx, sort.columnName, sort.colIdx);
+
+          if (valA === null && valB === null) continue;
+          if (valA === null) return 1;
+          if (valB === null) return -1;
+
+          let cmp = 0;
+          if (typeof valA === 'number' && typeof valB === 'number') {
+            cmp = valA - valB;
+          } else if (typeof valA === 'boolean' && typeof valB === 'boolean') {
+            cmp = (valA === valB) ? 0 : valA ? 1 : -1;
+          } else {
+            const strA = String(valA).toLowerCase();
+            const strB = String(valB).toLowerCase();
+            cmp = strA.localeCompare(strB, undefined, { numeric: true });
+          }
+
+          if (cmp !== 0) {
+            return sort.direction === 'asc' ? cmp : -cmp;
+          }
+        }
+        return 0;
+      });
+    }
+
+    return rows;
+  });
+
   const totalRowCount = $derived(result?.rows.length || 0);
+  const totalFilteredRowCount = $derived(processedRows.length);
+  const activeFilterCount = $derived(
+    Object.keys(columnFilters).length + (globalQuickSearch.trim() ? 1 : 0)
+  );
+
   const startIndex = $derived(
     Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_COUNT)
   );
   const endIndex = $derived(
-    Math.min(totalRowCount, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + BUFFER_COUNT)
+    Math.min(totalFilteredRowCount, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + BUFFER_COUNT)
   );
 
   const visibleRows = $derived.by(() => {
-    if (!result?.rows) return [];
-    return result.rows.slice(startIndex, endIndex);
+    return processedRows.slice(startIndex, endIndex);
   });
 
   const topPadding = $derived(startIndex * ROW_HEIGHT);
   const bottomPadding = $derived(
-    Math.max(0, (totalRowCount - endIndex) * ROW_HEIGHT)
+    Math.max(0, (totalFilteredRowCount - endIndex) * ROW_HEIGHT)
   );
 
   // Reset scroll on query result change
@@ -110,6 +246,62 @@
       }
     }
   });
+
+  function handleColumnSortClick(colName: string, colIdx: number, e: MouseEvent) {
+    const isMulti = e.shiftKey || e.metaKey || e.ctrlKey;
+    const existingIdx = sortCriteria.findIndex(s => s.columnName === colName);
+
+    if (!isMulti) {
+      if (existingIdx >= 0 && sortCriteria.length === 1) {
+        if (sortCriteria[0].direction === 'asc') {
+          sortCriteria = [{ columnName: colName, colIdx, direction: 'desc' }];
+        } else {
+          sortCriteria = [];
+        }
+      } else {
+        sortCriteria = [{ columnName: colName, colIdx, direction: 'asc' }];
+      }
+    } else {
+      if (existingIdx >= 0) {
+        const current = sortCriteria[existingIdx];
+        if (current.direction === 'asc') {
+          sortCriteria = sortCriteria.map((s, idx) => idx === existingIdx ? { ...s, direction: 'desc' } : s);
+        } else {
+          sortCriteria = sortCriteria.filter((_, idx) => idx !== existingIdx);
+        }
+      } else {
+        sortCriteria = [...sortCriteria, { columnName: colName, colIdx, direction: 'asc' }];
+      }
+    }
+  }
+
+  function getSortInfo(colName: string): { direction: 'asc' | 'desc'; index: number } | null {
+    const idx = sortCriteria.findIndex(s => s.columnName === colName);
+    if (idx === -1) return null;
+    return { direction: sortCriteria[idx].direction, index: idx + 1 };
+  }
+
+  function setColumnFilter(colName: string, colIdx: number, operator: string, value: string) {
+    if (!value && operator !== 'is_null' && operator !== 'not_null') {
+      const next = { ...columnFilters };
+      delete next[colName];
+      columnFilters = next;
+    } else {
+      columnFilters = {
+        ...columnFilters,
+        [colName]: { operator, value }
+      };
+    }
+  }
+
+  function clearAllFilters() {
+    columnFilters = {};
+    globalQuickSearch = '';
+  }
+
+  function clearSort() {
+    sortCriteria = [];
+  }
 
   // In-cell editing state
   let editingCell = $state<{
@@ -487,9 +679,15 @@
     </div>
   {:else}
     <!-- Grid Action Toolbar -->
-    <div class="h-9 border-b border-slate-200 dark:border-slate-800/80 bg-surface-900/70 px-3 flex items-center justify-between text-xs shrink-0">
-      <div class="flex items-center gap-2">
-        <span class="text-slate-600 dark:text-slate-400 font-mono font-medium">{result.rows.length + mutationState.insertedRowCount} rows</span>
+    <div class="h-9 border-b border-slate-200 dark:border-slate-800/80 bg-surface-900/70 px-3 flex items-center justify-between text-xs shrink-0 gap-2">
+      <div class="flex items-center gap-2 truncate">
+        <span class="text-slate-600 dark:text-slate-400 font-mono font-medium">
+          {#if activeFilterCount > 0}
+            <span class="text-indigo-600 dark:text-indigo-400 font-bold">{totalFilteredRowCount}</span>/{result.rows.length} rows
+          {:else}
+            {result.rows.length + mutationState.insertedRowCount} rows
+          {/if}
+        </span>
         <span class="text-slate-400 dark:text-slate-600">•</span>
         <span class="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">{result.executionTimeMs.toFixed(1)}ms</span>
 
@@ -499,12 +697,55 @@
           {resolvedTableName}
         </span>
 
+        <!-- Quick Filter Toggle Button -->
+        <button
+          type="button"
+          onclick={() => isFilterRowVisible = !isFilterRowVisible}
+          class="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-semibold transition-colors border shadow-xs cursor-pointer ml-1 {isFilterRowVisible || activeFilterCount > 0 ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-300' : 'bg-surface-900 border-slate-200 hover:border-slate-300 dark:border-slate-700/80 text-slate-700 dark:text-slate-300'}"
+          title="Toggle Column Filters Row"
+        >
+          <Filter size={12} class={activeFilterCount > 0 ? 'text-indigo-500 fill-indigo-500/20' : ''} />
+          <span>Filters</span>
+          {#if activeFilterCount > 0}
+            <span class="px-1.5 py-0.2 rounded-full bg-indigo-600 text-white text-[9px] font-bold">
+              {activeFilterCount}
+            </span>
+          {/if}
+        </button>
+
+        <!-- Active Sort Reset Button -->
+        {#if sortCriteria.length > 0}
+          <button
+            type="button"
+            onclick={clearSort}
+            class="flex items-center gap-1 px-2 py-0.5 bg-surface-950 border border-slate-700 rounded text-[10.5px] text-slate-300 hover:text-rose-400 cursor-pointer"
+            title="Clear active multi-column sort"
+          >
+            <ArrowUpDown size={11} class="text-indigo-400" />
+            <span>Sorted ({sortCriteria.length})</span>
+            <X size={10} />
+          </button>
+        {/if}
+
+        <!-- Active Filter Reset Button -->
+        {#if activeFilterCount > 0}
+          <button
+            type="button"
+            onclick={clearAllFilters}
+            class="flex items-center gap-1 px-2 py-0.5 bg-rose-500/10 border border-rose-500/30 rounded text-[10.5px] text-rose-500 hover:text-rose-400 cursor-pointer"
+            title="Clear all active column filters"
+          >
+            <FilterX size={11} />
+            <span>Reset Filters</span>
+          </button>
+        {/if}
+
         <!-- Row Manipulation Buttons -->
-        <div class="ml-2 flex items-center gap-1.5">
+        <div class="ml-1 flex items-center gap-1.5">
           <button
             type="button"
             onclick={handleAddRow}
-            class="flex items-center gap-1 bg-surface-900 hover:bg-surface-800 text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white px-2.5 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs"
+            class="flex items-center gap-1 bg-surface-900 hover:bg-surface-800 text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white px-2 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs"
             title="Insert new row (+ Add Row)"
           >
             <Plus size={12} class="text-emerald-600 dark:text-emerald-400" />
@@ -515,17 +756,17 @@
             type="button"
             onclick={handleDeleteSelectedRow}
             disabled={selectedRowIdx === null}
-            class="flex items-center gap-1 bg-surface-900 hover:bg-surface-800 text-slate-800 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-300 px-2.5 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs disabled:opacity-40"
+            class="flex items-center gap-1 bg-surface-900 hover:bg-surface-800 text-slate-800 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-300 px-2 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs disabled:opacity-40"
             title="Mark selected row for deletion"
           >
             <Trash2 size={12} class="text-rose-600 dark:text-rose-400" />
-            <span>Delete Row</span>
+            <span>Delete</span>
           </button>
         </div>
 
         <!-- Staged Changes Notification Badge & Quick Actions -->
         {#if mutationState.hasChanges}
-          <div class="ml-3 flex items-center gap-2 bg-amber-500/15 border border-amber-500/50 dark:border-amber-500/40 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-md text-[11px] shadow-sm font-medium animate-fade-in">
+          <div class="ml-2 flex items-center gap-2 bg-amber-500/15 border border-amber-500/50 dark:border-amber-500/40 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-md text-[11px] shadow-sm font-medium animate-fade-in">
             <Sparkles size={12} class="text-amber-600 dark:text-amber-400 animate-pulse" />
             <span class="font-bold text-amber-900 dark:text-amber-300">{mutationState.totalChangesCount} staged</span>
 
@@ -564,10 +805,30 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <!-- Global Quick Search Input -->
+        <div class="relative w-36 sm:w-48">
+          <Search size={11} class="absolute left-2.5 top-2 text-slate-400" />
+          <input
+            type="text"
+            bind:value={globalQuickSearch}
+            placeholder="Quick search grid..."
+            class="w-full bg-surface-950 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-md pl-7 pr-5 py-0.5 text-[11px] focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
+          />
+          {#if globalQuickSearch}
+            <button
+              type="button"
+              onclick={() => globalQuickSearch = ''}
+              class="absolute right-1.5 top-1 text-slate-400 hover:text-slate-200"
+            >
+              <X size={10} />
+            </button>
+          {/if}
+        </div>
+
         <button 
           type="button"
           onclick={copyAsMarkdown} 
-          class="flex items-center gap-1 text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-surface-900 hover:bg-surface-800 px-2.5 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs"
+          class="flex items-center gap-1 text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-surface-900 hover:bg-surface-800 px-2 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs"
           title="Copy as Markdown Table"
         >
           {#if copied}
@@ -582,7 +843,7 @@
         <button 
           type="button"
           onclick={copyAsJson} 
-          class="flex items-center gap-1 text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-surface-900 hover:bg-surface-800 px-2.5 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs"
+          class="flex items-center gap-1 text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white bg-surface-900 hover:bg-surface-800 px-2 py-1 rounded text-[11px] font-semibold transition-colors border border-slate-200 hover:border-slate-300 dark:border-slate-700/80 shadow-xs"
           title="Copy as JSON"
         >
           <Download size={12} />
@@ -599,10 +860,16 @@
     >
       <table class="w-full text-left border-collapse font-mono text-xs">
         <thead class="bg-surface-900 sticky top-0 z-10 select-none shadow-sm">
+          <!-- 1. Column Header Row (Sortable) -->
           <tr class="border-b border-slate-200 dark:border-slate-800">
             <th class="px-3 py-2 text-[11px] font-semibold text-slate-600 dark:text-slate-400 w-12 text-center border-r border-slate-200 dark:border-slate-800/60">#</th>
             {#each result.columns as col, colIdx (col.name + '_' + colIdx)}
-              <th class="px-3 py-2 text-[11px] font-semibold border-r border-slate-200 dark:border-slate-800/60 truncate {col.isPrimaryKey || col.name.toLowerCase() === 'id' ? 'bg-amber-500/5' : ''}">
+              {@const sortInfo = getSortInfo(col.name)}
+              <th 
+                onclick={(e) => handleColumnSortClick(col.name, colIdx, e)}
+                class="px-3 py-2 text-[11px] font-semibold border-r border-slate-200 dark:border-slate-800/60 truncate cursor-pointer hover:bg-surface-800 transition-colors group/header {col.isPrimaryKey || col.name.toLowerCase() === 'id' ? 'bg-amber-500/5' : ''} {sortInfo ? 'bg-indigo-500/10' : ''}"
+                title="Click to sort (Shift+Click for multi-column sort)"
+              >
                 <div class="flex items-center justify-between gap-2">
                   <div class="flex items-center gap-1 truncate">
                     {#if col.isPrimaryKey || col.name.toLowerCase() === 'id'}
@@ -610,11 +877,91 @@
                     {/if}
                     <span class="truncate font-bold {col.isPrimaryKey || col.name.toLowerCase() === 'id' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-100'}">{col.name}</span>
                   </div>
-                  <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal uppercase">{col.dataType}</span>
+
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400 font-normal uppercase">{col.dataType}</span>
+                    
+                    {#if sortInfo}
+                      <span class="flex items-center text-indigo-600 dark:text-indigo-400 font-bold font-mono text-[10px] bg-indigo-500/15 px-1 py-0.2 rounded border border-indigo-500/30">
+                        {#if sortInfo.direction === 'asc'}
+                          <ArrowUp size={11} />
+                        {:else}
+                          <ArrowDown size={11} />
+                        {/if}
+                        {#if sortCriteria.length > 1}
+                          <span>{sortInfo.index}</span>
+                        {/if}
+                      </span>
+                    {:else}
+                      <ArrowUpDown size={11} class="opacity-0 group-hover/header:opacity-40 text-slate-400 transition-opacity" />
+                    {/if}
+                  </div>
                 </div>
               </th>
             {/each}
           </tr>
+
+          <!-- 2. Column Instant Filter Row (Toggleable) -->
+          {#if isFilterRowVisible}
+            <tr class="bg-surface-950 border-b border-slate-200 dark:border-slate-800 text-[11px] animate-in fade-in duration-100">
+              <th class="px-2 py-1 text-center border-r border-slate-200 dark:border-slate-800 font-normal text-slate-500">
+                <Filter size={11} class="mx-auto text-indigo-400" />
+              </th>
+              {#each result.columns as col, colIdx (col.name + '_filter_' + colIdx)}
+                {@const currentFilter = columnFilters[col.name]}
+                {@const colType = col.dataType.toLowerCase()}
+                {@const isNum = colType.includes('int') || colType.includes('float') || colType.includes('double') || colType.includes('numeric') || colType.includes('real') || colType.includes('dec')}
+                <th class="p-1 border-r border-slate-200 dark:border-slate-800 font-normal">
+                  <div class="flex items-center gap-1 bg-surface-900 border {currentFilter ? 'border-indigo-500/60 bg-indigo-500/5' : 'border-slate-200 dark:border-slate-800'} rounded px-1.5 py-0.5">
+                    <!-- Filter Operator Select -->
+                    <select
+                      value={currentFilter?.operator || (isNum ? 'equals' : 'contains')}
+                      onchange={(e) => setColumnFilter(col.name, colIdx, (e.currentTarget as HTMLSelectElement).value, currentFilter?.value || '')}
+                      class="bg-transparent text-[10px] text-indigo-600 dark:text-indigo-400 font-bold focus:outline-none shrink-0 cursor-pointer"
+                    >
+                      <option value="contains">contains</option>
+                      <option value="equals">=</option>
+                      <option value="neq">≠</option>
+                      <option value="starts_with">starts</option>
+                      <option value="ends_with">ends</option>
+                      <option value="gt">&gt;</option>
+                      <option value="gte">≥</option>
+                      <option value="lt">&lt;</option>
+                      <option value="lte">≤</option>
+                      <option value="is_null">is null</option>
+                      <option value="not_null">not null</option>
+                      <option value="regex">regex</option>
+                    </select>
+
+                    {#if currentFilter?.operator !== 'is_null' && currentFilter?.operator !== 'not_null'}
+                      <input
+                        type="text"
+                        value={currentFilter?.value || ''}
+                        oninput={(e) => setColumnFilter(col.name, colIdx, currentFilter?.operator || (isNum ? 'equals' : 'contains'), (e.currentTarget as HTMLInputElement).value)}
+                        placeholder="filter..."
+                        class="w-full bg-transparent text-slate-800 dark:text-slate-200 text-[11px] focus:outline-none placeholder:text-slate-500"
+                      />
+                    {/if}
+
+                    {#if currentFilter}
+                      <button
+                        type="button"
+                        onclick={() => {
+                          const next = { ...columnFilters };
+                          delete next[col.name];
+                          columnFilters = next;
+                        }}
+                        class="text-slate-400 hover:text-slate-200 p-0.5"
+                        title="Clear filter"
+                      >
+                        <X size={10} />
+                      </button>
+                    {/if}
+                  </div>
+                </th>
+              {/each}
+            </tr>
+          {/if}
         </thead>
         <tbody class="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-900 dark:text-slate-100 font-normal">
           <!-- Virtual Spacer Top -->
@@ -624,14 +971,13 @@
             </tr>
           {/if}
 
-          <!-- 1. Visible Existing Rows -->
-          {#each visibleRows as row, i (startIndex + i)}
-            {@const rowIdx = startIndex + i}
-            {@const rowKey = getRowKey(row, rowIdx)}
-            {@const isDeleted = isRowDeleted(row, rowIdx)}
-            {@const isSelected = selectedRowIdx === rowIdx}
+          <!-- 1. Visible Existing Rows (Filtered & Sorted) -->
+          {#each visibleRows as { row, originalRowIdx }, i (originalRowIdx)}
+            {@const rowKey = getRowKey(row, originalRowIdx)}
+            {@const isDeleted = isRowDeleted(row, originalRowIdx)}
+            {@const isSelected = selectedRowIdx === originalRowIdx}
             <tr 
-              onclick={() => selectedRowIdx = rowIdx}
+              onclick={() => selectedRowIdx = originalRowIdx}
               style="height: {ROW_HEIGHT}px;"
               class="group transition-colors {isDeleted ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300 opacity-65 line-through' : isSelected ? 'bg-indigo-500/15' : 'hover:bg-indigo-500/5'}"
             >
@@ -640,7 +986,7 @@
                 {#if isDeleted}
                   <span class="text-rose-600 dark:text-rose-400 font-bold text-[9px] px-1 bg-rose-500/20 rounded">DEL</span>
                 {:else}
-                  <span class="group-hover:hidden">{rowIdx + 1}</span>
+                  <span class="group-hover:hidden">{originalRowIdx + 1}</span>
                   <!-- Hover Delete / Undelete button in row number cell -->
                   <button
                     type="button"
@@ -658,15 +1004,15 @@
 
               <!-- Data Cells -->
               {#each result.columns as col, colIdx (col.name + '_' + colIdx)}
-                {@const modified = isCellModified(row, rowIdx, col.name)}
-                {@const cellVal = getEffectiveCellValue(row, rowIdx, col.name, colIdx)}
+                {@const modified = isCellModified(row, originalRowIdx, col.name)}
+                {@const cellVal = getEffectiveCellValue(row, originalRowIdx, col.name, colIdx)}
                 {@const isEditingThis = editingCell && !editingCell.isInserted && editingCell.rowKey === rowKey && editingCell.colName === col.name}
                 {@const isCellSelected = isSelected && selectedColIdx === colIdx}
 
                 <td 
-                  onclick={() => { selectedRowIdx = rowIdx; selectedColIdx = colIdx; }}
-                  ondblclick={() => startEditing(row, rowIdx, col.name, colIdx)}
-                  oncontextmenu={(e) => handleCellContextMenu(e, row, rowIdx, col.name, colIdx)}
+                  onclick={() => { selectedRowIdx = originalRowIdx; selectedColIdx = colIdx; }}
+                  ondblclick={() => startEditing(row, originalRowIdx, col.name, colIdx)}
+                  oncontextmenu={(e) => handleCellContextMenu(e, row, originalRowIdx, col.name, colIdx)}
                   class="px-3 py-1.5 border-r border-slate-200 dark:border-slate-800/60 truncate max-w-[260px] relative text-slate-900 dark:text-slate-100 transition-colors group/cell {modified ? 'bg-amber-500/20 dark:bg-amber-500/20 text-amber-950 dark:text-amber-200 font-medium' : ''} {isCellSelected ? 'ring-1 ring-inset ring-indigo-500 bg-indigo-500/10' : ''}"
                   title={modified ? `Modified (Original: ${formatVal(row[colIdx])})` : ''}
                 >
@@ -707,7 +1053,7 @@
                         type="button"
                         onclick={(e) => {
                           e.stopPropagation();
-                          toggleBooleanCell(row, rowIdx, col.name, colIdx);
+                          toggleBooleanCell(row, originalRowIdx, col.name, colIdx);
                         }}
                         class="cursor-pointer hover:opacity-80 transition-opacity"
                         title="Click to toggle boolean"
@@ -721,7 +1067,7 @@
                         type="button"
                         onclick={(e) => {
                           e.stopPropagation();
-                          openCellInspector(row, rowIdx, col.name, colIdx, false, undefined, 'json');
+                          openCellInspector(row, originalRowIdx, col.name, colIdx, false, undefined, 'json');
                         }}
                         class="inline-flex items-center gap-1 text-sky-700 dark:text-sky-400 hover:underline cursor-pointer truncate max-w-full text-left"
                         title="Click to open in JSON Inspector"
@@ -738,7 +1084,7 @@
                       type="button"
                       onclick={(e) => {
                         e.stopPropagation();
-                        openCellInspector(row, rowIdx, col.name, colIdx);
+                        openCellInspector(row, originalRowIdx, col.name, colIdx);
                       }}
                       class="hidden group-hover/cell:flex absolute right-1 top-1.5 p-0.5 rounded bg-surface-800 text-slate-400 hover:text-indigo-400 shadow-xs border border-slate-700/80 items-center justify-center cursor-pointer z-1"
                       title="Inspect Cell Value (JSON / Date / UUID / Text)"

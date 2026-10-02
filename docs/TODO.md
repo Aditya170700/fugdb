@@ -75,10 +75,13 @@
   - [x] **Data Grid Integration**: Right-click context menu, shortcut keyboard (<kbd>Cmd+I</kbd> / <kbd>Ctrl+I</kbd>), quick click badge JSON/Date, dan 1-click **Apply to Cell** yang tersinkronisasi langsung ke Staged Mutations buffer.
   - *Files Terkait*: `src/lib/state/inspector.svelte.ts`, `src/lib/components/inspectors/`, `src/lib/components/grid/DataGrid.svelte`, `src/App.svelte`
 
-- [ ] **1.5 Grid Instant Column Filter & Multi-Column Sorting**
-  - [ ] Filter bar per kolom (*contains, equals, regex, is null, not null*).
-  - [ ] Multi-column sort toggle (Ascending / Descending) tanpa perlu menulis query SQL manual.
-  - *Files Terkait*: `src/lib/components/grid/DataGrid.svelte`, `src/lib/state/tabs.svelte.ts`
+- [x] **1.5 Grid Instant Column Filter & Multi-Column Sorting**
+  - [x] **Instant Column Filter Row**: Filter toggleable per kolom dengan operator cerdas (*contains, equals, ≠, starts, ends, >, ≥, <, ≤, is null, not null, regex*).
+  - [x] **Global Quick Search**: Input pencarian realtime di toolbar grid untuk menemukan data seketika di seluruh baris & kolom.
+  - [x] **Multi-Column Sorting**: Klik header kolom untuk sort ASC $\rightarrow$ DESC $\rightarrow$ None. Dukungan multi-column sort (<kbd>Shift+Click</kbd>) dengan badge urutan prioritas sort (1, 2, 3...).
+  - [x] **Preserved Virtual Windowing**: Performa 60 FPS tetap terjaga bahkan dengan filtering & multi-level sorting aktif pada dataset besar.
+  - [x] **Seamless Mutation Mapping**: Pengeditan, staging mutations, dan inspeksi sel tetap memetakan baris asli secara presisi.
+  - *Files Terkait*: `src/lib/components/grid/DataGrid.svelte`
 
 ---
 
