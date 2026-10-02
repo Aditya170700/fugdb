@@ -528,7 +528,7 @@
           {/if}
 
           <!-- 1. Visible Existing Rows -->
-          {#each visibleRows as row, i (getRowKey(row, startIndex + i))}
+          {#each visibleRows as row, i (startIndex + i)}
             {@const rowIdx = startIndex + i}
             {@const rowKey = getRowKey(row, rowIdx)}
             {@const isDeleted = isRowDeleted(row, rowIdx)}
