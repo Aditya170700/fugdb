@@ -919,18 +919,18 @@
                       onchange={(e) => setColumnFilter(col.name, colIdx, (e.currentTarget as HTMLSelectElement).value, currentFilter?.value || '')}
                       class="bg-transparent text-[10px] text-indigo-600 dark:text-indigo-400 font-bold focus:outline-none shrink-0 cursor-pointer"
                     >
-                      <option value="contains">contains</option>
-                      <option value="equals">=</option>
-                      <option value="neq">≠</option>
-                      <option value="starts_with">starts</option>
-                      <option value="ends_with">ends</option>
-                      <option value="gt">&gt;</option>
-                      <option value="gte">≥</option>
-                      <option value="lt">&lt;</option>
-                      <option value="lte">≤</option>
-                      <option value="is_null">is null</option>
-                      <option value="not_null">not null</option>
-                      <option value="regex">regex</option>
+                      <option value="contains" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">contains</option>
+                      <option value="equals" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">=</option>
+                      <option value="neq" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">≠</option>
+                      <option value="starts_with" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">starts</option>
+                      <option value="ends_with" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">ends</option>
+                      <option value="gt" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">&gt;</option>
+                      <option value="gte" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">≥</option>
+                      <option value="lt" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">&lt;</option>
+                      <option value="lte" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">≤</option>
+                      <option value="is_null" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">is null</option>
+                      <option value="not_null" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">not null</option>
+                      <option value="regex" class="bg-white dark:bg-surface-900 text-slate-900 dark:text-slate-100">regex</option>
                     </select>
 
                     {#if currentFilter?.operator !== 'is_null' && currentFilter?.operator !== 'not_null'}

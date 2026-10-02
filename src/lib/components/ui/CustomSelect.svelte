@@ -19,6 +19,9 @@
     placeholder = 'Select option...',
     fontMono = false,
     disabled = false,
+    direction = 'auto',
+    size = 'md',
+    menuClass = '',
     onchange
   }: {
     id?: string;
@@ -28,19 +31,45 @@
     placeholder?: string;
     fontMono?: boolean;
     disabled?: boolean;
+    direction?: 'auto' | 'up' | 'down';
+    size?: 'sm' | 'md';
+    menuClass?: string;
     onchange?: (val: any) => void;
   } = $props();
 
   let isOpen = $state(false);
+  let containerRef: HTMLDivElement | null = $state(null);
+  let computedDirection = $state<'up' | 'down'>('down');
 
   const selectedOption = $derived(
     options.find(o => String(o.value) === String(value))
   );
 
+  function toggleDropdown() {
+    if (disabled) return;
+    if (!isOpen && containerRef) {
+      if (direction === 'auto') {
+        const rect = containerRef.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        computedDirection = (spaceBelow < 220 && spaceAbove > spaceBelow) ? 'up' : 'down';
+      } else {
+        computedDirection = direction;
+      }
+    }
+    isOpen = !isOpen;
+  }
+
   function handleSelect(optValue: any) {
     value = optValue;
     isOpen = false;
     onchange?.(optValue);
+  }
+
+  function handleWindowPointerDown(e: PointerEvent) {
+    if (isOpen && containerRef && !containerRef.contains(e.target as Node)) {
+      isOpen = false;
+    }
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -51,9 +80,9 @@
   }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window onpointerdown={handleWindowPointerDown} onkeydown={handleKeydown} />
 
-<div class="relative w-full select-none text-left">
+<div bind:this={containerRef} class="relative w-full select-none text-left">
   {#if label}
     <label for={id} class="font-semibold text-slate-700 dark:text-slate-300 text-[11px] block mb-1">{label}</label>
   {/if}
@@ -63,8 +92,8 @@
     {id}
     type="button"
     {disabled}
-    onclick={() => { if (!disabled) isOpen = !isOpen; }}
-    class="w-full bg-slate-50 hover:bg-slate-100/80 dark:bg-surface-900 dark:hover:bg-surface-800/80 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs text-slate-900 dark:text-slate-100 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed {fontMono ? 'font-mono' : ''}"
+    onclick={toggleDropdown}
+    class="w-full bg-slate-50 hover:bg-slate-100/80 dark:bg-surface-900 dark:hover:bg-surface-800/80 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 rounded-lg {size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'} flex items-center justify-between text-slate-900 dark:text-slate-100 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed {fontMono ? 'font-mono' : ''}"
   >
     <div class="flex items-center gap-2 truncate pr-2">
       {#if selectedOption?.dotColor}
@@ -86,12 +115,8 @@
   <!-- Options Popover -->
   {#if isOpen}
     <div 
-      class="fixed inset-0 z-40" 
-      onclick={() => isOpen = false}
-      role="presentation"
-    ></div>
-
-    <div class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+      class="absolute left-0 right-0 {computedDirection === 'up' ? 'bottom-full mb-1.5 origin-bottom' : 'top-full mt-1.5 origin-top'} z-50 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 {menuClass}"
+    >
       {#each options as opt}
         {@const isSelected = String(opt.value) === String(value)}
         <button

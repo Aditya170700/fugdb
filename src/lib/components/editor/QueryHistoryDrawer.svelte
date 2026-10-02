@@ -21,6 +21,7 @@
   import { historyStore, type QueryHistoryItem } from '$lib/state/history.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
+  import CustomSelect from '$lib/components/ui/CustomSelect.svelte';
 
   let copiedId = $state<string | null>(null);
   let editingFavoriteId = $state<string | null>(null);
@@ -211,16 +212,18 @@
           </div>
 
           <!-- Connection filter select -->
-          <div class="flex items-center gap-1 shrink-0 text-[11px]">
-            <select
+          <div class="w-40 shrink-0">
+            <CustomSelect
+              size="sm"
               bind:value={historyStore.selectedConnectionFilter}
-              class="bg-surface-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-indigo-500"
-            >
-              <option value="all">All Connections</option>
-              {#each connectionStore.connections as conn (conn.id)}
-                <option value={conn.id}>{conn.name}</option>
-              {/each}
-            </select>
+              options={[
+                { value: 'all', label: 'All Connections' },
+                ...connectionStore.connections.map(conn => ({
+                  value: conn.id,
+                  label: conn.name
+                }))
+              ]}
+            />
           </div>
         </div>
       </div>

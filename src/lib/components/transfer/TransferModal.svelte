@@ -433,7 +433,7 @@
       </div>
 
       <!-- Modal Body (Scrollable) -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs bg-slate-50/60 dark:bg-transparent">
+      <div class="flex-1 overflow-y-auto min-h-0 p-6 pb-12 space-y-6 text-xs bg-slate-50/60 dark:bg-transparent">
         {#if activeTab === 'cross_db'}
           <!-- ================= CROSS-DB DIRECT MIGRATION TAB ================= -->
           <div class="space-y-5">
