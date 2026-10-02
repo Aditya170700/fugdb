@@ -53,11 +53,12 @@
   - [x] Expandable sidebar schema tree untuk eksplorasi kolom langsung dengan indikator PK/FK.
   - *Files Terkait*: `src/lib/components/editor/SqlEditor.svelte`, `src/lib/components/editor/sqlCompletion.ts`, `src/lib/components/sidebar/ConnectionTree.svelte`
 
-- [ ] **1.2 Production Safety Guard Interceptor**
-  - [ ] Deteksi environment koneksi (`production` / badge merah).
-  - [ ] Parser / regex interceptor untuk query berisiko tinggi (`DROP`, `TRUNCATE`, `ALTER`, `DELETE`/`UPDATE` tanpa `WHERE`).
-  - [ ] Tampilkan modal konfirmasi dengan validasi pengetikan nama database / tombol override yang jelas.
-  - *Files Terkait*: `src/lib/state/tabs.svelte.ts`, `src/lib/components/editor/SqlEditor.svelte`, `src/lib/components/ui/SafetyModal.svelte`
+- [x] **1.2 Production Safety Guard Interceptor**
+  - [x] Deteksi environment koneksi (`production` / badge merah).
+  - [x] Parser / regex interceptor untuk query berisiko tinggi (`DROP`, `TRUNCATE`, `ALTER`, `DELETE`/`UPDATE` tanpa `WHERE`).
+  - [x] Tampilkan modal konfirmasi dengan validasi pengetikan nama database / tombol override yang jelas.
+  - [x] Toolbar SQL editor dengan indikator real-time Production Guard dan badge risiko destruktif.
+  - *Files Terkait*: `src/lib/state/tabs.svelte.ts`, `src/lib/state/safety.svelte.ts`, `src/lib/utils/safetyGuard.ts`, `src/lib/components/ui/SafetyModal.svelte`, `src/lib/components/editor/SqlEditor.svelte`
 
 - [ ] **1.3 Persistent Query History & Favorites**
   - [ ] Simpan histori eksekusi query (SQL, timestamp, duration ms, status, row count) ke SQLite lokal / IndexedDB.

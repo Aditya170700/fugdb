@@ -1,6 +1,8 @@
 import type { QueryResult } from '../api/types';
 import { api } from '../api/client';
 import { connectionStore } from './connection.svelte';
+import { assessSqlRisk } from '../utils/safetyGuard';
+import { safetyStore } from './safety.svelte';
 
 export interface TabItem {
   id: string;
@@ -87,6 +89,30 @@ export class TabsStore {
   async runTabQuery(tabId: string) {
     const tab = this.tabs.find(t => t.id === tabId);
     if (!tab || !tab.sql) return;
+
+    const conn = connectionStore.connections.find(c => c.id === tab.connectionId);
+    const environment = conn?.environment || 'dev';
+    const databaseName = conn?.database || connectionStore.activeSchemaTree?.currentDatabase || 'master';
+
+    // 1. Intercept dangerous/destructive queries on Production database
+    if (environment === 'production' && tab.sql.trim()) {
+      const risk = assessSqlRisk(tab.sql);
+      if (risk.isDangerous) {
+        const allowed = await safetyStore.requestConfirmation({
+          connectionId: tab.connectionId,
+          connectionName: conn?.name || 'Production Database',
+          databaseName,
+          environment,
+          sql: tab.sql,
+          risk
+        });
+
+        if (!allowed) {
+          // User aborted execution
+          return;
+        }
+      }
+    }
 
     tab.isExecuting = true;
     tab.errorMessage = undefined;

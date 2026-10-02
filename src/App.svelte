@@ -9,6 +9,7 @@
   import ErdModal from '$lib/components/erd/ErdModal.svelte';
   import TransferModal from '$lib/components/transfer/TransferModal.svelte';
   import MockDataModal from '$lib/components/qa/MockDataModal.svelte';
+  import SafetyModal from '$lib/components/ui/SafetyModal.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
 
   let isNewConnOpen = $state(false);
@@ -192,4 +193,5 @@
   <ErdModal isOpen={isErdOpen} onClose={() => isErdOpen = false} />
   <TransferModal isOpen={isTransferOpen} onClose={() => isTransferOpen = false} />
   <MockDataModal isOpen={isMockDataOpen} onClose={() => isMockDataOpen = false} />
+  <SafetyModal />
 </main>

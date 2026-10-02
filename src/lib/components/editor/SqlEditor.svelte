@@ -7,9 +7,11 @@
   import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
   import { oneDark } from '@codemirror/theme-one-dark';
+  import { Play, ShieldAlert, AlertTriangle } from 'lucide-svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
+  import { assessSqlRisk } from '$lib/utils/safetyGuard';
   import { createSqlLanguageSupport } from './sqlCompletion';
 
   let { tabId, initialSql = '' }: { tabId: string; initialSql?: string } = $props();
@@ -18,6 +20,12 @@
   let view: EditorView | undefined = $state();
   const themeCompartment = new Compartment();
   const languageCompartment = new Compartment();
+
+  const currentTab = $derived(tabsStore.tabs.find(t => t.id === tabId));
+  const currentSql = $derived(currentTab?.sql || initialSql || '');
+  const activeConn = $derived(connectionStore.activeConnection);
+  const isProduction = $derived(activeConn?.environment === 'production');
+  const sqlRisk = $derived(assessSqlRisk(currentSql));
 
   const lightSyntaxHighlight = HighlightStyle.define([
     { tag: tags.keyword, color: '#4338ca', fontWeight: '700' },
@@ -156,9 +164,9 @@
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
-            const currentTab = tabsStore.tabs.find(t => t.id === tabId);
-            if (currentTab) {
-              currentTab.sql = update.state.doc.toString();
+            const current = tabsStore.tabs.find(t => t.id === tabId);
+            if (current) {
+              current.sql = update.state.doc.toString();
             }
           }
         }),
@@ -211,6 +219,41 @@
   });
 </script>
 
-<div class="w-full h-full flex flex-col bg-surface-950">
+<div class="w-full h-full flex flex-col bg-surface-950 relative">
   <div bind:this={editorContainer} class="flex-1 overflow-hidden"></div>
+
+  <!-- Bottom Editor Toolbar -->
+  <div class="px-3 py-1.5 bg-surface-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none">
+    <div class="flex items-center gap-2 truncate">
+      <button 
+        type="button"
+        onclick={() => tabsStore.runTabQuery(tabId)}
+        class="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold rounded text-xs shadow-xs transition-colors cursor-pointer"
+        title="Execute Query (Cmd+Enter)"
+      >
+        <Play size={12} class="fill-current" />
+        <span>Run</span>
+        <span class="text-[10px] opacity-75 font-mono">⌘↵</span>
+      </button>
+
+      {#if isProduction}
+        <div class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+          <ShieldAlert size={13} />
+          <span>PRODUCTION GUARD ACTIVE</span>
+        </div>
+
+        {#if sqlRisk.isDangerous}
+          <div class="flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 truncate">
+            <AlertTriangle size={12} class="shrink-0 text-amber-500" />
+            <span class="truncate">Destructive ({sqlRisk.destructiveCommands.join(', ')})</span>
+          </div>
+        {/if}
+      {/if}
+    </div>
+
+    <div class="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+      <span>{activeConn?.driver?.toUpperCase() || 'SQL'}</span>
+      <span>{activeConn?.name || 'Local'}</span>
+    </div>
+  </div>
 </div>
