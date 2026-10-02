@@ -140,7 +140,9 @@
       {#if activeTab}
         <!-- Top Split: SQL Editor -->
         <div style="height: {editorHeightPercent}%;" class="min-h-[60px] relative shrink-0 overflow-hidden">
-          <SqlEditor tabId={activeTab.id} initialSql={activeTab.sql} />
+          {#key activeTab.id}
+            <SqlEditor tabId={activeTab.id} initialSql={activeTab.sql} />
+          {/key}
         </div>
 
         <!-- 2. Horizontal Resizer Handle (SQL Editor <-> Result DataGrid) -->

@@ -117,6 +117,17 @@
       });
     }
   });
+
+  $effect(() => {
+    if (view && initialSql !== undefined) {
+      const currentDoc = view.state.doc.toString();
+      if (currentDoc !== initialSql) {
+        view.dispatch({
+          changes: { from: 0, to: currentDoc.length, insert: initialSql }
+        });
+      }
+    }
+  });
 </script>
 
 <div class="w-full h-full flex flex-col bg-surface-950">

@@ -1,6 +1,7 @@
 pub mod postgres;
 pub mod mysql;
 pub mod sqlite;
+pub mod mssql;
 
 use async_trait::async_trait;
 use crate::error::AppError;

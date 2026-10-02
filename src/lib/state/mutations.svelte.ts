@@ -204,6 +204,12 @@ export class TabMutationState {
   // Quote identifier based on driver
   private quoteIdentifier(name: string, driver: DriverType): string {
     if (driver === 'mysql') return `\`${name}\``;
+    if (driver === 'mssql') {
+      if (name.includes('.')) {
+        return name.split('.').map(part => `[${part.replace(/[\[\]]/g, '')}]`).join('.');
+      }
+      return `[${name.replace(/[\[\]]/g, '')}]`;
+    }
     return `"${name}"`;
   }
 
@@ -211,7 +217,10 @@ export class TabMutationState {
   private formatSqlValue(val: any, driver: DriverType): string {
     if (val === null || val === undefined || val === '') return 'NULL';
     if (typeof val === 'number') return isNaN(val) ? 'NULL' : val.toString();
-    if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+    if (typeof val === 'boolean') {
+      if (driver === 'mssql') return val ? '1' : '0';
+      return val ? 'TRUE' : 'FALSE';
+    }
     if (typeof val === 'object') {
       const jsonStr = JSON.stringify(val).replace(/'/g, "''");
       return `'${jsonStr}'`;

@@ -51,6 +51,47 @@
   let filterText = $state('');
   let copied = $state(false);
 
+  // Virtual Scrolling State
+  let scrollContainer = $state<HTMLDivElement | null>(null);
+  let scrollTop = $state(0);
+  let containerHeight = $state(600);
+
+  function handleScroll(e: Event) {
+    const target = e.currentTarget as HTMLElement;
+    scrollTop = target.scrollTop;
+  }
+
+  const ROW_HEIGHT = 33;
+  const BUFFER_COUNT = 15;
+
+  const totalRowCount = $derived(result?.rows.length || 0);
+  const startIndex = $derived(
+    Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_COUNT)
+  );
+  const endIndex = $derived(
+    Math.min(totalRowCount, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + BUFFER_COUNT)
+  );
+
+  const visibleRows = $derived.by(() => {
+    if (!result?.rows) return [];
+    return result.rows.slice(startIndex, endIndex);
+  });
+
+  const topPadding = $derived(startIndex * ROW_HEIGHT);
+  const bottomPadding = $derived(
+    Math.max(0, (totalRowCount - endIndex) * ROW_HEIGHT)
+  );
+
+  // Reset scroll on query result change
+  $effect(() => {
+    if (result) {
+      scrollTop = 0;
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
+    }
+  });
+
   // In-cell editing state
   let editingCell = $state<{
     isInserted: boolean;
@@ -72,8 +113,18 @@
     }
   });
 
-  // Global Cmd+S / Ctrl+S listener
+  // Global Cmd+S / Ctrl+S listener & Container Observer
   onMount(() => {
+    if (scrollContainer) {
+      containerHeight = scrollContainer.clientHeight;
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          containerHeight = entry.contentRect.height;
+        }
+      });
+      ro.observe(scrollContainer);
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
         if (mutationState.hasChanges && !mutationState.isCommitting) {
@@ -444,7 +495,11 @@
     </div>
 
     <!-- Virtual Grid Table Container -->
-    <div class="flex-1 overflow-auto bg-surface-950 relative">
+    <div 
+      bind:this={scrollContainer} 
+      onscroll={handleScroll}
+      class="flex-1 overflow-auto bg-surface-950 relative"
+    >
       <table class="w-full text-left border-collapse font-mono text-xs">
         <thead class="bg-surface-900 sticky top-0 z-10 select-none shadow-sm">
           <tr class="border-b border-slate-200 dark:border-slate-800">
@@ -465,13 +520,22 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-900 dark:text-slate-100 font-normal">
-          <!-- 1. Existing Rows -->
-          {#each result.rows as row, rowIdx (rowIdx)}
+          <!-- Virtual Spacer Top -->
+          {#if topPadding > 0}
+            <tr style="height: {topPadding}px;" aria-hidden="true">
+              <td colspan={result.columns.length + 1} class="p-0 border-0 pointer-events-none"></td>
+            </tr>
+          {/if}
+
+          <!-- 1. Visible Existing Rows -->
+          {#each visibleRows as row, i (getRowKey(row, startIndex + i))}
+            {@const rowIdx = startIndex + i}
             {@const rowKey = getRowKey(row, rowIdx)}
             {@const isDeleted = isRowDeleted(row, rowIdx)}
             {@const isSelected = selectedRowIdx === rowIdx}
             <tr 
               onclick={() => selectedRowIdx = rowIdx}
+              style="height: {ROW_HEIGHT}px;"
               class="group transition-colors {isDeleted ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300 opacity-65 line-through' : isSelected ? 'bg-indigo-500/15' : 'hover:bg-indigo-500/5'}"
             >
               <!-- Row Index Column -->
@@ -562,6 +626,13 @@
               {/each}
             </tr>
           {/each}
+
+          <!-- Virtual Spacer Bottom -->
+          {#if bottomPadding > 0}
+            <tr style="height: {bottomPadding}px;" aria-hidden="true">
+              <td colspan={result.columns.length + 1} class="p-0 border-0 pointer-events-none"></td>
+            </tr>
+          {/if}
 
           <!-- 2. Staged Inserted Rows -->
           {#each mutationState.insertedRows as newRow, insertedIdx (newRow.tempId)}

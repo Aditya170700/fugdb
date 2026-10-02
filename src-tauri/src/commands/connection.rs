@@ -5,6 +5,7 @@ use crate::drivers::{
     postgres::PostgresAdapter, 
     mysql::MySqlAdapter, 
     sqlite::SqliteAdapter, 
+    mssql::MssqlAdapter,
     DatabaseAdapter
 };
 use crate::error::AppError;
@@ -18,6 +19,7 @@ pub async fn test_connection(config: ConnectionConfig) -> Result<TestConnectionR
         DriverType::Postgres => Box::new(PostgresAdapter::new(&config).await?),
         DriverType::Mysql => Box::new(MySqlAdapter::new(&config).await?),
         DriverType::Sqlite => Box::new(SqliteAdapter::new(&config).await?),
+        DriverType::Mssql => Box::new(MssqlAdapter::new(&config).await?),
         _ => return Err(AppError::ConnectionError("Driver not supported yet".into())),
     };
 
@@ -40,6 +42,7 @@ pub async fn connect_database(
         DriverType::Postgres => Box::new(PostgresAdapter::new(&config).await?),
         DriverType::Mysql => Box::new(MySqlAdapter::new(&config).await?),
         DriverType::Sqlite => Box::new(SqliteAdapter::new(&config).await?),
+        DriverType::Mssql => Box::new(MssqlAdapter::new(&config).await?),
         _ => return Err(AppError::ConnectionError("Driver not supported yet".into())),
     };
 

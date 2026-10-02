@@ -25,19 +25,32 @@
     --color-surface-950: 2 6 23;
   }
 
+  /* Crisp, Modern & Highly Visible Scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+  }
+
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(0, 0, 0, 0.04);
+  }
+  html.dark ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.2);
+    background: rgba(148, 163, 184, 0.45);
     border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.4);
+    background: rgba(99, 102, 241, 0.75);
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
 }
 

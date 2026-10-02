@@ -36,7 +36,7 @@
     { id: 'mysql', label: 'MySQL', icon: '🐬', category: 'Relational (SQL)', defaultPort: 3306, description: 'The world\'s most popular open-source database', isSupported: true },
     { id: 'mysql', label: 'MariaDB', icon: '🦭', category: 'Relational (SQL)', defaultPort: 3306, description: 'High-performance MySQL drop-in alternative', isSupported: true },
     { id: 'sqlite', label: 'SQLite', icon: '🪶', category: 'Embedded / Local', description: 'Self-contained, serverless zero-configuration DB', isSupported: true },
-    { id: 'duckdb', label: 'DuckDB', icon: '🦆', category: 'Embedded / Analytics', description: 'Fast in-process analytical SQL database', isSupported: true },
+    { id: 'duckdb', label: 'DuckDB', icon: '🦆', category: 'Embedded / Analytics', description: 'Fast in-process analytical SQL database', isSupported: false },
     { id: 'mssql', label: 'Microsoft SQL Server', icon: '🪟', category: 'Enterprise (SQL)', defaultPort: 1433, description: 'Enterprise relational database from Microsoft', isSupported: true },
     { id: 'postgres', label: 'CockroachDB', icon: '🪳', category: 'Distributed SQL', defaultPort: 26257, description: 'Cloud-native distributed PostgreSQL-wire DB', isSupported: true },
     { id: 'postgres', label: 'TimescaleDB', icon: '⏱️', category: 'Time-Series', defaultPort: 5432, description: 'Time-series database built on PostgreSQL', isSupported: true },
@@ -274,7 +274,8 @@
                   <button 
                     type="button"
                     onclick={() => selectEngine(engine)}
-                    class="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors {selectedEngineLabel === engine.label ? 'bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-300 dark:border-indigo-500/40 text-indigo-900 dark:text-indigo-200' : 'hover:bg-surface-800 text-slate-800 dark:text-slate-100'}"
+                    disabled={!engine.isSupported}
+                    class="w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors {selectedEngineLabel === engine.label ? 'bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-300 dark:border-indigo-500/40 text-indigo-900 dark:text-indigo-200' : engine.isSupported ? 'hover:bg-surface-800 text-slate-800 dark:text-slate-100' : 'opacity-50 cursor-not-allowed hover:bg-transparent text-slate-500 dark:text-slate-400'}"
                   >
                     <div class="flex items-center gap-2.5 truncate">
                       <span class="text-base shrink-0">{engine.icon}</span>
@@ -287,7 +288,11 @@
                       </div>
                     </div>
 
-                    {#if selectedEngineLabel === engine.label}
+                    {#if !engine.isSupported}
+                      <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 font-semibold border border-amber-500/30 shrink-0 ml-2">
+                        Coming Soon
+                      </span>
+                    {:else if selectedEngineLabel === engine.label}
                       <Check size={14} class="text-indigo-600 dark:text-indigo-400 shrink-0 ml-2" />
                     {/if}
                   </button>

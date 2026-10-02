@@ -43,6 +43,10 @@ rand = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 csv-async = { version = "1.3", features = ["tokio"] }
 calamine = "0.26"
+tiberius = { version = "0.12", default-features = false, features = ["chrono", "rust_decimal", "tds73", "winauth", "rustls"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+bb8 = "0.9"
+bb8-tiberius = { version = "0.16", default-features = false, features = ["chrono", "tds73", "tokio", "tokio-util", "with-tokio", "tls"] }
 
 [profile.release]
 panic = "abort"

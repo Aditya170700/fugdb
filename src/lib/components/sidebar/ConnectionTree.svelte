@@ -79,8 +79,8 @@
         <button 
           type="button"
           class="w-full group flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs text-slate-800 dark:text-slate-200 hover:bg-surface-800 hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition-colors text-left font-medium"
-          ondblclick={() => tabsStore.openTableGridTab(table.name)}
-          onclick={() => tabsStore.openTableGridTab(table.name)}
+          ondblclick={() => tabsStore.openTableGridTab(table.name, table.schema)}
+          onclick={() => tabsStore.openTableGridTab(table.name, table.schema)}
         >
           <div class="flex items-center gap-2 truncate">
             {#if table.tableType === 'view'}

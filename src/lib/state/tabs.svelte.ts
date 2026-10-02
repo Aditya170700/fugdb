@@ -16,40 +16,49 @@ export interface TabItem {
 }
 
 export class TabsStore {
-  tabs = $state<TabItem[]>([
-    {
-      id: 'tab-1',
-      title: 'Query 1 (users)',
-      type: 'sql',
-      connectionId: 'conn-local-pg',
-      sql: 'SELECT id, name, email, role, is_active, created_at \nFROM users \nORDER BY id ASC \nLIMIT 50;',
-    }
-  ]);
-
-  activeTabId = $state<string>('tab-1');
+  tabs = $state<TabItem[]>([]);
+  activeTabId = $state<string>('');
 
   activeTab = $derived(
     this.tabs.find(t => t.id === this.activeTabId)
   );
 
   openNewSqlTab(initialSql?: string, title?: string) {
+    const conn = connectionStore.activeConnection;
+    const isMssql = conn?.driver === 'mssql';
+    const defaultSql = isMssql ? 'SELECT TOP (100) * FROM sys.tables;' : 'SELECT * FROM users LIMIT 100;';
+
     const newId = `tab-${Date.now()}`;
     const newTab: TabItem = {
       id: newId,
       title: title || `Query ${this.tabs.filter(t => t.type === 'sql').length + 1}`,
       type: 'sql',
       connectionId: connectionStore.activeConnectionId,
-      sql: initialSql || 'SELECT * FROM users LIMIT 100;',
+      sql: initialSql || defaultSql,
     };
     this.tabs.push(newTab);
     this.activeTabId = newId;
   }
 
-  openTableGridTab(tableName: string) {
+  openTableGridTab(tableName: string, schema?: string) {
     const existing = this.tabs.find(t => t.type === 'table_grid' && t.tableName === tableName && t.connectionId === connectionStore.activeConnectionId);
     if (existing) {
       this.activeTabId = existing.id;
       return;
+    }
+
+    const conn = connectionStore.activeConnection;
+    const driver = conn?.driver;
+
+    let sql = '';
+    if (driver === 'mssql') {
+      const target = schema ? `[${schema}].[${tableName}]` : `[${tableName}]`;
+      sql = `SELECT TOP (100) * FROM ${target};`;
+    } else if (driver === 'mysql') {
+      sql = `SELECT * FROM \`${tableName}\` LIMIT 100;`;
+    } else {
+      const target = schema && schema !== 'public' ? `"${schema}"."${tableName}"` : `"${tableName}"`;
+      sql = `SELECT * FROM ${target} LIMIT 100;`;
     }
 
     const newId = `tab-grid-${Date.now()}`;
@@ -59,7 +68,7 @@ export class TabsStore {
       type: 'table_grid',
       connectionId: connectionStore.activeConnectionId,
       tableName,
-      sql: `SELECT * FROM ${tableName} LIMIT 100;`,
+      sql,
     };
     this.tabs.push(newTab);
     this.activeTabId = newId;
