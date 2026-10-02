@@ -87,11 +87,14 @@
 
 ### 🛠️ Phase 2: Schema Architecture, Live ERD & Streaming ETL
 
-- [ ] **2.1 Live Interactive ERD Visualizer (@xyflow/svelte)**
-  - [ ] Implementasikan query Foreign Key metadata pada backend driver (`generate_erd_metadata`).
-  - [ ] Hubungkan relasi FK ke node & edge di `ErdModal.svelte`.
-  - [ ] Tambahkan auto-layout algoritma (Dagre) untuk penataan otomatis tabel, fitur zoom/pan, dan export diagram ke **PNG / SVG**.
-  - *Files Terkait*: `src-tauri/src/drivers/`, `src/lib/components/erd/ErdModal.svelte`
+- [x] **2.1 Live Interactive ERD Visualizer (@xyflow/svelte)**
+  - [x] **FK Metadata Backend Driver**: Ekstraksi Foreign Key metadata di seluruh driver PostgreSQL, MySQL, SQLite, dan SQL Server (`generate_erd_metadata`).
+  - [x] **Custom Table Node Card**: Node tabel kustom interaktif dengan indikator PK/FK, badge tipe kolom, not-null indicator, dan tombol aksi langsung (*Open Data Grid*, *Query Table*, *Copy Name*).
+  - [x] **Layered Auto-Layout Engine**: Algoritma topological sort BFS multi-layer untuk penataan otomatis hirarki tabel dan relasi foreign key tanpa tumpang tindih.
+  - [x] **Real-time Table / Column Search**: Filter pencarian instan dengan efek highlight / dimming pada node yang tidak relevan.
+  - [x] **Multi-Format Export Suite**: Ekspor diagram skema ke **PNG Image**, **Vector SVG**, **JSON Schema**, dan **SQL DDL Script**.
+  - [x] **MiniMap & Interactive Controls**: Zoom, pan, fit view, stats pill count (tabel & relasi), dan SvelteFlow store synchronization.
+  - *Files Terkait*: `src/lib/components/erd/ErdModal.svelte`, `src/lib/components/erd/ErdTableNode.svelte`, `src/lib/components/erd/erdLayout.ts`
 
 - [ ] **2.2 High-Performance Streaming Import / Export Engine**
   - [ ] **CSV / TSV**: Stream parser dengan auto-detect delimiter dan type guessing (`csv-async`).
