@@ -67,49 +67,50 @@
           : '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
         zIndex: '100',
       },
-      '.cm-tooltip-autocomplete': {
-        '& > ul': {
-          maxHeight: '260px',
-          fontFamily: 'JetBrains Mono, monospace',
-          fontSize: '12px',
-          padding: '4px',
-        },
-        '& > ul > li': {
-          padding: '4px 8px',
-          borderRadius: '4px',
-          color: isDark ? '#e2e8f0' : '#1e293b',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-        },
-        '& > ul > li[aria-selected]': {
-          backgroundColor: isDark ? '#1e293b' : '#e0e7ff',
-          color: isDark ? '#ffffff' : '#312e81',
-        },
-        '.cm-completionLabel': {
-          fontWeight: '500',
-        },
-        '.cm-completionMatchedText': {
-          color: isDark ? '#818cf8' : '#4f46e5',
-          fontWeight: '700',
-          textDecoration: 'none',
-        },
-        '.cm-completionDetail': {
-          fontStyle: 'normal',
-          fontSize: '11px',
-          color: isDark ? '#94a3b8' : '#64748b',
-          marginLeft: 'auto',
-        },
-        '.cm-completionInfo': {
-          backgroundColor: isDark ? '#020617' : '#f8fafc',
-          border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
-          padding: '8px',
-          fontSize: '11px',
-          borderRadius: '6px',
-          maxWidth: '320px',
-          whiteSpace: 'pre-wrap',
-          color: isDark ? '#e2e8f0' : '#1e293b',
-        }
+      '.cm-tooltip.cm-tooltip-autocomplete': {
+        fontFamily: 'JetBrains Mono, monospace',
+      },
+      '.cm-tooltip-autocomplete ul': {
+        maxHeight: '260px',
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: '12px',
+        padding: '4px',
+      },
+      '.cm-tooltip-autocomplete ul li': {
+        padding: '4px 8px',
+        borderRadius: '4px',
+        color: isDark ? '#e2e8f0' : '#1e293b',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+      },
+      '.cm-tooltip-autocomplete ul li[aria-selected]': {
+        backgroundColor: isDark ? '#1e293b' : '#e0e7ff',
+        color: isDark ? '#ffffff' : '#312e81',
+      },
+      '.cm-completionLabel': {
+        fontWeight: '500',
+      },
+      '.cm-completionMatchedText': {
+        color: isDark ? '#818cf8' : '#4f46e5',
+        fontWeight: '700',
+        textDecoration: 'none',
+      },
+      '.cm-completionDetail': {
+        fontStyle: 'normal',
+        fontSize: '11px',
+        color: isDark ? '#94a3b8' : '#64748b',
+        marginLeft: 'auto',
+      },
+      '.cm-completionInfo': {
+        backgroundColor: isDark ? '#020617' : '#f8fafc',
+        border: isDark ? '1px solid #334155' : '1px solid #e2e8f0',
+        padding: '8px',
+        fontSize: '11px',
+        borderRadius: '6px',
+        maxWidth: '320px',
+        whiteSpace: 'pre-wrap',
+        color: isDark ? '#e2e8f0' : '#1e293b',
       }
     });
   }
