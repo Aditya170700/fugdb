@@ -17,7 +17,10 @@ export interface ConnectionConfig {
   sshHost?: string;
   sshPort?: number;
   sshUser?: string;
+  sshAuthType?: 'key' | 'password' | 'agent';
+  sshPassword?: string;
   sshKeyPath?: string;
+  sshKeyPassphrase?: string;
   sslMode?: 'disable' | 'prefer' | 'require';
   useKeyring?: boolean;
   savePasswordToKeyring?: boolean;

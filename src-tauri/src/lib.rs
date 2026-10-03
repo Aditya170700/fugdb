@@ -8,10 +8,11 @@ mod state;
 mod transfer;
 mod ai;
 mod keyring;
+mod ssh;
 
 use commands::{
     connection::{
-        connect_database, disconnect_database, test_connection,
+        connect_database, disconnect_database, test_connection, test_ssh_tunnel,
         save_keyring_credential, get_keyring_credential, delete_keyring_credential
     },
     mock_data::{
@@ -32,6 +33,7 @@ pub fn run() {
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             test_connection,
+            test_ssh_tunnel,
             connect_database,
             disconnect_database,
             save_keyring_credential,

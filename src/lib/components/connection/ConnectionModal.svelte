@@ -2,6 +2,7 @@
   import type { ConnectionConfig, DriverType, Environment } from '$lib/api/types';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { api } from '$lib/api/client';
+  import { open } from '@tauri-apps/plugin-dialog';
   import { 
     Database, 
     X, 
@@ -16,7 +17,11 @@
     FolderOpen,
     Search,
     ChevronDown,
-    Check
+    Check,
+    KeyRound,
+    Shield,
+    Zap,
+    Server
   } from 'lucide-svelte';
 
   let { isOpen, onClose }: { isOpen: boolean; onClose: () => void } = $props();
@@ -61,12 +66,18 @@
   let showPassword = $state(false);
   let savePasswordToKeyring = $state(true);
 
-  // SSH Fields
+  // SSH Tunnel Fields
   let useSsh = $state(false);
   let sshHost = $state('');
   let sshPort = $state(22);
-  let sshUser = $state('');
-  let sshKeyPath = $state('');
+  let sshUser = $state('ubuntu');
+  let sshAuthType = $state<'key' | 'password' | 'agent'>('key');
+  let sshPassword = $state('');
+  let sshKeyPath = $state('~/.ssh/id_rsa');
+  let sshKeyPassphrase = $state('');
+  let showSshPassword = $state(false);
+  let showSshPassphrase = $state(false);
+  let isTestingSsh = $state(false);
 
   // SSL Field
   let sslMode = $state<'disable' | 'prefer' | 'require'>('prefer');
@@ -115,6 +126,37 @@
     }
   }
 
+  async function handleBrowseSshKey() {
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        title: 'Select SSH Private Key'
+      });
+      if (typeof selected === 'string') {
+        sshKeyPath = selected;
+      }
+    } catch (e) {
+      console.warn('File picker dismissed or unavailable:', e);
+    }
+  }
+
+  async function handleBrowseDbFile() {
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        title: 'Select SQLite Database File',
+        filters: [{ name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3', 'duckdb', '*'] }]
+      });
+      if (typeof selected === 'string') {
+        filePath = selected;
+      }
+    } catch (e) {
+      console.warn('File picker dismissed or unavailable:', e);
+    }
+  }
+
   function getFormConfig(): ConnectionConfig {
     return {
       id: `conn-${Date.now()}`,
@@ -131,7 +173,10 @@
       sshHost: useSsh ? sshHost : undefined,
       sshPort: useSsh ? sshPort : undefined,
       sshUser: useSsh ? sshUser : undefined,
-      sshKeyPath: useSsh ? sshKeyPath : undefined,
+      sshAuthType: useSsh ? sshAuthType : undefined,
+      sshPassword: useSsh && sshAuthType === 'password' ? sshPassword : undefined,
+      sshKeyPath: useSsh && sshAuthType === 'key' ? sshKeyPath : undefined,
+      sshKeyPassphrase: useSsh && sshAuthType === 'key' ? sshKeyPassphrase : undefined,
       sslMode,
       savePasswordToKeyring,
       useKeyring: savePasswordToKeyring,
@@ -152,6 +197,23 @@
       };
     } finally {
       isTesting = false;
+    }
+  }
+
+  async function handleTestSsh() {
+    isTestingSsh = true;
+    testResult = null;
+    try {
+      const config = getFormConfig();
+      const res = await api.testSshTunnel(config);
+      testResult = res;
+    } catch (err: any) {
+      testResult = {
+        success: false,
+        message: err?.toString() || 'SSH handshake failed.',
+      };
+    } finally {
+      isTestingSsh = false;
     }
   }
 
@@ -389,8 +451,12 @@
             <div class="space-y-1">
               <label for="conn-filepath" class="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">Database File Path</label>
               <div class="flex gap-2">
-                <input id="conn-filepath" bind:value={filePath} placeholder="/path/to/database.sqlite" class="flex-1 bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-slate-900 dark:text-slate-100" />
-                <button type="button" class="px-3 bg-surface-800 hover:bg-surface-700 text-slate-700 dark:text-slate-300 rounded-md flex items-center gap-1.5 text-xs border border-slate-200 dark:border-slate-700">
+                <input id="conn-filepath" bind:value={filePath} placeholder="/path/to/database.sqlite" class="flex-1 bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:border-indigo-500" />
+                <button 
+                  type="button" 
+                  onclick={handleBrowseDbFile}
+                  class="px-3 bg-surface-800 hover:bg-surface-700 text-slate-700 dark:text-slate-300 rounded-md flex items-center gap-1.5 text-xs border border-slate-200 dark:border-slate-700 cursor-pointer"
+                >
                   <FolderOpen size={14} /> Browse
                 </button>
               </div>
@@ -433,7 +499,7 @@
                   <button 
                     type="button"
                     onclick={() => showPassword = !showPassword}
-                    class="absolute right-2.5 top-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    class="absolute right-2.5 top-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
                   >
                     {#if showPassword}<EyeOff size={14} />{:else}<Eye size={14} />{/if}
                   </button>
@@ -463,31 +529,172 @@
         {:else if activeTab === 'ssh'}
           <!-- SSH Tab -->
           <div class="space-y-4">
-            <label class="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" bind:checked={useSsh} class="rounded border-slate-300 dark:border-slate-800 text-indigo-600 focus:ring-0" />
-              <span class="font-semibold text-slate-800 dark:text-slate-200">Use SSH Tunnel (Bastion Host)</span>
-            </label>
+            <div class="flex items-center justify-between p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 dark:bg-indigo-500/15">
+              <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  bind:checked={useSsh} 
+                  class="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
+                />
+                <div>
+                  <span class="font-bold text-xs text-slate-900 dark:text-slate-100 block">Enable SSH Tunnel (Bastion Host)</span>
+                  <span class="text-[11px] text-slate-600 dark:text-slate-400 block">Route database connections securely through an intermediate SSH jump server</span>
+                </div>
+              </label>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
+                Encrypted Tunnel
+              </span>
+            </div>
 
             {#if useSsh}
+              <!-- SSH Host & Port -->
               <div class="grid grid-cols-4 gap-3">
                 <div class="col-span-3 space-y-1">
-                  <label for="ssh-host" class="font-semibold text-slate-600 dark:text-slate-400 text-[10px] uppercase">SSH Host</label>
-                  <input id="ssh-host" bind:value={sshHost} placeholder="ssh.example.com" class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md p-2 text-slate-900 dark:text-slate-100" />
+                  <label for="ssh-host" class="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">SSH Host / IP Address</label>
+                  <input 
+                    id="ssh-host" 
+                    bind:value={sshHost} 
+                    placeholder="bastion.example.com / 139.59.x.x" 
+                    class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:border-indigo-500 font-mono" 
+                  />
                 </div>
                 <div class="space-y-1">
-                  <label for="ssh-port" class="font-semibold text-slate-600 dark:text-slate-400 text-[10px] uppercase">SSH Port</label>
-                  <input id="ssh-port" type="number" bind:value={sshPort} class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md p-2 text-slate-900 dark:text-slate-100" />
+                  <label for="ssh-port" class="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">SSH Port</label>
+                  <input 
+                    id="ssh-port" 
+                    type="number" 
+                    bind:value={sshPort} 
+                    class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:border-indigo-500" 
+                  />
                 </div>
               </div>
 
+              <!-- SSH User -->
               <div class="space-y-1">
-                <label for="ssh-user" class="font-semibold text-slate-600 dark:text-slate-400 text-[10px] uppercase">SSH User</label>
-                <input id="ssh-user" bind:value={sshUser} placeholder="ubuntu" class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md p-2 text-slate-900 dark:text-slate-100" />
+                <label for="ssh-user" class="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">SSH Username</label>
+                <input 
+                  id="ssh-user" 
+                  bind:value={sshUser} 
+                  placeholder="ubuntu / root / ec2-user" 
+                  class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:border-indigo-500 font-mono" 
+                />
               </div>
 
-              <div class="space-y-1">
-                <label for="ssh-key" class="font-semibold text-slate-600 dark:text-slate-400 text-[10px] uppercase">Private Key Path</label>
-                <input id="ssh-key" bind:value={sshKeyPath} placeholder="~/.ssh/id_rsa" class="w-full bg-surface-950 border border-slate-200 dark:border-slate-800 rounded-md p-2 text-slate-900 dark:text-slate-100" />
+              <!-- Authentication Method Switcher Tabs -->
+              <div class="space-y-2">
+                <span class="font-semibold text-slate-700 dark:text-slate-300 text-[11px] block">Authentication Method</span>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onclick={() => sshAuthType = 'key'}
+                    class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer {sshAuthType === 'key' ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-xs' : 'bg-surface-950/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-slate-100'}"
+                  >
+                    <KeyRound size={13} class="text-indigo-500" />
+                    <span>Private Key</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick={() => sshAuthType = 'password'}
+                    class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer {sshAuthType === 'password' ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-xs' : 'bg-surface-950/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-slate-100'}"
+                  >
+                    <Lock size={13} class="text-indigo-500" />
+                    <span>Password</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onclick={() => sshAuthType = 'agent'}
+                    class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer {sshAuthType === 'agent' ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-xs' : 'bg-surface-950/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-slate-100'}"
+                  >
+                    <Zap size={13} class="text-amber-500" />
+                    <span>SSH Agent</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Auth Specific Fields -->
+              {#if sshAuthType === 'key'}
+                <div class="space-y-3 p-3 bg-surface-950/60 border border-slate-200 dark:border-slate-800/80 rounded-xl">
+                  <div class="space-y-1">
+                    <label for="ssh-key-path" class="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">Private Key File</label>
+                    <div class="flex gap-2">
+                      <input 
+                        id="ssh-key-path" 
+                        bind:value={sshKeyPath} 
+                        placeholder="~/.ssh/id_rsa or /path/to/key.pem" 
+                        class="flex-1 bg-surface-900 border border-slate-200 dark:border-slate-800 rounded-md px-3 py-1.5 text-slate-900 dark:text-slate-100 text-xs font-mono focus:outline-none focus:border-indigo-500" 
+                      />
+                      <button 
+                        type="button" 
+                        onclick={handleBrowseSshKey}
+                        class="px-3 bg-surface-800 hover:bg-surface-700 text-slate-700 dark:text-slate-300 rounded-md flex items-center gap-1.5 text-xs border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        <FolderOpen size={13} /> Browse
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="space-y-1">
+                    <label for="ssh-passphrase" class="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">Key Passphrase (Optional)</label>
+                    <div class="relative">
+                      <input 
+                        id="ssh-passphrase" 
+                        type={showSshPassphrase ? 'text' : 'password'} 
+                        bind:value={sshKeyPassphrase} 
+                        placeholder="Leave blank if unencrypted" 
+                        class="w-full bg-surface-900 border border-slate-200 dark:border-slate-800 rounded-md pl-3 pr-8 py-1.5 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:border-indigo-500" 
+                      />
+                      <button 
+                        type="button"
+                        onclick={() => showSshPassphrase = !showSshPassphrase}
+                        class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                      >
+                        {#if showSshPassphrase}<EyeOff size={13} />{:else}<Eye size={13} />{/if}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+              {:else if sshAuthType === 'password'}
+                <div class="space-y-1 p-3 bg-surface-950/60 border border-slate-200 dark:border-slate-800/80 rounded-xl">
+                  <label for="ssh-password" class="font-semibold text-slate-700 dark:text-slate-300 text-[11px]">SSH Password</label>
+                  <div class="relative">
+                    <input 
+                      id="ssh-password" 
+                      type={showSshPassword ? 'text' : 'password'} 
+                      bind:value={sshPassword} 
+                      placeholder="••••••••" 
+                      class="w-full bg-surface-900 border border-slate-200 dark:border-slate-800 rounded-md pl-3 pr-8 py-1.5 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:border-indigo-500" 
+                    />
+                    <button 
+                      type="button"
+                      onclick={() => showSshPassword = !showSshPassword}
+                      class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                    >
+                      {#if showSshPassword}<EyeOff size={13} />{:else}<Eye size={13} />{/if}
+                    </button>
+                  </div>
+                </div>
+
+              {:else if sshAuthType === 'agent'}
+                <div class="p-3 bg-surface-950/60 border border-slate-200 dark:border-slate-800/80 rounded-xl flex items-start gap-2.5 text-xs text-slate-600 dark:text-slate-400">
+                  <Zap size={15} class="shrink-0 text-amber-500 mt-0.5" />
+                  <span>FugDB will connect to your active OS SSH Agent (e.g., keys registered via <code>ssh-add</code> or <code>SSH_AUTH_SOCK</code>).</span>
+                </div>
+              {/if}
+
+              <!-- Test SSH Bastion Button -->
+              <div class="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onclick={handleTestSsh}
+                  disabled={isTestingSsh}
+                  class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-surface-800 hover:bg-surface-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                >
+                  <Server size={13} class={isTestingSsh ? 'animate-spin text-indigo-500' : 'text-indigo-400'} />
+                  <span>{isTestingSsh ? 'Testing SSH Bastion...' : 'Test SSH Tunnel'}</span>
+                </button>
               </div>
             {/if}
           </div>

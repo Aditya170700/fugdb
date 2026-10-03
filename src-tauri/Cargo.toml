@@ -35,8 +35,9 @@ sqlx = { version = "0.8", default-features = false, features = [
     "bigdecimal"
 ] }
 
-# Security & Keyring
+# Security & Keyring & SSH Tunneling
 keyring = "2.1"
+ssh2 = "0.9"
 
 # Data Mocking & ETL
 fake = { version = "2.9", features = ["derive", "chrono"] }

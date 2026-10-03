@@ -35,7 +35,10 @@ pub struct ConnectionConfig {
     pub ssh_host: Option<String>,
     pub ssh_port: Option<u16>,
     pub ssh_user: Option<String>,
+    pub ssh_auth_type: Option<String>,
+    pub ssh_password: Option<String>,
     pub ssh_key_path: Option<String>,
+    pub ssh_key_passphrase: Option<String>,
     pub ssl_mode: Option<String>,
 }
 

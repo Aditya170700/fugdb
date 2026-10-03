@@ -34,6 +34,19 @@ export const api = {
     return { success: true, message: 'Connected successfully (Mock Mode)', latencyMs: 14 };
   },
 
+  async testSshTunnel(config: ConnectionConfig): Promise<{ success: boolean; message: string; latencyMs: number }> {
+    if (isTauri) {
+      return await invoke('test_ssh_tunnel', { config });
+    }
+    // Browser Mock
+    await new Promise(r => setTimeout(r, 200));
+    return { 
+      success: true, 
+      message: `SSH Bastion Host handshake succeeded for user '${config.sshUser || 'ubuntu'}' on ${config.sshHost || 'bastion'}! (Mock Mode)`, 
+      latencyMs: 22 
+    };
+  },
+
   async connect(config: ConnectionConfig): Promise<void> {
     if (isTauri) {
       return await invoke('connect_database', { config });

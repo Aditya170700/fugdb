@@ -172,9 +172,13 @@
   - [x] Otomatis membersihkan secret dari OS keyring (`delete_keyring_credential`) saat koneksi dihapus.
   - *Files Terkait*: `src-tauri/src/keyring.rs`, `src-tauri/src/commands/connection.rs`, `src-tauri/src/commands/ai.rs`, `src/lib/state/connection.svelte.ts`, `src/lib/components/connection/ConnectionModal.svelte`, `src/lib/components/layout/Navbar.svelte`
 
-- [ ] **4.2 Native SSH Tunneling**
-  - [ ] Dukungan koneksi database via SSH Bastion Host (Password, Private Key file, SSH Agent).
-  - *Files Terkait*: `src-tauri/src/utils/ssh.rs`
+- [x] **4.2 Native SSH Tunneling**
+  - [x] Dukungan koneksi database via SSH Bastion Host (Password, Private Key `.pem`/`id_rsa`/`id_ed25519` file dengan optional passphrase, SSH Agent).
+  - [x] Background asynchronous TCP port forwarding loop (`channel_direct_tcpip`) yang menghubungkan driver database ke remote host via local loopback.
+  - [x] Lifecycle management otomatis di `AppState.tunnels` (pembuatan saat connect / pembersihan otomatis saat disconnect).
+  - [x] Fitur "Test SSH Tunnel" langsung di tab SSH modal koneksi untuk diagnosa cepat konektivitas Bastion Host.
+  - [x] Integrasi native file picker dialog untuk pemilihan private key file.
+  - *Files Terkait*: `src-tauri/src/ssh.rs`, `src-tauri/src/commands/connection.rs`, `src-tauri/src/state.rs`, `src/lib/components/connection/ConnectionModal.svelte`
 
 - [ ] **4.3 Transaction & Session Control**
   - [ ] Toggle Auto-commit vs Manual Transaction (`BEGIN`, `COMMIT`, `ROLLBACK`).
