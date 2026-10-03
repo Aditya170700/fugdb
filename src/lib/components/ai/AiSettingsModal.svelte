@@ -38,8 +38,11 @@
       { value: 'gpt-4-turbo', label: 'gpt-4-turbo' },
     ],
     gemini: [
-      { value: 'gemini-1.5-flash', label: 'gemini-1.5-flash (Ultra Fast & Free Tier)' },
-      { value: 'gemini-1.5-pro', label: 'gemini-1.5-pro (High Context Window)' },
+      { value: 'gemini-1.5-flash', label: 'gemini-1.5-flash (Fast & Free Tier)' },
+      { value: 'gemini-1.5-flash-latest', label: 'gemini-1.5-flash-latest (Recommended)' },
+      { value: 'gemini-2.0-flash', label: 'gemini-2.0-flash (Next Gen)' },
+      { value: 'gemini-1.5-pro', label: 'gemini-1.5-pro (High Context)' },
+      { value: 'gemini-1.5-pro-latest', label: 'gemini-1.5-pro-latest' },
     ],
     anthropic: [
       { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (Best SQL Accuracy)' },
@@ -80,10 +83,10 @@
     aria-modal="true"
   >
     <div 
-      class="bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-900 dark:text-slate-100 animate-in zoom-in-95 duration-200"
+      class="bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-800 w-full max-w-2xl h-[640px] max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden text-slate-900 dark:text-slate-100 animate-in zoom-in-95 duration-200"
     >
       <!-- Modal Header -->
-      <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-surface-950/80">
+      <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-surface-950/80 shrink-0">
         <div class="flex items-center gap-3">
           <div class="p-2 bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-xl shadow-md shadow-violet-500/20 shrink-0">
             <Sparkles size={18} />
@@ -114,7 +117,7 @@
 
       <!-- Test Connection Result Alert Banner (Placed at top so it is immediately visible) -->
       {#if aiStore.testResult}
-        <div class="mx-5 mt-4 p-3 rounded-xl flex items-start justify-between gap-3 text-xs {aiStore.testResult.success ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-200' : 'bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/30 dark:border-rose-500/40 text-rose-950 dark:text-rose-200'} animate-in fade-in duration-150">
+        <div class="mx-5 mt-4 p-3 rounded-xl flex items-start justify-between gap-3 text-xs shrink-0 {aiStore.testResult.success ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-200' : 'bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/30 dark:border-rose-500/40 text-rose-950 dark:text-rose-200'} animate-in fade-in duration-150">
           <div class="flex items-start gap-2.5 min-w-0">
             {#if aiStore.testResult.success}
               <CheckCircle2 size={17} class="shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
@@ -142,7 +145,7 @@
       {/if}
 
       <!-- Modal Body -->
-      <div class="p-5 space-y-5 overflow-y-auto max-h-[75vh] text-xs bg-slate-50/50 dark:bg-surface-950/40">
+      <div class="p-5 space-y-5 flex-1 overflow-y-auto text-xs bg-slate-50/50 dark:bg-surface-950/40">
         <!-- 1. Provider Cards Grid -->
         <div>
           <span class="font-bold text-slate-800 dark:text-slate-200 text-xs block mb-2">
