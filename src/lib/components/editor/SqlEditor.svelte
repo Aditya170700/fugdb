@@ -285,12 +285,11 @@
       <button 
         type="button"
         onclick={() => explainStore.open(tabId, currentSql, true)}
-        class="flex items-center gap-1.5 px-2.5 py-1 bg-surface-800 hover:bg-surface-700 text-slate-200 border border-slate-700 rounded text-xs transition-colors cursor-pointer"
+        class="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50/90 hover:bg-indigo-100/90 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
         title="Visual Query EXPLAIN Execution Plan (Cmd+E / Ctrl+E)"
       >
-        <Activity size={12} class="text-indigo-400" />
+        <Activity size={12} class="text-indigo-600 dark:text-indigo-400" />
         <span>Explain</span>
-        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">⌘E</span>
       </button>
 
       {#if isProduction}
@@ -310,23 +309,21 @@
       <button 
         type="button"
         onclick={() => historyStore.toggleDrawer()}
-        class="flex items-center gap-1.5 px-2 py-1 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-surface-800 rounded text-xs transition-colors cursor-pointer"
+        class="flex items-center gap-1.5 px-2.5 py-1 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-surface-800 rounded text-xs font-medium transition-colors cursor-pointer"
         title="Open Query History & Favorites (Cmd+H / Ctrl+H)"
       >
-        <History size={13} />
+        <History size={13} class="text-slate-500 dark:text-slate-400" />
         <span>History</span>
-        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">⌘H</span>
       </button>
 
       <button 
         type="button"
         onclick={() => aiStore.openDrawer()}
-        class="flex items-center gap-1.5 px-2 py-1 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded text-xs transition-colors cursor-pointer font-semibold"
+        class="flex items-center gap-1.5 px-2.5 py-1 text-violet-700 dark:text-violet-300 hover:text-violet-800 dark:hover:text-violet-200 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded text-xs font-semibold transition-colors cursor-pointer"
         title="NL-to-SQL AI Assistant (Cmd+K / Ctrl+K)"
       >
-        <Sparkles size={13} />
+        <Sparkles size={13} class="text-violet-600 dark:text-violet-400" />
         <span>Ask AI</span>
-        <span class="text-[10px] text-violet-500/70 font-mono">⌘K</span>
       </button>
     </div>
 
