@@ -17,7 +17,9 @@ import type {
   AiProviderConfig,
   AiSqlResponse,
   OllamaModelInfo,
-  ExplainResult
+  ExplainResult,
+  ServerProcess,
+  ServerHealthStats
 } from './types';
 
 // Check if running in Tauri environment
@@ -598,5 +600,106 @@ export const api = {
       modelUsed: config.model,
       executionTimeMs: 420.0
     };
+  },
+
+  // 5.1 Live Server Health & Active Process Monitor API
+  async getServerProcesses(connectionId: string, driver?: string): Promise<ServerHealthStats> {
+    if (isTauri) {
+      return await invoke('get_server_processes', { connectionId, driver });
+    }
+    // Realistic browser mock data for preview/dev mode
+    await new Promise(r => setTimeout(r, 60));
+    return {
+      activeConnections: 3,
+      idleConnections: 12,
+      totalConnections: 16,
+      maxConnections: 100,
+      uptimeSeconds: 86400 * 3,
+      version: 'PostgreSQL 16.2 (Debian 16.2-1.pgdg120+1)',
+      processes: [
+        {
+          pid: '4128',
+          user: 'postgres',
+          database: 'production_db',
+          clientAddr: '192.168.1.104:54322',
+          applicationName: 'fugdb_app',
+          state: 'active',
+          query: 'SELECT u.id, u.name, count(o.id) FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id, u.name ORDER BY count(o.id) DESC LIMIT 50;',
+          durationSeconds: 0.12,
+          waitEvent: 'ClientRead',
+          startedAt: '2026-10-03 20:35:10'
+        },
+        {
+          pid: '5890',
+          user: 'analytics_bot',
+          database: 'production_db',
+          clientAddr: '10.0.4.12:48910',
+          applicationName: 'etl_worker',
+          state: 'active',
+          query: 'REFRESH MATERIALIZED VIEW CONCURRENTLY mv_monthly_revenue_summary;',
+          durationSeconds: 42.85,
+          waitEvent: 'IO: DataFileRead',
+          startedAt: '2026-10-03 20:34:28'
+        },
+        {
+          pid: '6211',
+          user: 'app_backend',
+          database: 'production_db',
+          clientAddr: '10.0.2.15:51200',
+          applicationName: 'node_service',
+          state: 'idle in transaction',
+          query: 'UPDATE payments SET status = \'processing\' WHERE id = 98124;',
+          durationSeconds: 14.50,
+          waitEvent: 'Lock: transactionid',
+          startedAt: '2026-10-03 20:34:56'
+        },
+        {
+          pid: '6245',
+          user: 'app_backend',
+          database: 'production_db',
+          clientAddr: '10.0.2.18:51204',
+          applicationName: 'node_service',
+          state: 'waiting',
+          query: 'SELECT * FROM payments WHERE id = 98124 FOR UPDATE;',
+          durationSeconds: 8.20,
+          waitEvent: 'Lock: tuple',
+          blockedBy: '6211',
+          startedAt: '2026-10-03 20:35:02'
+        },
+        {
+          pid: '3012',
+          user: 'readonly_user',
+          database: 'production_db',
+          clientAddr: '192.168.1.45:41002',
+          applicationName: 'metabase',
+          state: 'idle',
+          query: 'SELECT 1;',
+          durationSeconds: 0.0,
+          startedAt: '2026-10-03 20:30:00'
+        }
+      ],
+      summaryCounts: {
+        active: 2,
+        'idle in transaction': 1,
+        waiting: 1,
+        idle: 12
+      }
+    };
+  },
+
+  async killServerProcess(connectionId: string, pid: string, driver?: string): Promise<boolean> {
+    if (isTauri) {
+      return await invoke('kill_server_process', { connectionId, pid, driver });
+    }
+    await new Promise(r => setTimeout(r, 60));
+    return true;
+  },
+
+  async cancelServerQuery(connectionId: string, pid: string, driver?: string): Promise<boolean> {
+    if (isTauri) {
+      return await invoke('cancel_server_query', { connectionId, pid, driver });
+    }
+    await new Promise(r => setTimeout(r, 60));
+    return true;
   }
 };

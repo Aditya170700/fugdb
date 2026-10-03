@@ -20,10 +20,12 @@
     Moon,
     Monitor,
     Lock,
+    Activity,
     History as HistoryIcon
   } from 'lucide-svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
+  import { monitorStore } from '$lib/state/monitor.svelte';
 
   let { 
     onOpenErd, 
@@ -229,6 +231,16 @@
       title="QA Smart Mock Data Generator"
     >
       <Dices size={15} />
+    </button>
+
+    <!-- Live Server Health & Process Monitor Button -->
+    <button 
+      onclick={() => monitorStore.toggle()}
+      class="p-1.5 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-md transition-colors font-semibold flex items-center gap-1 cursor-pointer" 
+      title="Live Server Health & Process Monitor (Cmd+Shift+M / Ctrl+Shift+M)"
+    >
+      <Activity size={15} />
+      <span class="text-[10px] hidden sm:inline font-mono px-1 py-0.2 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold">Monitor</span>
     </button>
 
     <!-- AI Copilot Button -->

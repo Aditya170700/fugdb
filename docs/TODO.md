@@ -193,12 +193,14 @@
 
 ### 🚀 Phase 5: Next-Level Server Intelligence & Powerhouse Features
 
-- [ ] **5.1 Live Server Health & Active Process Monitor**
-  - [ ] Pemantauan real-time proses & koneksi aktif (`pg_stat_activity` di Postgres, `SHOW FULL PROCESSLIST` di MySQL, `sys.dm_exec_requests` di MSSQL, lock state di SQLite).
-  - [ ] Deteksi durasi query runtime, resource CPU/memory, locking dependencies (**`🔒 Blocked by PID`**), serta status koneksi (`active`, `idle in transaction`, `waiting`).
-  - [ ] Tombol aksi 1-klik **`⚡ Kill Process / Terminate Backend`** untuk query hanging/blocking dengan konfirmasi safety.
-  - [ ] Auto-refresh polling (interval 2s, 5s, atau manual) dan instant filtering (query > 3s, active only, by user/database).
-  - *Files Terkait*: `src-tauri/src/commands/monitor.rs`, `src/lib/components/monitor/ServerMonitorModal.svelte`, `src/lib/state/monitor.svelte.ts`, `src/lib/api/client.ts`
+- [x] **5.1 Live Server Health & Active Process Monitor**
+  - [x] Pemantauan real-time proses & koneksi aktif (`pg_stat_activity` di Postgres, `SHOW FULL PROCESSLIST` di MySQL, `sys.dm_exec_requests` di MSSQL, lock state di SQLite).
+  - [x] Deteksi durasi query runtime, resource CPU/memory, locking dependencies (**`🔒 Blocked by PID`**), serta status koneksi (`active`, `idle in transaction`, `waiting`).
+  - [x] Tombol aksi 1-klik **`⚡ Kill Process / Terminate Backend`** untuk query hanging/blocking dengan konfirmasi safety modal.
+  - [x] Auto-refresh polling (interval 2s, 3s, 5s, 10s, atau manual/pause) dan instant filtering (All, Active, Blocked/Locks, Slow >3s, Idle, serta text search).
+  - [x] Process Inspector Drawer dengan full-text SQL viewer, 1-click Copy, dan tombol "Open in SQL Editor Tab".
+  - [x] Akses cepat via Navbar button (`Monitor`), Statusbar link (`Processes`), dan shortcut global `Cmd+Shift+M` / `Ctrl+Shift+M`.
+  - *Files Terkait*: `src-tauri/src/commands/monitor.rs`, `src-tauri/src/models/monitor.rs`, `src/lib/components/monitor/ServerMonitorModal.svelte`, `src/lib/state/monitor.svelte.ts`, `src/lib/api/client.ts`
 
 - [ ] **5.2 Schema & Data Diff Sync Tool (Database Comparison)**
   - [ ] Komparasi struktur skema antar 2 database (Source vs Target: Dev vs Staging vs Prod).

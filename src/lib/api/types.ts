@@ -197,3 +197,30 @@ export interface ExplainResult {
   hasAnalyze: boolean;
 }
 
+// 5.1 Server Monitor & Health Stats Types
+export interface ServerProcess {
+  pid: string;
+  user: string;
+  database: string;
+  clientAddr?: string;
+  applicationName?: string;
+  state: string;
+  query?: string;
+  durationSeconds: number;
+  waitEvent?: string;
+  blockedBy?: string;
+  startedAt?: string;
+}
+
+export interface ServerHealthStats {
+  activeConnections: number;
+  idleConnections: number;
+  totalConnections: number;
+  maxConnections?: number;
+  uptimeSeconds?: number;
+  version: string;
+  processes: ServerProcess[];
+  summaryCounts: Record<string, number>;
+}
+
+

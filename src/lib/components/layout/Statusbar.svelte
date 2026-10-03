@@ -3,7 +3,8 @@
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { sessionStore } from '$lib/state/session.svelte';
-  import { CheckCircle2, Clock, Layers, Cpu, Sun, Moon, Monitor, Zap, Lock, RotateCcw, Check, Loader2 } from 'lucide-svelte';
+  import { monitorStore } from '$lib/state/monitor.svelte';
+  import { CheckCircle2, Clock, Layers, Cpu, Sun, Moon, Monitor, Zap, Lock, RotateCcw, Check, Loader2, Activity } from 'lucide-svelte';
 
   const activeTab = $derived(tabsStore.activeTab);
   const result = $derived(activeTab?.queryResult);
@@ -106,6 +107,17 @@
   </div>
 
   <div class="flex items-center gap-4">
+    <!-- Live Server Health Trigger -->
+    <button 
+      type="button"
+      onclick={() => monitorStore.toggle()}
+      class="flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+      title="Open Live Server Health & Process Monitor (Cmd+Shift+M / Ctrl+Shift+M)"
+    >
+      <Activity size={11} class="text-emerald-500" />
+      <span>Processes</span>
+    </button>
+
     <div class="flex items-center gap-1 text-slate-500 dark:text-slate-400">
       <Cpu size={12} />
       <span>Memory: ~34 MB RAM</span>

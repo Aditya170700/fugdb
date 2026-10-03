@@ -17,10 +17,12 @@
   import AiSettingsModal from '$lib/components/ai/AiSettingsModal.svelte';
   import AiFixModal from '$lib/components/ai/AiFixModal.svelte';
   import ExplainPlanModal from '$lib/components/editor/ExplainPlanModal.svelte';
+  import ServerMonitorModal from '$lib/components/monitor/ServerMonitorModal.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
   import { explainStore } from '$lib/state/explain.svelte';
+  import { monitorStore } from '$lib/state/monitor.svelte';
 
   let isNewConnOpen = $state(false);
   let isErdOpen = $state(false);
@@ -30,18 +32,26 @@
 
   const activeTab = $derived(tabsStore.activeTab);
 
-  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, Cmd+E for Explain, etc.)
+  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, Cmd+Shift+M for Monitor, Cmd+E for Explain, etc.)
   function handleGlobalKeyDown(e: KeyboardEvent) {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h') {
+    const isMod = e.metaKey || e.ctrlKey;
+    if (isMod && e.shiftKey && e.key.toLowerCase() === 'm') {
+      e.preventDefault();
+      monitorStore.toggle();
+    } else if (isMod && !e.shiftKey && e.key.toLowerCase() === 'h') {
       e.preventDefault();
       historyStore.toggleDrawer();
-    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    } else if (isMod && !e.shiftKey && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       aiStore.isDrawerOpen = !aiStore.isDrawerOpen;
-    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+    } else if (isMod && !e.shiftKey && e.key.toLowerCase() === 'e') {
       if (activeTab?.sql?.trim()) {
         e.preventDefault();
         explainStore.open(activeTab.id, activeTab.sql, true);
+      }
+    } else if (e.key === 'Escape') {
+      if (monitorStore.isOpen && !monitorStore.killConfirmTarget) {
+        monitorStore.close();
       }
     }
   }
@@ -233,6 +243,7 @@
   <AiSettingsModal isOpen={aiStore.isSettingsOpen} onClose={() => aiStore.closeSettings()} />
   <AiFixModal />
   <ExplainPlanModal />
+  <ServerMonitorModal />
 </main>
 
 <svelte:window onkeydown={handleGlobalKeyDown} />

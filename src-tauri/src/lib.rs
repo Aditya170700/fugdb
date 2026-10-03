@@ -23,6 +23,7 @@ use commands::{
     schema::{export_data_dictionary_file, fetch_schema_tree, generate_data_dictionary, generate_erd_metadata, print_data_dictionary, save_image_file},
     transfer::{cancel_transfer_job, inspect_file, start_db_to_db_job, start_export_job, start_import_job},
     ai::{generate_sql_from_prompt, test_ai_connection, list_ollama_models, fix_sql_error, optimize_query_explain},
+    monitor::{get_server_processes, kill_server_process, cancel_server_query},
 };
 use state::AppState;
 
@@ -64,7 +65,10 @@ pub fn run() {
             list_ollama_models,
             fix_sql_error,
             explain_query,
-            optimize_query_explain
+            optimize_query_explain,
+            get_server_processes,
+            kill_server_process,
+            cancel_server_query
         ])
         .run(tauri::generate_context!())
         .expect("error while running FugDB application");
