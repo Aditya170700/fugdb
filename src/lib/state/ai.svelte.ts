@@ -2,17 +2,38 @@ import { api } from '$lib/api/client';
 import type { AiProvider, AiProviderConfig, AiSqlResponse, OllamaModelInfo } from '$lib/api/types';
 import { connectionStore } from '$lib/state/connection.svelte';
 
-const STORAGE_KEY = 'fugdb_ai_config';
+const STORAGE_KEY = 'fugdb_ai_config_v2';
 
 function createAiStore() {
   let isDrawerOpen = $state<boolean>(false);
   let isSettingsOpen = $state<boolean>(false);
 
-  // Configuration
+  // Configuration - Isolated per provider so keys and models don't mix
   let provider = $state<AiProvider>('ollama');
-  let model = $state<string>('qwen2.5-coder:latest');
-  let apiKey = $state<string>('');
-  let endpoint = $state<string>('http://localhost:11434');
+  let providerApiKeys = $state<Record<string, string>>({
+    ollama: '',
+    openai: '',
+    gemini: '',
+    deepseek: '',
+    anthropic: '',
+    custom: '',
+  });
+  let providerModels = $state<Record<string, string>>({
+    ollama: 'qwen2.5-coder:latest',
+    openai: 'gpt-4o-mini',
+    gemini: 'gemini-1.5-flash',
+    deepseek: 'deepseek-coder',
+    anthropic: 'claude-3-5-sonnet-20241022',
+    custom: 'custom-model',
+  });
+  let providerEndpoints = $state<Record<string, string>>({
+    ollama: 'http://localhost:11434',
+    openai: 'https://api.openai.com/v1',
+    gemini: 'https://generativelanguage.googleapis.com/v1beta',
+    deepseek: 'https://api.deepseek.com/v1',
+    anthropic: 'https://api.anthropic.com/v1',
+    custom: 'http://localhost:8000/v1',
+  });
   let temperature = $state<number>(0.2);
 
   // Status & Runtime
@@ -30,15 +51,27 @@ function createAiStore() {
   // Load from localStorage on initialization
   if (typeof window !== 'undefined') {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      const savedV2 = localStorage.getItem(STORAGE_KEY);
+      if (savedV2) {
+        const parsed = JSON.parse(savedV2);
         if (parsed.provider) provider = parsed.provider;
-        if (parsed.model) model = parsed.model;
-        if (parsed.apiKey) apiKey = parsed.apiKey;
-        if (parsed.endpoint) endpoint = parsed.endpoint;
+        if (parsed.providerApiKeys) providerApiKeys = { ...providerApiKeys, ...parsed.providerApiKeys };
+        if (parsed.providerModels) providerModels = { ...providerModels, ...parsed.providerModels };
+        if (parsed.providerEndpoints) providerEndpoints = { ...providerEndpoints, ...parsed.providerEndpoints };
         if (parsed.temperature !== undefined) temperature = parsed.temperature;
         if (parsed.promptHistory) promptHistory = parsed.promptHistory;
+      } else {
+        // Fallback migration from legacy storage
+        const legacy = localStorage.getItem('fugdb_ai_config');
+        if (legacy) {
+          const parsed = JSON.parse(legacy);
+          if (parsed.provider) provider = parsed.provider;
+          if (parsed.apiKey) providerApiKeys[provider] = parsed.apiKey;
+          if (parsed.model) providerModels[provider] = parsed.model;
+          if (parsed.endpoint) providerEndpoints[provider] = parsed.endpoint;
+          if (parsed.temperature !== undefined) temperature = parsed.temperature;
+          if (parsed.promptHistory) promptHistory = parsed.promptHistory;
+        }
       }
     } catch (e) {
       console.error('Failed to load AI settings from localStorage:', e);
@@ -50,9 +83,9 @@ function createAiStore() {
     try {
       const config = {
         provider,
-        model,
-        apiKey,
-        endpoint,
+        providerApiKeys,
+        providerModels,
+        providerEndpoints,
         temperature,
         promptHistory: promptHistory.slice(-20) // Keep last 20 queries
       };
@@ -64,9 +97,9 @@ function createAiStore() {
 
   const currentConfig = $derived<AiProviderConfig>({
     provider,
-    model,
-    apiKey: apiKey ? apiKey : undefined,
-    endpoint: endpoint ? endpoint : undefined,
+    model: providerModels[provider] || 'default-model',
+    apiKey: providerApiKeys[provider] ? providerApiKeys[provider] : undefined,
+    endpoint: providerEndpoints[provider] ? providerEndpoints[provider] : undefined,
     temperature
   });
 
@@ -74,10 +107,11 @@ function createAiStore() {
     if (provider !== 'ollama') return;
     isLoadingOllama = true;
     try {
-      const models = await api.listOllamaModels(endpoint);
+      const ep = providerEndpoints['ollama'] || 'http://localhost:11434';
+      const models = await api.listOllamaModels(ep);
       ollamaModels = models;
-      if (models.length > 0 && !models.some(m => m.name === model)) {
-        model = models[0].name;
+      if (models.length > 0 && !models.some(m => m.name === providerModels['ollama'])) {
+        providerModels['ollama'] = models[0].name;
         saveConfig();
       }
     } catch (e) {
@@ -106,30 +140,34 @@ function createAiStore() {
   }
 
   async function generateSql(userPrompt: string, selectedTables?: string[]): Promise<AiSqlResponse | null> {
-    const connId = connectionStore.activeConnection?.id;
-    if (!connId) {
-      errorMessage = 'Please connect to a database first.';
+    const activeConn = connectionStore.activeConnection;
+    if (!activeConn) {
+      errorMessage = 'No active database connection. Please connect to a database first.';
       return null;
     }
-    if (!userPrompt.trim()) return null;
+
+    const schema = connectionStore.schemas[activeConn.id];
+    if (!schema || schema.tables.length === 0) {
+      errorMessage = 'No schema metadata found. Please refresh the database schema first.';
+      return null;
+    }
 
     isGenerating = true;
     errorMessage = null;
-
     try {
-      const response = await api.generateSqlFromPrompt(
-        connId,
+      const resp = await api.generateSqlFromPrompt(
+        activeConn.id,
         currentConfig,
         userPrompt,
         selectedTables
       );
-      lastResponse = response;
+      lastResponse = resp;
       promptHistory = [
-        { prompt: userPrompt, sql: response.sql, timestamp: Date.now() },
+        { prompt: userPrompt, sql: resp.sql, timestamp: Date.now() },
         ...promptHistory.filter(h => h.prompt !== userPrompt).slice(0, 19)
       ];
       saveConfig();
-      return response;
+      return resp;
     } catch (e: any) {
       errorMessage = typeof e === 'string' ? e : e?.message || String(e);
       return null;
@@ -138,25 +176,20 @@ function createAiStore() {
     }
   }
 
-  async function fixSql(sql: string, queryError: string): Promise<AiSqlResponse | null> {
-    const connId = connectionStore.activeConnection?.id;
-    if (!connId) {
-      errorMessage = 'Please connect to a database first.';
-      return null;
-    }
+  async function fixSql(failedSql: string, rawError: string): Promise<AiSqlResponse | null> {
+    const activeConn = connectionStore.activeConnection;
+    if (!activeConn) return null;
 
     isGenerating = true;
     errorMessage = null;
-
     try {
-      const response = await api.fixSqlError(
-        connId,
+      const fixed = await api.fixSqlError(
+        activeConn.id,
         currentConfig,
-        sql,
-        queryError
+        failedSql,
+        rawError
       );
-      lastResponse = response;
-      return response;
+      return fixed;
     } catch (e: any) {
       errorMessage = typeof e === 'string' ? e : e?.message || String(e);
       return null;
@@ -167,32 +200,9 @@ function createAiStore() {
 
   function setProvider(newProvider: AiProvider) {
     provider = newProvider;
-    switch (newProvider) {
-      case 'ollama':
-        model = 'qwen2.5-coder:latest';
-        endpoint = 'http://localhost:11434';
-        loadOllamaModels();
-        break;
-      case 'openai':
-        model = 'gpt-4o-mini';
-        endpoint = 'https://api.openai.com/v1';
-        break;
-      case 'gemini':
-        model = 'gemini-1.5-flash';
-        endpoint = 'https://generativelanguage.googleapis.com/v1beta';
-        break;
-      case 'anthropic':
-        model = 'claude-3-5-sonnet-20241022';
-        endpoint = 'https://api.anthropic.com/v1';
-        break;
-      case 'deepseek':
-        model = 'deepseek-coder';
-        endpoint = 'https://api.deepseek.com/v1';
-        break;
-      case 'custom':
-        model = 'custom-model';
-        endpoint = 'http://localhost:8000/v1';
-        break;
+    testResult = null;
+    if (newProvider === 'ollama') {
+      loadOllamaModels();
     }
     saveConfig();
   }
@@ -205,12 +215,16 @@ function createAiStore() {
 
     get provider() { return provider; },
     set provider(v) { setProvider(v); },
-    get model() { return model; },
-    set model(v) { model = v; saveConfig(); },
-    get apiKey() { return apiKey; },
-    set apiKey(v) { apiKey = v; saveConfig(); },
-    get endpoint() { return endpoint; },
-    set endpoint(v) { endpoint = v; saveConfig(); },
+
+    get model() { return providerModels[provider] || ''; },
+    set model(v) { providerModels[provider] = v; saveConfig(); },
+
+    get apiKey() { return providerApiKeys[provider] || ''; },
+    set apiKey(v) { providerApiKeys[provider] = v; saveConfig(); },
+
+    get endpoint() { return providerEndpoints[provider] || ''; },
+    set endpoint(v) { providerEndpoints[provider] = v; saveConfig(); },
+
     get temperature() { return temperature; },
     set temperature(v) { temperature = v; saveConfig(); },
 

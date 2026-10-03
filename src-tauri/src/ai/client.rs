@@ -132,41 +132,17 @@ impl AiClient {
                     return Err(AppError::Internal("Gemini API Key is required".into()));
                 }
 
-                let base_model = config.model.trim_start_matches("models/");
-                let endpoints = [
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", base_model, api_key),
-                    format!("https://generativelanguage.googleapis.com/v1/models/{}:generateContent?key={}", base_model, api_key),
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/{}-latest:generateContent?key={}", base_model, api_key),
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={}", api_key),
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}", api_key),
-                ];
+                // Query Google Gemini models API to check key validity
+                let list_url = format!("https://generativelanguage.googleapis.com/v1beta/models?key={}", api_key);
+                let res = client.get(&list_url).send().await
+                    .map_err(|e| AppError::Internal(format!("Gemini connection failed: {}", e)))?;
 
-                let body = json!({
-                    "contents": [{ "parts": [{ "text": "ping" }] }],
-                    "generationConfig": { "maxOutputTokens": 5 }
-                });
-
-                let mut last_err = String::new();
-                let mut connected = false;
-                for url in &endpoints {
-                    if let Ok(res) = client.post(url).json(&body).send().await {
-                        if res.status().is_success() {
-                            connected = true;
-                            break;
-                        } else {
-                            let status = res.status();
-                            let err_text = res.text().await.unwrap_or_default();
-                            last_err = format_api_error("Gemini", status, &err_text);
-                        }
-                    }
-                }
-
-                if connected {
-                    Ok(format!("Successfully connected to Google Gemini API ({})!", config.model))
-                } else if !last_err.is_empty() {
-                    Err(AppError::Internal(last_err))
+                if res.status().is_success() {
+                    Ok(format!("Successfully connected to Google Gemini API (model: {})!", config.model))
                 } else {
-                    Ok("Successfully connected to Google Gemini API!".into())
+                    let status = res.status();
+                    let err_text = res.text().await.unwrap_or_default();
+                    Err(AppError::Internal(format_api_error("Gemini", status, &err_text)))
                 }
             }
             "anthropic" => {
@@ -303,16 +279,11 @@ impl AiClient {
                     format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", base_model, api_key),
                     format!("https://generativelanguage.googleapis.com/v1/models/{}:generateContent?key={}", base_model, api_key),
                     format!("https://generativelanguage.googleapis.com/v1beta/models/{}-latest:generateContent?key={}", base_model, api_key),
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={}", api_key),
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={}", api_key),
                 ];
 
                 let body = json!({
-                    "system_instruction": {
-                        "parts": [{ "text": system_prompt }]
-                    },
                     "contents": [{
-                        "parts": [{ "text": user_prompt }]
+                        "parts": [{ "text": format!("{}\n\n{}", system_prompt, user_prompt) }]
                     }],
                     "generationConfig": {
                         "temperature": config.temperature.unwrap_or(0.2)
