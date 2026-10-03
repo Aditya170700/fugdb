@@ -139,9 +139,10 @@
   - [x] Support Multi-Provider: Local **Ollama** (offline/private) + Cloud (OpenAI, Anthropic Claude, Gemini, DeepSeek).
   - *Files Terkait*: `src-tauri/src/ai/`, `src-tauri/src/commands/ai.rs`, `src/lib/components/ai/AiAssistantDrawer.svelte`, `src/lib/components/ai/AiSettingsModal.svelte`, `src/lib/state/ai.svelte.ts`
 
-- [ ] **3.2 "Fix with AI" Button pada Query Error**
-  - [ ] Tombol 1-klik pada alert error query untuk mendiagnosa dan memperbaiki sintaks query secara otomatis sesuai dialek database aktif.
-  - *Files Terkait*: `src/lib/components/editor/SqlEditor.svelte`, `src/App.svelte`
+- [x] **3.2 "Fix with AI" Button pada Query Error**
+  - [x] Tombol 1-klik pada alert error query di SQL Editor & DataGrid untuk mendiagnosa dan memperbaiki sintaks query secara otomatis sesuai dialek database aktif (PostgreSQL, MySQL, SQLite, MSSQL).
+  - [x] Interactive AI Fix Modal dengan diagnosis akar masalah (Root Cause), preview SQL yang telah diperbaiki, dan aksi **"Apply & Run" (Cmd+Enter)** serta **"Apply to Editor"**.
+  - *Files Terkait*: `src-tauri/src/commands/ai.rs`, `src/lib/components/ai/AiFixModal.svelte`, `src/lib/components/editor/SqlEditor.svelte`, `src/lib/components/grid/DataGrid.svelte`, `src/lib/state/ai.svelte.ts`
 
 - [ ] **3.3 1-Click Instant Data Charting**
   - [ ] Konversi hasil query tabular menjadi grafik visual interaktif (**Bar, Line, Area, Pie/Donut, Scatter**) menggunakan LayerChart / Chart.js / Canvas.

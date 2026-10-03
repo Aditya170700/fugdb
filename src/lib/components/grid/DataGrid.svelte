@@ -35,6 +35,7 @@
   import { mutationStore, TabMutationState } from '$lib/state/mutations.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { inspectorStore } from '$lib/state/inspector.svelte';
+  import { aiStore } from '$lib/state/ai.svelte';
   import MutationReviewDrawer from './MutationReviewDrawer.svelte';
 
   let { 
@@ -743,9 +744,29 @@
     </div>
   {:else if errorMessage}
     <div class="flex-1 flex flex-col items-center justify-center p-6 text-center">
-      <div class="max-w-md bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-xs space-y-2 text-left shadow-lg">
-        <span class="font-bold text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 block">Query Execution Error</span>
-        <p class="font-mono text-rose-950 dark:text-rose-100 text-xs bg-surface-950/70 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 break-words font-medium">{errorMessage}</p>
+      <div class="max-w-lg w-full bg-rose-500/10 border border-rose-500/30 rounded-2xl p-5 text-xs space-y-3.5 text-left shadow-xl backdrop-blur-xs">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+            <span class="font-bold text-xs uppercase tracking-wider text-rose-600 dark:text-rose-400">Query Execution Error</span>
+          </div>
+          <span class="text-[10.5px] font-mono text-slate-500 dark:text-slate-400">{activeConn?.driver?.toUpperCase() || 'SQL'}</span>
+        </div>
+
+        <p class="font-mono text-rose-950 dark:text-rose-100 text-xs bg-surface-950/80 p-3 rounded-xl border border-rose-500/20 break-words font-medium leading-relaxed max-h-40 overflow-y-auto select-text">{errorMessage}</p>
+
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">Diagnose & fix query syntax with AI:</span>
+          <button
+            type="button"
+            onclick={() => aiStore.triggerFix(tabId, sql, errorMessage || '')}
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded-lg text-xs shadow-md shadow-violet-500/20 hover:shadow-violet-500/30 transition-all cursor-pointer"
+            title="Diagnose dialect error & fix SQL automatically"
+          >
+            <Sparkles size={13} class="animate-pulse" />
+            <span>Fix with AI</span>
+          </button>
+        </div>
       </div>
     </div>
   {:else if !result}

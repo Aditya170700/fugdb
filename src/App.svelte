@@ -15,6 +15,7 @@
   import CellInspectorModal from '$lib/components/inspectors/CellInspectorModal.svelte';
   import AiAssistantDrawer from '$lib/components/ai/AiAssistantDrawer.svelte';
   import AiSettingsModal from '$lib/components/ai/AiSettingsModal.svelte';
+  import AiFixModal from '$lib/components/ai/AiFixModal.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
@@ -223,6 +224,7 @@
   <CellInspectorModal />
   <AiAssistantDrawer />
   <AiSettingsModal isOpen={aiStore.isSettingsOpen} onClose={() => aiStore.closeSettings()} />
+  <AiFixModal />
 </main>
 
 <svelte:window onkeydown={handleGlobalKeyDown} />

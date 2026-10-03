@@ -87,6 +87,14 @@ export class TabsStore {
     }
   }
 
+  updateTabSql(tabId: string, newSql: string) {
+    const tab = this.tabs.find(t => t.id === tabId);
+    if (tab) {
+      tab.sql = newSql;
+      tab.errorMessage = undefined;
+    }
+  }
+
   async runTabQuery(tabId: string) {
     const tab = this.tabs.find(t => t.id === tabId);
     if (!tab || !tab.sql) return;

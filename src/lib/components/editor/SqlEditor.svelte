@@ -7,7 +7,7 @@
   import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
   import { oneDark } from '@codemirror/theme-one-dark';
-  import { Play, ShieldAlert, AlertTriangle, History, Sparkles } from 'lucide-svelte';
+  import { Play, ShieldAlert, AlertTriangle, History, Sparkles, AlertCircle, X } from 'lucide-svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
@@ -210,11 +210,11 @@
   });
 
   $effect(() => {
-    if (view && initialSql !== undefined) {
+    if (view && currentSql !== undefined) {
       const currentDoc = view.state.doc.toString();
-      if (currentDoc !== initialSql) {
+      if (currentDoc !== currentSql) {
         view.dispatch({
-          changes: { from: 0, to: currentDoc.length, insert: initialSql }
+          changes: { from: 0, to: currentDoc.length, insert: currentSql }
         });
       }
     }
@@ -224,8 +224,42 @@
 <div class="w-full h-full flex flex-col bg-surface-950 relative">
   <div bind:this={editorContainer} class="flex-1 overflow-hidden"></div>
 
+  <!-- Inline Query Error Bar with Fix with AI Action -->
+  {#if currentTab?.errorMessage}
+    <div class="px-3 py-1.5 bg-rose-500/10 dark:bg-rose-950/40 border-t border-rose-500/30 flex items-center justify-between gap-3 text-xs animate-in fade-in duration-150 shrink-0">
+      <div class="flex items-center gap-2 truncate min-w-0">
+        <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+        <span class="font-bold text-[11px] text-rose-600 dark:text-rose-400 shrink-0 uppercase tracking-wider">Query Error:</span>
+        <span class="font-mono text-rose-950 dark:text-rose-200 truncate text-[11px] font-medium select-text">{currentTab.errorMessage}</span>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          type="button"
+          onclick={() => aiStore.triggerFix(tabId, currentSql, currentTab.errorMessage || '')}
+          class="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold rounded text-[11px] shadow-sm transition-all cursor-pointer"
+          title="Diagnose & Fix query error with AI Copilot"
+        >
+          <Sparkles size={12} class="animate-pulse" />
+          <span>Fix with AI</span>
+        </button>
+
+        <button
+          type="button"
+          onclick={() => {
+            if (currentTab) currentTab.errorMessage = undefined;
+          }}
+          class="text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 p-0.5 rounded cursor-pointer"
+          title="Dismiss error banner"
+        >
+          <X size={13} />
+        </button>
+      </div>
+    </div>
+  {/if}
+
   <!-- Bottom Editor Toolbar -->
-  <div class="px-3 py-1.5 bg-surface-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none">
+  <div class="px-3 py-1.5 bg-surface-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs select-none shrink-0">
     <div class="flex items-center gap-2 truncate">
       <button 
         type="button"

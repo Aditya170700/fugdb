@@ -328,14 +328,16 @@ export const api = {
     connectionId: string,
     config: AiProviderConfig,
     userPrompt: string,
-    selectedTables?: string[]
+    selectedTables?: string[],
+    driver?: string
   ): Promise<AiSqlResponse> {
     if (isTauri) {
       return await invoke('generate_sql_from_prompt', {
         connectionId,
         config,
         userPrompt,
-        selectedTables
+        selectedTables,
+        driver
       });
     }
     await new Promise(r => setTimeout(r, 800));
@@ -343,7 +345,7 @@ export const api = {
       sql: `SELECT u.id, u.name, u.email, COUNT(o.id) AS total_orders, COALESCE(SUM(o.total_amount), 0) AS lifetime_value\nFROM users u\nLEFT JOIN orders o ON u.id = o.user_id\nWHERE u.status = 'active'\nGROUP BY u.id, u.name, u.email\nORDER BY lifetime_value DESC\nLIMIT 10;`,
       explanation: `1. Joins the \`users\` table with \`orders\` on \`user_id\`.\n2. Filters active users.\n3. Aggregates order count and sum of total_amount.\n4. Sorts by highest lifetime value and limits to top 10.`,
       tablesUsed: ['users', 'orders'],
-      dialect: 'PostgreSQL',
+      dialect: driver || 'PostgreSQL',
       modelUsed: config.model,
       executionTimeMs: 342.1
     };
@@ -353,22 +355,24 @@ export const api = {
     connectionId: string,
     config: AiProviderConfig,
     sql: string,
-    errorMessage: string
+    errorMessage: string,
+    driver?: string
   ): Promise<AiSqlResponse> {
     if (isTauri) {
       return await invoke('fix_sql_error', {
         connectionId,
         config,
         sql,
-        errorMessage
+        errorMessage,
+        driver
       });
     }
     await new Promise(r => setTimeout(r, 700));
     return {
       sql: `-- Fixed Query\nSELECT * FROM users WHERE email ILIKE '%@gmail.com';`,
-      explanation: `Corrected column name syntax and adjusted case-insensitive comparison operator for PostgreSQL.`,
+      explanation: `Corrected column name syntax and adjusted case-insensitive comparison operator for ${driver || 'PostgreSQL'}.`,
       tablesUsed: ['users'],
-      dialect: 'PostgreSQL',
+      dialect: driver || 'PostgreSQL',
       modelUsed: config.model,
       executionTimeMs: 280.0
     };

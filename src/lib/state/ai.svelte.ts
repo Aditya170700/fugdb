@@ -1,6 +1,7 @@
 import { api } from '$lib/api/client';
 import type { AiProvider, AiProviderConfig, AiSqlResponse, OllamaModelInfo } from '$lib/api/types';
 import { connectionStore } from '$lib/state/connection.svelte';
+import { tabsStore } from '$lib/state/tabs.svelte';
 
 const STORAGE_KEY = 'fugdb_ai_config_v2';
 
@@ -74,6 +75,7 @@ function createAiStore() {
 
   let isDrawerOpen = $state<boolean>(false);
   let isSettingsOpen = $state<boolean>(false);
+  let isFixModalOpen = $state<boolean>(false);
 
   // Configuration - Isolated per provider so keys and models don't mix
   let provider = $state<AiProvider>(initial.provider);
@@ -90,6 +92,16 @@ function createAiStore() {
   let isLoadingOllama = $state<boolean>(false);
   let lastResponse = $state<AiSqlResponse | null>(null);
   let errorMessage = $state<string | null>(null);
+
+  // Fix with AI State
+  let fixTarget = $state<{
+    tabId: string;
+    failedSql: string;
+    errorMessage: string;
+    fixedResponse: AiSqlResponse | null;
+    isFixing: boolean;
+    fixError: string | null;
+  } | null>(null);
 
   // History
   let promptHistory = $state<Array<{ prompt: string; sql: string; timestamp: number }>>(initial.promptHistory);
@@ -175,7 +187,8 @@ function createAiStore() {
         activeConn.id,
         currentConfig,
         userPrompt,
-        selectedTables
+        selectedTables,
+        activeConn.driver
       );
       lastResponse = resp;
       promptHistory = [
@@ -203,7 +216,8 @@ function createAiStore() {
         activeConn.id,
         currentConfig,
         failedSql,
-        rawError
+        rawError,
+        activeConn.driver
       );
       return fixed;
     } catch (e: any) {
@@ -212,6 +226,64 @@ function createAiStore() {
     } finally {
       isGenerating = false;
     }
+  }
+
+  async function triggerFix(tabId: string, failedSql: string, rawError: string) {
+    const activeConn = connectionStore.activeConnection;
+    if (!activeConn) {
+      errorMessage = 'No active database connection. Please connect to a database first.';
+      return;
+    }
+
+    isFixModalOpen = true;
+    fixTarget = {
+      tabId,
+      failedSql,
+      errorMessage: rawError,
+      fixedResponse: null,
+      isFixing: true,
+      fixError: null
+    };
+
+    try {
+      const fixed = await api.fixSqlError(
+        activeConn.id,
+        currentConfig,
+        failedSql,
+        rawError,
+        activeConn.driver
+      );
+      if (fixTarget && fixTarget.tabId === tabId) {
+        fixTarget.fixedResponse = fixed;
+        fixTarget.isFixing = false;
+      }
+    } catch (e: any) {
+      if (fixTarget && fixTarget.tabId === tabId) {
+        fixTarget.fixError = typeof e === 'string' ? e : e?.message || String(e);
+        fixTarget.isFixing = false;
+      }
+    }
+  }
+
+  async function retryFix() {
+    if (!fixTarget) return;
+    await triggerFix(fixTarget.tabId, fixTarget.failedSql, fixTarget.errorMessage);
+  }
+
+  function applyFix(tabId: string, runImmediately: boolean = false) {
+    if (!fixTarget?.fixedResponse?.sql) return;
+    const fixedSql = fixTarget.fixedResponse.sql;
+    tabsStore.updateTabSql(tabId, fixedSql);
+    if (runImmediately) {
+      tabsStore.runTabQuery(tabId);
+    }
+    isFixModalOpen = false;
+    fixTarget = null;
+  }
+
+  function closeFixModal() {
+    isFixModalOpen = false;
+    fixTarget = null;
   }
 
   function setProvider(newProvider: AiProvider) {
@@ -228,6 +300,9 @@ function createAiStore() {
     set isDrawerOpen(v) { isDrawerOpen = v; },
     get isSettingsOpen() { return isSettingsOpen; },
     set isSettingsOpen(v) { isSettingsOpen = v; },
+    get isFixModalOpen() { return isFixModalOpen; },
+    set isFixModalOpen(v) { isFixModalOpen = v; },
+    get fixTarget() { return fixTarget; },
 
     get provider() { return provider; },
     set provider(v) { setProvider(v); },
@@ -261,6 +336,10 @@ function createAiStore() {
     testConnection,
     generateSql,
     fixSql,
+    triggerFix,
+    retryFix,
+    applyFix,
+    closeFixModal,
     saveConfig,
     openDrawer: () => { isDrawerOpen = true; },
     closeDrawer: () => { isDrawerOpen = false; },
