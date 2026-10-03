@@ -90,6 +90,14 @@ export const api = {
     return targetPath;
   },
 
+  async printDataDictionary(connectionId: string): Promise<string> {
+    if (isTauri) {
+      return await invoke('print_data_dictionary', { connectionId });
+    }
+    window.print();
+    return 'mock_print_path';
+  },
+
   // Query commands
   async executeQuery(connectionId: string, sql: string, pageSize?: number, offset?: number): Promise<QueryResult> {
     if (isTauri) {

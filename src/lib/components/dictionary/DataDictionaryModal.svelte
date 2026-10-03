@@ -27,6 +27,7 @@
   let selectedConnectionId = $state<string>('');
   let activeTab = $state<'html' | 'markdown' | 'json'>('html');
   let isLoading = $state<boolean>(false);
+  let isPrinting = $state<boolean>(false);
   let searchQuery = $state<string>('');
   let isCopied = $state<boolean>(false);
   let copyTimeout: any = null;
@@ -126,13 +127,24 @@
     }
   }
 
-  function handlePrint() {
-    const iframe = document.getElementById('dict-preview-iframe') as HTMLIFrameElement;
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-    } else {
-      window.print();
+  async function handlePrint() {
+    if (!selectedConnectionId || isPrinting) return;
+    isPrinting = true;
+    try {
+      await api.printDataDictionary(selectedConnectionId);
+    } catch (err) {
+      console.warn('Native print command failed, falling back to iframe print:', err);
+      const iframe = document.getElementById('dict-preview-iframe') as HTMLIFrameElement;
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } else {
+        window.print();
+      }
+    } finally {
+      setTimeout(() => {
+        isPrinting = false;
+      }, 1500);
     }
   }
 
@@ -249,11 +261,17 @@
             <button
               type="button"
               onclick={handlePrint}
-              class="px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-surface-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-slate-50 dark:hover:bg-surface-700 transition-colors"
-              title="Print Document or Save as PDF"
+              disabled={isPrinting || isLoading}
+              class="px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-surface-800 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs hover:bg-slate-50 dark:hover:bg-surface-700 transition-colors disabled:opacity-50"
+              title="Open Print Dialog / Save as PDF"
             >
-              <Printer size={13} class="text-slate-500 dark:text-slate-400" />
-              <span>Print / PDF</span>
+              {#if isPrinting}
+                <RefreshCw size={13} class="animate-spin text-indigo-500" />
+                <span>Opening PDF...</span>
+              {:else}
+                <Printer size={13} class="text-slate-500 dark:text-slate-400" />
+                <span>Print / PDF</span>
+              {/if}
             </button>
           {/if}
 

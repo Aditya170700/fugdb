@@ -10,7 +10,7 @@ use commands::{
     connection::{connect_database, disconnect_database, test_connection},
     mock_data::generate_mock_batch,
     query::execute_query,
-    schema::{export_data_dictionary_file, fetch_schema_tree, generate_data_dictionary, generate_erd_metadata},
+    schema::{export_data_dictionary_file, fetch_schema_tree, generate_data_dictionary, generate_erd_metadata, print_data_dictionary},
     transfer::{cancel_transfer_job, inspect_file, start_db_to_db_job, start_export_job, start_import_job},
 };
 use state::AppState;
@@ -29,6 +29,7 @@ pub fn run() {
             generate_erd_metadata,
             generate_data_dictionary,
             export_data_dictionary_file,
+            print_data_dictionary,
             generate_mock_batch,
             inspect_file,
             start_export_job,

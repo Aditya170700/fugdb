@@ -71,3 +71,62 @@ pub async fn export_data_dictionary_file(
 
     Ok(target_path)
 }
+
+#[tauri::command]
+pub async fn print_data_dictionary(
+    connection_id: String,
+    state: State<'_, AppState>,
+) -> Result<String, AppError> {
+    let pools = state.pools.read().await;
+    let adapter = pools
+        .get(&connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(connection_id.clone()))?;
+
+    let tree = adapter.fetch_schema_tree().await?;
+    let conn_name = connection_id.clone();
+    let driver = "Database Engine";
+
+    let mut html = generate_html_dictionary(&tree, &conn_name, driver);
+
+    // Inject auto-print script before </body>
+    let auto_print_script = r#"
+  <script>
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        window.print();
+      }, 400);
+    });
+  </script>
+</body>"#;
+    html = html.replace("</body>", auto_print_script);
+
+    let clean_name = conn_name.replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
+    let temp_file = std::env::temp_dir().join(format!("fugdb_dictionary_{}.html", clean_name));
+
+    fs::write(&temp_file, &html)
+        .await
+        .map_err(AppError::IoError)?;
+
+    let path_str = temp_file.to_string_lossy().to_string();
+
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .arg(&path_str)
+            .spawn();
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path_str])
+            .spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open")
+            .arg(&path_str)
+            .spawn();
+    }
+
+    Ok(path_str)
+}
