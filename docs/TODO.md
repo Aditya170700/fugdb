@@ -202,12 +202,13 @@
   - [x] Akses cepat via Navbar button (`Monitor`), Statusbar link (`Processes`), dan shortcut global `Cmd+Shift+M` / `Ctrl+Shift+M`.
   - *Files Terkait*: `src-tauri/src/commands/monitor.rs`, `src-tauri/src/models/monitor.rs`, `src/lib/components/monitor/ServerMonitorModal.svelte`, `src/lib/state/monitor.svelte.ts`, `src/lib/api/client.ts`
 
-- [ ] **5.2 Schema & Data Diff Sync Tool (Database Comparison)**
-  - [ ] Komparasi struktur skema antar 2 database (Source vs Target: Dev vs Staging vs Prod).
-  - [ ] Visual side-by-side diff: tabel baru/hilang, tipe kolom berbeda, missing indexes, dan mismatch foreign keys.
-  - [ ] Generator otomatis script migrasi DDL sinkronisasi (`ALTER TABLE ...`, `CREATE INDEX ...`, `DROP COLUMN ...`).
-  - [ ] Opsi Data Diff (pengecekan selisih baris data via hash/checksum comparison).
-  - *Files Terkait*: `src-tauri/src/schema/diff.rs`, `src/lib/components/diff/SchemaDiffModal.svelte`, `src/lib/api/client.ts`
+- [x] **5.2 Schema & Data Diff Sync Tool (Database Comparison)**
+  - [x] Komparasi struktur skema antar 2 database (Source vs Target: Dev vs Staging vs Prod).
+  - [x] Visual side-by-side diff: tabel baru/hilang, tipe kolom berbeda, missing indexes, nullability, dan mismatch primary/foreign keys.
+  - [x] Generator otomatis script migrasi DDL sinkronisasi (`ALTER TABLE ... ADD/MODIFY/DROP COLUMN`, `CREATE TABLE ...`) sesuai dialek (Postgres, MySQL, SQLite, MSSQL).
+  - [x] Fitur 1-Click Copy, Download `.sql` file, dan eksekusi langsung migrasi sinkronisasi ke database Target dengan konfirmasi proteksi skema.
+  - [x] Akses modal via shortcut global `Cmd+Shift+D` / `Ctrl+Shift+D` dan tombol `GitCompare` di Navbar toolbar.
+  - *Files Terkait*: `src-tauri/src/schema/diff.rs`, `src-tauri/src/models/diff.rs`, `src-tauri/src/commands/schema.rs`, `src/lib/components/diff/SchemaDiffModal.svelte`, `src/lib/state/diff.svelte.ts`, `src/lib/api/client.ts`
 
 - [ ] **5.3 Interactive SQL Scratchpad Notebooks (`.fugpad`)**
   - [ ] Tab editor canvas bergaya notebook interaktif yang menggabungkan Markdown text blocks, SQL query blocks, dan visualisasi Chart.js interaktif dalam satu file.

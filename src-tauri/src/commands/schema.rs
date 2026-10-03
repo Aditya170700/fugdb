@@ -153,3 +153,53 @@ pub async fn print_data_dictionary(
 
     Ok(path_str)
 }
+
+#[tauri::command]
+pub async fn compare_schemas(
+    source_connection_id: String,
+    target_connection_id: String,
+    source_driver: Option<String>,
+    target_driver: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<crate::models::diff::SchemaDiffResult, AppError> {
+    let pools = state.pools.read().await;
+    let src_adapter = pools
+        .get(&source_connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(source_connection_id.clone()))?;
+
+    let tgt_adapter = pools
+        .get(&target_connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(target_connection_id.clone()))?;
+
+    let src_tree = src_adapter.fetch_schema_tree().await?;
+    let tgt_tree = tgt_adapter.fetch_schema_tree().await?;
+
+    let src_drv = source_driver.unwrap_or_else(|| "postgres".to_string());
+    let tgt_drv = target_driver.unwrap_or_else(|| "postgres".to_string());
+
+    let result = crate::schema::diff::generate_schema_diff(
+        &src_tree,
+        &tgt_tree,
+        &source_connection_id,
+        &target_connection_id,
+        &src_drv,
+        &tgt_drv,
+    );
+
+    Ok(result)
+}
+
+#[tauri::command]
+pub async fn apply_migration_script(
+    target_connection_id: String,
+    sql: String,
+    state: State<'_, AppState>,
+) -> Result<crate::models::query::QueryResult, AppError> {
+    let pools = state.pools.read().await;
+    let adapter = pools
+        .get(&target_connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(target_connection_id.clone()))?;
+
+    adapter.execute_query(&sql, None, None).await
+}
+

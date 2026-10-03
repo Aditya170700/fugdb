@@ -19,7 +19,8 @@ import type {
   OllamaModelInfo,
   ExplainResult,
   ServerProcess,
-  ServerHealthStats
+  ServerHealthStats,
+  SchemaDiffResult
 } from './types';
 
 // Check if running in Tauri environment
@@ -701,5 +702,117 @@ export const api = {
     }
     await new Promise(r => setTimeout(r, 60));
     return true;
+  },
+
+  // 5.2 Schema & Data Diff Sync API
+  async compareSchemas(
+    sourceConnectionId: string,
+    targetConnectionId: string,
+    sourceDriver?: string,
+    targetDriver?: string
+  ): Promise<SchemaDiffResult> {
+    if (isTauri) {
+      return await invoke('compare_schemas', {
+        sourceConnectionId,
+        targetConnectionId,
+        sourceDriver,
+        targetDriver,
+      });
+    }
+
+    // Realistic browser mock data for preview/dev mode
+    await new Promise(r => setTimeout(r, 120));
+    return {
+      sourceConnectionId,
+      targetConnectionId,
+      sourceDriver: sourceDriver || 'PostgreSQL',
+      targetDriver: targetDriver || 'PostgreSQL',
+      totalSourceTables: 6,
+      totalTargetTables: 4,
+      tablesToCreate: 2,
+      tablesToDrop: 0,
+      tablesToAlter: 2,
+      tablesIdentical: 2,
+      tableDiffs: [
+        {
+          tableName: 'audit_logs',
+          action: 'create',
+          sourceRowCount: 1420,
+          targetRowCount: undefined,
+          columns: [
+            { name: 'id', action: 'create', sourceType: 'bigint', sourceNullable: false, sourcePk: true, diffReason: 'Table missing in target' },
+            { name: 'user_id', action: 'create', sourceType: 'int4', sourceNullable: false, sourcePk: false, diffReason: 'Table missing in target' },
+            { name: 'action', action: 'create', sourceType: 'varchar', sourceNullable: false, sourcePk: false, diffReason: 'Table missing in target' },
+            { name: 'created_at', action: 'create', sourceType: 'timestamptz', sourceNullable: false, sourcePk: false, diffReason: 'Table missing in target' }
+          ],
+          syncSql: `CREATE TABLE "audit_logs" (\n  "id" BIGINT NOT NULL,\n  "user_id" INTEGER NOT NULL,\n  "action" VARCHAR NOT NULL,\n  "created_at" TIMESTAMPTZ NOT NULL,\n  PRIMARY KEY ("id")\n);`
+        },
+        {
+          tableName: 'user_profiles',
+          action: 'create',
+          sourceRowCount: 820,
+          targetRowCount: undefined,
+          columns: [
+            { name: 'user_id', action: 'create', sourceType: 'int4', sourceNullable: false, sourcePk: true, diffReason: 'Table missing in target' },
+            { name: 'bio', action: 'create', sourceType: 'text', sourceNullable: true, sourcePk: false, diffReason: 'Table missing in target' },
+            { name: 'avatar_url', action: 'create', sourceType: 'varchar', sourceNullable: true, sourcePk: false, diffReason: 'Table missing in target' }
+          ],
+          syncSql: `CREATE TABLE "user_profiles" (\n  "user_id" INTEGER NOT NULL,\n  "bio" TEXT,\n  "avatar_url" VARCHAR,\n  PRIMARY KEY ("user_id")\n);`
+        },
+        {
+          tableName: 'users',
+          action: 'alter',
+          sourceRowCount: 5200,
+          targetRowCount: 5200,
+          columns: [
+            { name: 'id', action: 'identical', sourceType: 'int4', targetType: 'int4', sourceNullable: false, targetNullable: false, sourcePk: true, targetPk: true },
+            { name: 'email', action: 'identical', sourceType: 'varchar', targetType: 'varchar', sourceNullable: false, targetNullable: false, sourcePk: false, targetPk: false },
+            { name: 'phone', action: 'create', sourceType: 'varchar', sourceNullable: true, diffReason: 'Missing column in target' },
+            { name: 'status', action: 'alter', sourceType: 'varchar', targetType: 'int4', sourceNullable: false, targetNullable: false, sourcePk: false, targetPk: false, diffReason: 'Type changed (int4 -> varchar)' },
+            { name: 'is_active', action: 'identical', sourceType: 'bool', targetType: 'bool', sourceNullable: false, targetNullable: false, sourcePk: false, targetPk: false }
+          ],
+          syncSql: `ALTER TABLE "users" ADD COLUMN "phone" VARCHAR;\nALTER TABLE "users" ALTER COLUMN "status" TYPE VARCHAR NOT NULL;`
+        },
+        {
+          tableName: 'orders',
+          action: 'alter',
+          sourceRowCount: 12400,
+          targetRowCount: 12400,
+          columns: [
+            { name: 'id', action: 'identical', sourceType: 'int4', targetType: 'int4', sourceNullable: false, targetNullable: false, sourcePk: true, targetPk: true },
+            { name: 'user_id', action: 'identical', sourceType: 'int4', targetType: 'int4', sourceNullable: false, targetNullable: false, sourcePk: false, targetPk: false },
+            { name: 'notes', action: 'create', sourceType: 'text', sourceNullable: true, diffReason: 'Missing column in target' }
+          ],
+          syncSql: `ALTER TABLE "orders" ADD COLUMN "notes" TEXT;`
+        },
+        {
+          tableName: 'products',
+          action: 'identical',
+          sourceRowCount: 340,
+          targetRowCount: 340,
+          columns: [
+            { name: 'id', action: 'identical', sourceType: 'int4', targetType: 'int4', sourceNullable: false, targetNullable: false, sourcePk: true, targetPk: true },
+            { name: 'name', action: 'identical', sourceType: 'varchar', targetType: 'varchar', sourceNullable: false, targetNullable: false, sourcePk: false, targetPk: false },
+            { name: 'price', action: 'identical', sourceType: 'numeric', targetType: 'numeric', sourceNullable: false, targetNullable: false, sourcePk: false, targetPk: false }
+          ],
+          syncSql: ''
+        }
+      ],
+      fullMigrationSql: `-- ===========================================================================\n-- FugDB Automated Schema Migration & Sync Script\n-- Source: Dev DB (PostgreSQL)\n-- Target: Production DB (PostgreSQL)\n-- Tables to Create: 2, Alter: 2, Drop: 0, Identical: 1\n-- ===========================================================================\n\nBEGIN;\n\n-- Table: audit_logs\nCREATE TABLE "audit_logs" (\n  "id" BIGINT NOT NULL,\n  "user_id" INTEGER NOT NULL,\n  "action" VARCHAR NOT NULL,\n  "created_at" TIMESTAMPTZ NOT NULL,\n  PRIMARY KEY ("id")\n);\n\n-- Table: user_profiles\nCREATE TABLE "user_profiles" (\n  "user_id" INTEGER NOT NULL,\n  "bio" TEXT,\n  "avatar_url" VARCHAR,\n  PRIMARY KEY ("user_id")\n);\n\n-- Table: users\nALTER TABLE "users" ADD COLUMN "phone" VARCHAR;\nALTER TABLE "users" ALTER COLUMN "status" TYPE VARCHAR NOT NULL;\n\n-- Table: orders\nALTER TABLE "orders" ADD COLUMN "notes" TEXT;\n\nCOMMIT;\n`,
+      executionTimeMs: 18.4
+    };
+  },
+
+  async applyMigrationScript(targetConnectionId: string, sql: string): Promise<QueryResult> {
+    if (isTauri) {
+      return await invoke('apply_migration_script', { targetConnectionId, sql });
+    }
+    await new Promise(r => setTimeout(r, 150));
+    return {
+      columns: [],
+      rows: [],
+      affectedRows: 4,
+      executionTimeMs: 12.5
+    };
   }
 };

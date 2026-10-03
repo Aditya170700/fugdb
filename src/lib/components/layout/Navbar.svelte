@@ -21,11 +21,13 @@
     Monitor,
     Lock,
     Activity,
+    GitCompare,
     History as HistoryIcon
   } from 'lucide-svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
   import { monitorStore } from '$lib/state/monitor.svelte';
+  import { diffStore } from '$lib/state/diff.svelte';
 
   let { 
     onOpenErd, 
@@ -207,6 +209,14 @@
       title="Multi-source Transfer & Import/Export"
     >
       <ArrowLeftRight size={15} />
+    </button>
+
+    <button 
+      onclick={() => diffStore.toggle()}
+      class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors" 
+      title="Schema & Data Diff Sync Tool (Cmd+Shift+D / Ctrl+Shift+D)"
+    >
+      <GitCompare size={15} />
     </button>
 
     <button 

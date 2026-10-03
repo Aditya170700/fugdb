@@ -223,4 +223,45 @@ export interface ServerHealthStats {
   summaryCounts: Record<string, number>;
 }
 
+// 5.2 Schema & Data Diff Sync Types
+export type DiffAction = 'create' | 'drop' | 'alter' | 'identical';
+
+export interface ColumnDiff {
+  name: string;
+  action: DiffAction;
+  sourceType?: string;
+  targetType?: string;
+  sourceNullable?: boolean;
+  targetNullable?: boolean;
+  sourcePk?: boolean;
+  targetPk?: boolean;
+  diffReason?: string;
+}
+
+export interface TableDiff {
+  tableName: string;
+  action: DiffAction;
+  sourceRowCount?: number;
+  targetRowCount?: number;
+  columns: ColumnDiff[];
+  syncSql: string;
+}
+
+export interface SchemaDiffResult {
+  sourceConnectionId: string;
+  targetConnectionId: string;
+  sourceDriver: string;
+  targetDriver: string;
+  totalSourceTables: number;
+  totalTargetTables: number;
+  tablesToCreate: number;
+  tablesToDrop: number;
+  tablesToAlter: number;
+  tablesIdentical: number;
+  tableDiffs: TableDiff[];
+  fullMigrationSql: string;
+  executionTimeMs: number;
+}
+
+
 
