@@ -25,7 +25,7 @@ export interface RedisConnectionState {
 export class RedisStore {
   states = $state<Record<string, RedisConnectionState>>({});
 
-  getState(connectionId: string): RedisConnectionState {
+  ensureState(connectionId: string): RedisConnectionState {
     if (!this.states[connectionId]) {
       this.states[connectionId] = {
         connectionId,
@@ -52,8 +52,35 @@ export class RedisStore {
     return this.states[connectionId];
   }
 
+  getState(connectionId: string): RedisConnectionState {
+    if (this.states[connectionId]) {
+      return this.states[connectionId];
+    }
+    return {
+      connectionId,
+      selectedDb: 0,
+      searchPattern: '*',
+      keys: [],
+      totalKeys: 0,
+      isLoadingKeys: false,
+      selectedKeyName: null,
+      selectedKeyDetail: null,
+      isLoadingDetail: false,
+      serverInfo: null,
+      cliLogs: [
+        {
+          command: 'INFO SERVER',
+          response: '# Server ready. Type redis commands below (e.g. GET key, KEYS *, INFO)',
+          responseType: 'status',
+          durationMs: 0
+        }
+      ],
+      activeSubView: 'browser'
+    };
+  }
+
   async loadKeys(connectionId: string, pattern?: string, dbIndex?: number) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     s.isLoadingKeys = true;
     if (dbIndex !== undefined) s.selectedDb = dbIndex;
     if (pattern !== undefined) s.searchPattern = pattern;
@@ -76,7 +103,7 @@ export class RedisStore {
   }
 
   async selectKey(connectionId: string, keyName: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     s.selectedKeyName = keyName;
     s.isLoadingDetail = true;
 
@@ -92,7 +119,7 @@ export class RedisStore {
   }
 
   async refreshSelectedKey(connectionId: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     if (!s.selectedKeyName) return;
     await this.selectKey(connectionId, s.selectedKeyName);
     // Also update the key item in the list if TTL/size changed
@@ -109,7 +136,7 @@ export class RedisStore {
   }
 
   async updateTtl(connectionId: string, key: string, ttl: number) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.setRedisKeyTtl(connectionId, key, ttl, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -120,7 +147,7 @@ export class RedisStore {
   }
 
   async updateStringValue(connectionId: string, key: string, value: string, ttl?: number) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.setRedisString(connectionId, key, value, ttl, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -131,7 +158,7 @@ export class RedisStore {
   }
 
   async setHashField(connectionId: string, key: string, field: string, value: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.setRedisHashField(connectionId, key, field, value, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -142,7 +169,7 @@ export class RedisStore {
   }
 
   async deleteHashField(connectionId: string, key: string, field: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.deleteRedisHashField(connectionId, key, field, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -153,7 +180,7 @@ export class RedisStore {
   }
 
   async pushListElement(connectionId: string, key: string, value: string, position: 'left' | 'right') {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.pushRedisListElement(connectionId, key, value, position, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -164,7 +191,7 @@ export class RedisStore {
   }
 
   async removeListElement(connectionId: string, key: string, value: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.removeRedisListElement(connectionId, key, value, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -175,7 +202,7 @@ export class RedisStore {
   }
 
   async addSetMember(connectionId: string, key: string, member: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.addRedisSetMember(connectionId, key, member, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -186,7 +213,7 @@ export class RedisStore {
   }
 
   async removeSetMember(connectionId: string, key: string, member: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.removeRedisSetMember(connectionId, key, member, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -197,7 +224,7 @@ export class RedisStore {
   }
 
   async addZSetMember(connectionId: string, key: string, member: string, score: number) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.addRedisZSetMember(connectionId, key, member, score, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -208,7 +235,7 @@ export class RedisStore {
   }
 
   async removeZSetMember(connectionId: string, key: string, member: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.removeRedisZSetMember(connectionId, key, member, s.selectedDb);
       await this.refreshSelectedKey(connectionId);
@@ -219,7 +246,7 @@ export class RedisStore {
   }
 
   async deleteKey(connectionId: string, key: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.deleteRedisKeys(connectionId, [key], s.selectedDb);
       if (s.selectedKeyName === key) {
@@ -234,7 +261,7 @@ export class RedisStore {
   }
 
   async renameKey(connectionId: string, oldKey: string, newKey: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.renameRedisKey(connectionId, oldKey, newKey, s.selectedDb);
       s.selectedKeyName = newKey;
@@ -257,7 +284,7 @@ export class RedisStore {
       score?: number;
     }
   ) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     const { key, keyType, value, ttl, field, score } = params;
 
     try {
@@ -286,7 +313,7 @@ export class RedisStore {
   }
 
   async executeCli(connectionId: string, commandLine: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     if (!commandLine.trim()) return;
 
     try {
@@ -307,7 +334,7 @@ export class RedisStore {
   }
 
   async loadServerInfo(connectionId: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       const info = await api.getRedisServerInfo(connectionId);
       s.serverInfo = info;
@@ -317,7 +344,7 @@ export class RedisStore {
   }
 
   async flushCurrentDb(connectionId: string) {
-    const s = this.getState(connectionId);
+    const s = this.ensureState(connectionId);
     try {
       await api.flushRedisDb(connectionId, s.selectedDb);
       s.selectedKeyName = null;

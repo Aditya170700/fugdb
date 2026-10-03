@@ -85,45 +85,45 @@
   }
 </script>
 
-<div class="h-full flex flex-col bg-zinc-950 text-zinc-100 select-none overflow-hidden">
+<div class="h-full flex flex-col bg-surface-950 dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 select-none overflow-hidden">
   <!-- Top Navigation Header -->
-  <div class="h-10 px-4 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between shrink-0">
+  <div class="h-10 px-4 bg-surface-900 dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
     <!-- Sub-view navigation tabs -->
-    <div class="flex items-center gap-1">
+    <div class="flex items-center gap-1.5">
       <button
         type="button"
         onclick={() => (redisState.activeSubView = 'browser')}
-        class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer {redisState.activeSubView === 'browser' ? 'bg-zinc-800 text-indigo-300 shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850'}"
+        class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer {redisState.activeSubView === 'browser' ? 'bg-indigo-50 dark:bg-zinc-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/40 shadow-xs' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-surface-800 dark:hover:bg-zinc-800/80 border border-transparent'}"
       >
-        <Database class="w-3.5 h-3.5 text-indigo-400" />
+        <Database class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
         <span>Key Browser</span>
       </button>
 
       <button
         type="button"
         onclick={() => (redisState.activeSubView = 'cli')}
-        class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer {redisState.activeSubView === 'cli' ? 'bg-zinc-800 text-emerald-300 shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850'}"
+        class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer {redisState.activeSubView === 'cli' ? 'bg-emerald-50 dark:bg-zinc-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/40 shadow-xs' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-surface-800 dark:hover:bg-zinc-800/80 border border-transparent'}"
       >
-        <Terminal class="w-3.5 h-3.5 text-emerald-400" />
+        <Terminal class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
         <span>CLI Console</span>
       </button>
 
       <button
         type="button"
         onclick={() => (redisState.activeSubView = 'info')}
-        class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-md font-medium transition-colors cursor-pointer {redisState.activeSubView === 'info' ? 'bg-zinc-800 text-cyan-300 shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850'}"
+        class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer {redisState.activeSubView === 'info' ? 'bg-sky-50 dark:bg-zinc-800 text-sky-700 dark:text-cyan-300 border border-sky-200 dark:border-cyan-500/40 shadow-xs' : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 hover:bg-surface-800 dark:hover:bg-zinc-800/80 border border-transparent'}"
       >
-        <Activity class="w-3.5 h-3.5 text-cyan-400" />
+        <Activity class="w-3.5 h-3.5 text-sky-600 dark:text-cyan-400" />
         <span>Server Telemetry</span>
       </button>
     </div>
 
     <!-- Connection Info Badge -->
     <div class="flex items-center gap-2 text-xs">
-      <span class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-400 font-mono text-[11px]">
+      <span class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-950 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 font-mono text-[11px] shadow-xs">
         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span>{connection?.name || 'Redis Node'}</span>
-        <span class="text-zinc-600">({connection?.host || '127.0.0.1'}:{connection?.port || 6379})</span>
+        <span class="font-semibold text-slate-800 dark:text-zinc-200">{connection?.name || 'Redis Node'}</span>
+        <span class="text-slate-400 dark:text-zinc-600">({connection?.host || '127.0.0.1'}:{connection?.port || 6379})</span>
       </span>
     </div>
   </div>
@@ -145,7 +145,7 @@
         type="button"
         aria-label="Resize key tree explorer"
         onmousedown={handleStartResize}
-        class="w-1 hover:w-1.5 hover:bg-indigo-500 bg-zinc-800/80 cursor-col-resize transition-all shrink-0 select-none p-0 border-0 {isResizing ? 'bg-indigo-500' : ''}"
+        class="w-[1px] hover:w-1.5 hover:bg-indigo-500 bg-slate-200 dark:bg-zinc-800 cursor-col-resize transition-all shrink-0 select-none p-0 border-0 {isResizing ? 'bg-indigo-500 w-1.5' : ''}"
       ></button>
 
       <!-- Right Pane: Key Detail View -->

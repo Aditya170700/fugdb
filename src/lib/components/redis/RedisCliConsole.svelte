@@ -79,25 +79,25 @@
   }
 </script>
 
-<div class="h-full flex flex-col bg-zinc-950 text-zinc-200 font-mono select-text">
+<div class="h-full flex flex-col bg-surface-950 dark:bg-zinc-950 text-slate-800 dark:text-zinc-200 font-mono select-text">
   <!-- CLI Header & Quick Actions -->
-  <div class="p-2.5 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between gap-3 shrink-0">
+  <div class="p-2.5 bg-surface-900 dark:bg-zinc-900/90 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-3 shrink-0">
     <div class="flex items-center gap-2">
-      <Terminal class="w-4 h-4 text-emerald-400" />
-      <span class="text-xs font-semibold text-zinc-200">Interactive Redis CLI Console</span>
-      <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+      <Terminal class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+      <span class="text-xs font-semibold text-slate-900 dark:text-zinc-200">Interactive Redis CLI Console</span>
+      <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
         DB {redisState.selectedDb}
       </span>
     </div>
 
     <!-- Quick Shortcuts Bar -->
     <div class="hidden lg:flex items-center gap-1.5 overflow-x-auto">
-      <span class="text-[10px] text-zinc-500 font-sans">Quick:</span>
+      <span class="text-[10px] text-slate-500 dark:text-zinc-500 font-sans">Quick:</span>
       {#each quickCommands as cmd}
         <button
           type="button"
           onclick={() => runQuickCommand(cmd)}
-          class="px-2 py-0.5 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded border border-zinc-700/60 transition-colors cursor-pointer"
+          class="px-2 py-0.5 text-[10px] bg-surface-800 hover:bg-surface-700 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded border border-slate-300 dark:border-zinc-700/60 transition-colors cursor-pointer"
         >
           {cmd}
         </button>
@@ -107,7 +107,7 @@
     <button
       type="button"
       onclick={clearLogs}
-      class="flex items-center gap-1 px-2 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors cursor-pointer"
+      class="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-surface-800 dark:hover:bg-zinc-800 rounded transition-colors cursor-pointer"
       title="Clear Console Output"
     >
       <Trash2 class="w-3 h-3" />
@@ -123,11 +123,11 @@
     {#each redisState.cliLogs as log, i (i)}
       <div class="space-y-1">
         <!-- Command Sent -->
-        <div class="flex items-center gap-2 text-zinc-400">
-          <span class="text-emerald-400 font-bold">127.0.0.1:6379[{redisState.selectedDb}]&gt;</span>
-          <span class="text-zinc-100 font-semibold">{log.command}</span>
+        <div class="flex items-center gap-2 text-slate-500 dark:text-zinc-400">
+          <span class="text-emerald-600 dark:text-emerald-400 font-bold">127.0.0.1:6379[{redisState.selectedDb}]&gt;</span>
+          <span class="text-slate-900 dark:text-zinc-100 font-semibold">{log.command}</span>
           {#if log.durationMs > 0}
-            <span class="text-[10px] text-zinc-600 ml-auto flex items-center gap-0.5">
+            <span class="text-[10px] text-slate-400 dark:text-zinc-600 ml-auto flex items-center gap-0.5">
               <Clock class="w-2.5 h-2.5" />
               {log.durationMs.toFixed(2)}ms
             </span>
@@ -135,7 +135,7 @@
         </div>
 
         <!-- Response Output -->
-        <div class="pl-4 border-l-2 {log.responseType === 'error' ? 'border-rose-500/60 text-rose-300 bg-rose-950/20' : 'border-zinc-800 text-zinc-300 bg-zinc-900/30'} p-2 rounded-r whitespace-pre-wrap font-mono">
+        <div class="pl-4 border-l-2 {log.responseType === 'error' ? 'border-rose-500 text-rose-800 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/20' : 'border-slate-300 dark:border-zinc-800 text-slate-800 dark:text-zinc-300 bg-surface-900/60 dark:bg-zinc-900/30'} p-2 rounded-r whitespace-pre-wrap font-mono">
           {log.response}
         </div>
       </div>
@@ -143,12 +143,12 @@
   </div>
 
   <!-- CLI Input Command Bar -->
-  <div class="p-2.5 bg-zinc-900/90 border-t border-zinc-800 shrink-0">
+  <div class="p-2.5 bg-surface-900 dark:bg-zinc-900/90 border-t border-slate-200 dark:border-zinc-800 shrink-0">
     <form
       onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}
-      class="flex items-center gap-2 bg-zinc-950 border border-zinc-700/80 rounded-lg px-3 py-1.5 focus-within:border-emerald-500 transition-colors shadow-inner"
+      class="flex items-center gap-2 bg-surface-950 dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700/80 rounded-lg px-3 py-1.5 focus-within:border-emerald-500 transition-colors shadow-inner"
     >
-      <span class="text-emerald-400 font-bold shrink-0 text-xs select-none">
+      <span class="text-emerald-600 dark:text-emerald-400 font-bold shrink-0 text-xs select-none">
         redis[{redisState.selectedDb}]&gt;
       </span>
       <input
@@ -156,7 +156,7 @@
         bind:value={inputCommand}
         onkeydown={handleKeyDown}
         placeholder="Type a Redis command (e.g. GET my_key, HGETALL user:101, INFO) - Up/Down for history"
-        class="w-full bg-transparent text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none font-mono"
+        class="w-full bg-transparent text-xs text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-600 focus:outline-none font-mono"
         disabled={isExecuting}
         autofocus
       />

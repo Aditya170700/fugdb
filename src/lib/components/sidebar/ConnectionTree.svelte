@@ -149,46 +149,53 @@
       </div>
     {:else if connectionStore.activeConnection?.driver === 'redis'}
       <div class="p-3 flex flex-col gap-3">
-        <div class="p-3 bg-red-950/20 border border-red-500/30 rounded-lg flex flex-col gap-2">
-          <div class="flex items-center gap-2">
-            <span class="text-base">🔴</span>
-            <div class="flex flex-col">
-              <span class="font-bold text-xs text-red-300">Redis In-Memory Node</span>
-              <span class="text-[10px] text-zinc-400 font-mono">{connectionStore.activeConnection.host || '127.0.0.1'}:{connectionStore.activeConnection.port || 6379}</span>
+        <!-- Redis In-Memory Node Info Card -->
+        <div class="p-3 bg-surface-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col gap-2 shadow-xs">
+          <div class="flex items-center gap-2.5">
+            <div class="p-1.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 shrink-0">
+              <Database class="w-4 h-4" />
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">Redis In-Memory Node</span>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{connectionStore.activeConnection.host || '127.0.0.1'}:{connectionStore.activeConnection.port || 6379}</span>
             </div>
           </div>
-          <p class="text-[11px] text-zinc-400">Manage keys, strings, hashes, sets, zsets, streams, and run CLI commands.</p>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">Manage key patterns, strings, hashes, sets, zsets, streams, and run CLI commands.</p>
         </div>
 
-        <div class="space-y-1.5">
+        <!-- Quick Action Buttons -->
+        <div class="space-y-2">
           <button
             type="button"
             onclick={() => tabsStore.openRedisTab(connectionStore.activeConnectionId)}
-            class="w-full flex items-center justify-between p-2 rounded-lg bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition-colors"
+            class="w-full flex items-center justify-between p-2.5 rounded-xl bg-surface-900 hover:bg-surface-800 border border-slate-200 hover:border-indigo-400/60 dark:border-slate-800 dark:hover:border-indigo-500/40 text-slate-800 dark:text-slate-100 text-xs font-semibold transition-all shadow-xs cursor-pointer group"
           >
             <div class="flex items-center gap-2">
-              <Key class="w-3.5 h-3.5 text-indigo-400" />
-              <span>Key-Value Explorer</span>
+              <div class="p-1 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                <Key class="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              </div>
+              <span class="text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">Key-Value Explorer</span>
             </div>
-            <span class="text-[10px] bg-indigo-500/20 px-1.5 py-0.2 rounded font-mono">Open Tab</span>
+            <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded font-mono border border-slate-200 dark:border-slate-700">Open Tab</span>
           </button>
 
           <button
             type="button"
             onclick={() => {
               tabsStore.openRedisTab(connectionStore.activeConnectionId);
-              // Set subview to cli
               import('../../state/redis.svelte').then(({ redisStore }) => {
-                redisStore.getState(connectionStore.activeConnectionId).activeSubView = 'cli';
+                redisStore.ensureState(connectionStore.activeConnectionId).activeSubView = 'cli';
               });
             }}
-            class="w-full flex items-center justify-between p-2 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 text-xs font-semibold transition-colors"
+            class="w-full flex items-center justify-between p-2.5 rounded-xl bg-surface-900 hover:bg-surface-800 border border-slate-200 hover:border-emerald-400/60 dark:border-slate-800 dark:hover:border-emerald-500/40 text-slate-800 dark:text-slate-100 text-xs font-semibold transition-all shadow-xs cursor-pointer group"
           >
             <div class="flex items-center gap-2">
-              <Terminal class="w-3.5 h-3.5 text-emerald-400" />
-              <span>Interactive CLI</span>
+              <div class="p-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <Terminal class="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              </div>
+              <span class="text-slate-700 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">Interactive CLI</span>
             </div>
-            <span class="text-[10px] bg-emerald-500/20 px-1.5 py-0.2 rounded font-mono">Terminal</span>
+            <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded font-mono border border-slate-200 dark:border-slate-700">Terminal</span>
           </button>
         </div>
       </div>
