@@ -16,7 +16,8 @@
     Type,
     Calendar,
     Check,
-    BookOpen
+    BookOpen,
+    Database
   } from 'lucide-svelte';
 
   let { 
@@ -46,6 +47,14 @@
       return Check;
     }
     return Type;
+  }
+
+  const currentDatabase = $derived(connectionStore.activeSchemaTree?.currentDatabase || connectionStore.activeConnection?.database || '');
+  const databases = $derived(connectionStore.activeSchemaTree?.databases || []);
+
+  function isSystemDb(name: string) {
+    const n = name.toLowerCase();
+    return ['master', 'model', 'msdb', 'tempdb', 'information_schema', 'performance_schema', 'sys'].includes(n);
   }
 
   onMount(() => {
@@ -79,6 +88,25 @@
         </button>
       </div>
     </div>
+
+    <!-- Database Switcher Dropdown (if multiple databases available on server) -->
+    {#if databases.length > 1}
+      <div class="flex items-center gap-1.5 px-2 py-1 bg-surface-900 border border-slate-200 dark:border-slate-700/80 rounded-md text-xs text-slate-800 dark:text-slate-100 shadow-xs">
+        <Database size={13} class="text-indigo-500 shrink-0" />
+        <select 
+          value={currentDatabase} 
+          onchange={(e) => connectionStore.switchDatabase(e.currentTarget.value)}
+          class="bg-transparent border-0 text-[11.5px] font-semibold text-slate-800 dark:text-slate-100 focus:outline-none w-full cursor-pointer truncate"
+          title="Switch active database on this server"
+        >
+          {#each databases as dbName}
+            <option value={dbName} class="bg-surface-900 text-slate-100">
+              {dbName} {isSystemDb(dbName) ? ' (System DB)' : ''}
+            </option>
+          {/each}
+        </select>
+      </div>
+    {/if}
 
     <!-- Quick Search Input -->
     <div class="relative">

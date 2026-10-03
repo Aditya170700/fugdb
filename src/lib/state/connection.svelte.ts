@@ -76,6 +76,14 @@ export class ConnectionStore {
     }
   }
 
+  async switchDatabase(databaseName: string) {
+    const config = this.connections.find(c => c.id === this.activeConnectionId);
+    if (!config || config.database === databaseName) return;
+
+    config.database = databaseName;
+    await this.loadSchema(this.activeConnectionId);
+  }
+
   async addConnection(config: ConnectionConfig) {
     // Avoid duplicate IDs
     const existingIdx = this.connections.findIndex(c => c.id === config.id);
