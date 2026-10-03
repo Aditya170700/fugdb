@@ -49,10 +49,18 @@
     if (disabled) return;
     if (!isOpen && containerRef) {
       if (direction === 'auto') {
-        const rect = containerRef.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        computedDirection = (spaceBelow < 220 && spaceAbove > spaceBelow) ? 'up' : 'down';
+        const triggerRect = containerRef.getBoundingClientRect();
+        const scrollParent = containerRef.closest('.overflow-y-auto') || containerRef.closest('[role="dialog"]');
+        let spaceBelow = window.innerHeight - triggerRect.bottom;
+        let spaceAbove = triggerRect.top;
+
+        if (scrollParent) {
+          const parentRect = scrollParent.getBoundingClientRect();
+          spaceBelow = parentRect.bottom - triggerRect.bottom;
+          spaceAbove = triggerRect.top - parentRect.top;
+        }
+
+        computedDirection = (spaceBelow < 200 && spaceAbove > spaceBelow) ? 'up' : 'down';
       } else {
         computedDirection = direction;
       }
