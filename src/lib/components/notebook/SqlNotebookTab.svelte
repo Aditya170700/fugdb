@@ -1,53 +1,63 @@
 <script lang="ts">
-  import { notebookStore } from '$lib/state/notebook.svelte';
-  import { connectionStore } from '$lib/state/connection.svelte';
-  import { tabsStore } from '$lib/state/tabs.svelte';
-  import CustomSelect from '$lib/components/ui/CustomSelect.svelte';
-  import MarkdownCell from './MarkdownCell.svelte';
-  import SqlCell from './SqlCell.svelte';
-  import { 
-    BookText, 
-    Play, 
-    Plus, 
-    FileCode2, 
-    FileText, 
-    Download, 
-    Upload, 
-    Share2, 
-    Globe, 
-    Database, 
-    Sparkles, 
-    Check, 
+  import { notebookStore } from "$lib/state/notebook.svelte";
+  import { connectionStore } from "$lib/state/connection.svelte";
+  import { tabsStore } from "$lib/state/tabs.svelte";
+  import CustomSelect from "$lib/components/ui/CustomSelect.svelte";
+  import MarkdownCell from "./MarkdownCell.svelte";
+  import SqlCell from "./SqlCell.svelte";
+  import {
+    BookText,
+    Play,
+    Plus,
+    FileCode2,
+    FileText,
+    Download,
+    Upload,
+    Share2,
+    Globe,
+    Database,
+    Sparkles,
+    Check,
     Edit2,
     ChevronDown,
     Save,
     Printer,
     FileSpreadsheet,
-    Layers
-  } from 'lucide-svelte';
+    Layers,
+  } from "lucide-svelte";
 
   let { tabId }: { tabId: string } = $props();
 
-  const currentTab = $derived(tabsStore.tabs.find(t => t.id === tabId));
+  const currentTab = $derived(tabsStore.tabs.find((t) => t.id === tabId));
   const connections = $derived(connectionStore.connections);
 
   // Directly derive persistent document from notebookStore keyed by tabId
   const doc = $derived(
-    notebookStore.getOrCreate(tabId, currentTab?.title, currentTab?.connectionId)
+    notebookStore.getOrCreate(
+      tabId,
+      currentTab?.title,
+      currentTab?.connectionId,
+    ),
   );
 
   const connectionOptions = $derived(
-    connections.map(c => ({
+    connections.map((c) => ({
       value: c.id,
       label: c.name,
       badge: c.driver.toUpperCase(),
-      badgeColor: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-mono text-[9.5px]',
-      dotColor: c.environment === 'production' ? 'bg-rose-500' : c.environment === 'staging' ? 'bg-amber-500' : 'bg-emerald-500'
-    }))
+      badgeColor:
+        "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-mono text-[9.5px]",
+      dotColor:
+        c.environment === "production"
+          ? "bg-rose-500"
+          : c.environment === "staging"
+            ? "bg-amber-500"
+            : "bg-emerald-500",
+    })),
   );
 
   let isEditingTitle = $state(false);
-  let titleInput = $state('');
+  let titleInput = $state("");
   let isExportDropdownOpen = $state(false);
   let isRunningAll = $state(false);
 
@@ -56,7 +66,7 @@
   }
 
   function startEditTitle() {
-    titleInput = doc?.title || 'Notebook';
+    titleInput = doc?.title || "Notebook";
     isEditingTitle = true;
   }
 
@@ -82,13 +92,13 @@
 
   function handleAddSql() {
     if (tabId) {
-      notebookStore.addCell(tabId, 'sql');
+      notebookStore.addCell(tabId, "sql");
     }
   }
 
   function handleAddMarkdown() {
     if (tabId) {
-      notebookStore.addCell(tabId, 'markdown');
+      notebookStore.addCell(tabId, "markdown");
     }
   }
 
@@ -119,7 +129,12 @@
       const newDoc = notebookStore.getNotebook(loadedDocId);
       if (newDoc) {
         // Copy into this tab's document
-        notebookStore.createNotebook(tabId, newDoc.title, newDoc.defaultConnectionId, newDoc);
+        notebookStore.createNotebook(
+          tabId,
+          newDoc.title,
+          newDoc.defaultConnectionId,
+          newDoc,
+        );
         if (currentTab) {
           currentTab.title = newDoc.title;
         }
@@ -128,14 +143,18 @@
   }
 </script>
 
-<div class="flex-1 flex flex-col h-full bg-slate-100/70 dark:bg-surface-950 overflow-hidden select-text">
-  
+<div
+  class="flex-1 flex flex-col h-full bg-slate-100/70 dark:bg-surface-950 overflow-hidden select-text"
+>
   <!-- Notebook Canvas Top Header Toolbar -->
-  <header class="px-5 py-2.5 bg-white dark:bg-surface-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-2xs z-20">
-    
+  <header
+    class="px-5 py-2.5 bg-white dark:bg-surface-900 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-2xs z-20"
+  >
     <!-- Left: Title & Tag -->
     <div class="flex items-center gap-3 min-w-0">
-      <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
+      <div
+        class="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0"
+      >
         <BookText size={18} />
       </div>
 
@@ -145,7 +164,10 @@
             type="text"
             bind:value={titleInput}
             onblur={saveTitle}
-            onkeydown={(e) => { if (e.key === 'Enter') saveTitle(); else if (e.key === 'Escape') isEditingTitle = false; }}
+            onkeydown={(e) => {
+              if (e.key === "Enter") saveTitle();
+              else if (e.key === "Escape") isEditingTitle = false;
+            }}
             class="px-2 py-0.5 text-sm font-bold bg-surface-950 border border-indigo-500 rounded text-slate-900 dark:text-slate-100 focus:outline-none"
             use:focusAction
           />
@@ -156,12 +178,14 @@
             class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1.5 transition-colors cursor-pointer text-left"
             title="Click to rename notebook"
           >
-            <span>{doc?.title || 'Interactive SQL Notebook'}</span>
+            <span>{doc?.title || "Interactive SQL Notebook"}</span>
             <Edit2 size={11} class="opacity-50" />
           </button>
         {/if}
 
-        <span class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 uppercase tracking-wider shrink-0">
+        <span
+          class="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 uppercase tracking-wider shrink-0"
+        >
           .fugpad
         </span>
       </div>
@@ -169,20 +193,22 @@
 
     <!-- Center: Custom Connection Picker -->
     <div class="flex items-center gap-2">
-      <span class="text-xs text-slate-500 font-medium hidden md:inline">Database:</span>
+      <span class="text-xs text-slate-500 font-medium hidden md:inline"
+        >Database:</span
+      >
       <div class="w-48 sm:w-56">
         <CustomSelect
           value={doc?.defaultConnectionId || connectionStore.activeConnectionId}
           options={connectionOptions}
           size="sm"
-          onchange={(newConnId) => notebookStore.setConnection(tabId, newConnId)}
+          onchange={(newConnId) =>
+            notebookStore.setConnection(tabId, newConnId)}
         />
       </div>
     </div>
 
     <!-- Right Actions: Run All, Add Cells, Export Dropdown -->
     <div class="flex items-center gap-2 shrink-0">
-      
       <!-- Run All Cells Button -->
       <button
         type="button"
@@ -191,8 +217,8 @@
         class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer"
         title="Execute all SQL cells sequentially (Cmd+Shift+Enter)"
       >
-        <Play size={12} class={isRunningAll ? 'animate-spin' : 'fill-white'} />
-        <span>{isRunningAll ? 'Running All...' : 'Run All'}</span>
+        <Play size={12} class={isRunningAll ? "animate-spin" : "fill-white"} />
+        <span>{isRunningAll ? "Running All..." : "Run All"}</span>
       </button>
 
       <div class="w-[1px] h-4 bg-slate-200 dark:bg-slate-800 mx-0.5"></div>
@@ -205,7 +231,7 @@
         title="Add new SQL query block"
       >
         <Plus size={13} class="text-indigo-500" />
-        <span>+ SQL</span>
+        <span>SQL</span>
       </button>
 
       <!-- + Markdown Cell -->
@@ -216,7 +242,7 @@
         title="Add new Markdown note block"
       >
         <Plus size={13} class="text-emerald-500" />
-        <span>+ Text</span>
+        <span>Text</span>
       </button>
 
       <!-- Open .fugpad File -->
@@ -233,7 +259,7 @@
       <div class="relative">
         <button
           type="button"
-          onclick={() => isExportDropdownOpen = !isExportDropdownOpen}
+          onclick={() => (isExportDropdownOpen = !isExportDropdownOpen)}
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-semibold transition-colors cursor-pointer"
         >
           <Download size={13} />
@@ -243,7 +269,7 @@
 
         {#if isExportDropdownOpen}
           <!-- Dropdown Menu -->
-          <div 
+          <div
             class="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100"
           >
             <button
@@ -254,7 +280,9 @@
               <Save size={14} class="text-indigo-500" />
               <div>
                 <div class="font-bold">Save as .fugpad</div>
-                <div class="text-[10.5px] text-slate-400">Native JSON format</div>
+                <div class="text-[10.5px] text-slate-400">
+                  Native JSON format
+                </div>
               </div>
             </button>
 
@@ -266,7 +294,9 @@
               <Globe size={14} class="text-emerald-500" />
               <div>
                 <div class="font-bold">Standalone HTML Report</div>
-                <div class="text-[10.5px] text-slate-400">Interactive charts & tables</div>
+                <div class="text-[10.5px] text-slate-400">
+                  Interactive charts & tables
+                </div>
               </div>
             </button>
 
@@ -278,7 +308,9 @@
               <FileText size={14} class="text-amber-500" />
               <div>
                 <div class="font-bold">Markdown (.md)</div>
-                <div class="text-[10.5px] text-slate-400">Wiki / Documentation</div>
+                <div class="text-[10.5px] text-slate-400">
+                  Wiki / Documentation
+                </div>
               </div>
             </button>
           </div>
@@ -290,22 +322,21 @@
   <!-- Main Scrollable Canvas Content (Full Width) -->
   <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
     <div class="w-full max-w-[1600px] mx-auto">
-      
       {#if doc && doc.cells.length > 0}
         <!-- List of Cells -->
         {#each doc.cells as cell, idx (cell.id)}
-          {#if cell.type === 'markdown'}
-            <MarkdownCell 
-              notebookId={doc.id} 
-              cell={cell as any} 
-              index={idx} 
-              totalCells={doc.cells.length} 
+          {#if cell.type === "markdown"}
+            <MarkdownCell
+              notebookId={doc.id}
+              cell={cell as any}
+              index={idx}
+              totalCells={doc.cells.length}
             />
           {:else}
-            <SqlCell 
-              notebookId={doc.id} 
-              cell={cell as any} 
-              index={idx} 
+            <SqlCell
+              notebookId={doc.id}
+              cell={cell as any}
+              index={idx}
               totalCells={doc.cells.length}
               defaultConnectionId={doc.defaultConnectionId}
             />
@@ -313,7 +344,9 @@
         {/each}
 
         <!-- Bottom Append Toolbar -->
-        <div class="mt-6 pt-4 border-t border-dashed border-slate-300 dark:border-slate-800 flex items-center justify-center gap-3">
+        <div
+          class="mt-6 pt-4 border-t border-dashed border-slate-300 dark:border-slate-800 flex items-center justify-center gap-3"
+        >
           <button
             type="button"
             onclick={handleAddSql}
@@ -332,14 +365,20 @@
             <span>Add Markdown Text Block</span>
           </button>
         </div>
-
       {:else}
         <!-- Empty State -->
-        <div class="p-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl my-8">
+        <div
+          class="p-12 text-center border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl my-8"
+        >
           <BookText size={48} class="text-slate-400 mx-auto mb-3 opacity-60" />
-          <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Empty Notebook</h3>
-          <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Add a SQL query cell or Markdown text cell to start analyzing and documenting your database.</p>
-          
+          <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">
+            Empty Notebook
+          </h3>
+          <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            Add a SQL query cell or Markdown text cell to start analyzing and
+            documenting your database.
+          </p>
+
           <div class="mt-5 flex items-center justify-center gap-3">
             <button
               type="button"
