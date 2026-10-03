@@ -356,7 +356,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-mono">
-                {#each processes as proc (proc.pid)}
+                {#each processes as proc, idx (proc.pid + '_' + idx)}
                   <tr 
                     onclick={() => monitorStore.selectedProcess = proc}
                     class="hover:bg-slate-100/80 dark:hover:bg-surface-900/80 transition-colors cursor-pointer {selectedProc?.pid === proc.pid ? 'bg-indigo-50/70 dark:bg-indigo-950/40 ring-1 ring-inset ring-indigo-500/50' : ''}"

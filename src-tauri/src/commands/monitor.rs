@@ -125,8 +125,17 @@ pub async fn get_server_processes(
                      ELSE '' END as blocked_by,
                 CONVERT(VARCHAR(19), coalesce(r.start_time, s.last_request_start_time), 120) as started_at
             FROM sys.dm_exec_sessions s
-            LEFT JOIN sys.dm_exec_connections c ON s.session_id = c.session_id
-            LEFT JOIN sys.dm_exec_requests r ON s.session_id = r.session_id
+            OUTER APPLY (
+                SELECT TOP 1 client_net_address 
+                FROM sys.dm_exec_connections 
+                WHERE session_id = s.session_id
+            ) c
+            OUTER APPLY (
+                SELECT TOP 1 database_id, status, sql_handle, total_elapsed_time, wait_type, blocking_session_id, start_time
+                FROM sys.dm_exec_requests 
+                WHERE session_id = s.session_id
+                ORDER BY total_elapsed_time DESC
+            ) r
             OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) t
             WHERE s.session_id <> @@SPID AND s.is_user_process = 1
             ORDER BY duration_seconds DESC;
