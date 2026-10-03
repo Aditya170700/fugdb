@@ -159,29 +159,41 @@ pub fn generate_html_dictionary(tree: &SchemaTree, conn_name: &str, driver: &str
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --card-border: #334155;
+      --bg: #0b0f17;
+      --card-bg: #131b2e;
+      --card-border: #1e293b;
+      --stat-bg: rgba(99, 102, 241, 0.06);
+      --stat-border: rgba(99, 102, 241, 0.15);
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --primary: #6366f1;
       --primary-light: #818cf8;
-      --badge-pk: #fef08a;
-      --badge-pk-text: #854d0e;
-      --badge-fk: #e0e7ff;
-      --badge-fk-text: #3730a3;
-      --badge-null: #dcfce7;
-      --badge-null-text: #166534;
-      --badge-notnull: #fee2e2;
-      --badge-notnull-text: #991b1b;
+      --badge-pk: rgba(254, 240, 138, 0.15);
+      --badge-pk-text: #fde047;
+      --badge-fk: rgba(224, 231, 255, 0.12);
+      --badge-fk-text: #c7d2fe;
+      --badge-null: rgba(220, 252, 231, 0.12);
+      --badge-null-text: #86efac;
+      --badge-notnull: rgba(254, 226, 226, 0.12);
+      --badge-notnull-text: #fca5a5;
     }
     @media (prefers-color-scheme: light) {
       :root {
         --bg: #f8fafc;
         --card-bg: #ffffff;
         --card-border: #e2e8f0;
+        --stat-bg: #f8fafc;
+        --stat-border: #e2e8f0;
         --text: #0f172a;
         --text-muted: #64748b;
+        --badge-pk: #fef9c3;
+        --badge-pk-text: #854d0e;
+        --badge-fk: #e0e7ff;
+        --badge-fk-text: #3730a3;
+        --badge-null: #dcfce7;
+        --badge-null-text: #166534;
+        --badge-notnull: #fee2e2;
+        --badge-notnull-text: #991b1b;
       }
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -189,66 +201,66 @@ pub fn generate_html_dictionary(tree: &SchemaTree, conn_name: &str, driver: &str
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--bg);
       color: var(--text);
-      line-height: 1.6;
-      padding: 2rem 1rem;
+      line-height: 1.5;
+      padding: 1.25rem 1rem;
     }
-    .container { max-width: 1100px; margin: 0 auto; }
+    .container { max-width: 1000px; margin: 0 auto; }
     .header {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 1rem;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 4px 20px -2px rgba(0,0,0,0.1);
+      border-radius: 0.625rem;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 2px 0 rgba(0,0,0,0.03);
     }
-    .header h1 { font-size: 1.75rem; font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem; }
-    .header p { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem; }
+    .header h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.5rem; }
+    .header p { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.875rem; }
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.625rem;
+      margin-top: 0.75rem;
     }
     .stat-card {
-      background: rgba(99, 102, 241, 0.08);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      border-radius: 0.75rem;
-      padding: 1rem;
+      background: var(--stat-bg);
+      border: 1px solid var(--stat-border);
+      border-radius: 0.5rem;
+      padding: 0.625rem 0.75rem;
       text-align: center;
     }
-    .stat-val { font-size: 1.5rem; font-weight: 800; color: var(--primary-light); }
-    .stat-lbl { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+    .stat-val { font-size: 1.15rem; font-weight: 700; color: var(--primary-light); text-transform: uppercase; }
+    .stat-lbl { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.125rem; }
     .search-box {
-      margin: 1.5rem 0;
+      margin: 1rem 0;
       position: sticky;
-      top: 1rem;
+      top: 0.75rem;
       z-index: 30;
     }
     .search-input {
       width: 100%;
-      padding: 0.875rem 1.25rem;
+      padding: 0.5rem 0.875rem;
       background: var(--card-bg);
-      border: 2px solid var(--card-border);
-      border-radius: 0.75rem;
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
       color: var(--text);
-      font-size: 0.95rem;
+      font-size: 0.825rem;
       font-family: inherit;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15);
+      box-shadow: 0 1px 3px 0 rgba(0,0,0,0.04);
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    .search-input:focus { border-color: var(--primary); }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15); }
     .table-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 1rem;
-      margin-bottom: 2rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
       overflow: hidden;
-      box-shadow: 0 4px 15px -2px rgba(0,0,0,0.05);
+      box-shadow: 0 1px 2px 0 rgba(0,0,0,0.02);
     }
     .table-header {
-      padding: 1.25rem 1.5rem;
-      background: rgba(99, 102, 241, 0.04);
+      padding: 0.625rem 1rem;
+      background: rgba(99, 102, 241, 0.03);
       border-bottom: 1px solid var(--card-border);
       display: flex;
       justify-content: space-between;
@@ -256,49 +268,49 @@ pub fn generate_html_dictionary(tree: &SchemaTree, conn_name: &str, driver: &str
       flex-wrap: wrap;
       gap: 0.5rem;
     }
-    .table-title { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; }
+    .table-title { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700; }
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 0.25rem 0.6rem;
-      border-radius: 0.375rem;
-      font-size: 0.75rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 0.25rem;
+      font-size: 0.7rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.025em;
     }
-    .badge-pk { background: var(--badge-pk); color: var(--badge-pk-text); }
-    .badge-fk { background: var(--badge-fk); color: var(--badge-fk-text); }
+    .badge-pk { background: var(--badge-pk); color: var(--badge-pk-text); border: 1px solid rgba(234, 179, 8, 0.2); }
+    .badge-fk { background: var(--badge-fk); color: var(--badge-fk-text); border: 1px solid rgba(99, 102, 241, 0.2); }
     .badge-null { background: var(--badge-null); color: var(--badge-null-text); }
     .badge-notnull { background: var(--badge-notnull); color: var(--badge-notnull-text); }
     .data-table {
       width: 100%;
       border-collapse: collapse;
       text-align: left;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
     }
     .data-table th {
-      background: rgba(0,0,0,0.04);
-      padding: 0.75rem 1.25rem;
+      background: rgba(0,0,0,0.02);
+      padding: 0.5rem 0.875rem;
       font-weight: 600;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--text-muted);
       border-bottom: 1px solid var(--card-border);
     }
     .data-table td {
-      padding: 0.875rem 1.25rem;
+      padding: 0.5rem 0.875rem;
       border-bottom: 1px solid var(--card-border);
     }
     .data-table tr:last-child td { border-bottom: none; }
     .col-name { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
     .col-type { font-family: 'JetBrains Mono', monospace; color: var(--primary-light); }
-    .footer { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 3rem; }
+    .footer { text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 2rem; }
     @media print {
       body { background: white; color: black; padding: 0; }
       .search-box { display: none; }
-      .table-card { break-inside: avoid; border: 1px solid #ccc; box-shadow: none; margin-bottom: 1.5rem; }
+      .table-card { break-inside: avoid; border: 1px solid #e2e8f0; box-shadow: none; margin-bottom: 1rem; }
     }
   </style>
 </head>
@@ -332,7 +344,7 @@ pub fn generate_html_dictionary(tree: &SchemaTree, conn_name: &str, driver: &str
         </div>
         <div class="stat-card">
           <div class="stat-val">"#);
-    html.push_str(driver);
+    html.push_str(&driver.to_uppercase());
     html.push_str(r#"</div>
           <div class="stat-lbl">Engine Driver</div>
         </div>
