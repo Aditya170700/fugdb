@@ -10,7 +10,7 @@ use crate::drivers::DatabaseAdapter;
 use crate::error::AppError;
 use crate::models::{
     connection::ConnectionConfig,
-    query::{ColumnMetadata, QueryResult},
+    query::{ColumnMetadata, QueryResult, ExplainResult},
     schema::{RelationEdge, SchemaTree, TableItem},
     transfer::ConflictStrategy,
 };
@@ -120,6 +120,31 @@ impl DatabaseAdapter for SqliteAdapter {
             affected_rows: affected,
             execution_time_ms: duration,
             total_rows: Some(affected),
+        })
+    }
+
+    async fn explain_query(&self, sql: &str, analyze: bool) -> Result<ExplainResult, AppError> {
+        let clean_sql = sql.trim().trim_end_matches(';');
+        let explain_sql = format!("EXPLAIN QUERY PLAN {}", clean_sql);
+
+        let result = self.execute_query(&explain_sql, None, None).await?;
+
+        let raw_plan = result.rows.iter().map(|r| {
+            r.iter().map(|v| match v {
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Null => "".to_string(),
+                _ => v.to_string(),
+            }).collect::<Vec<_>>().join(" | ")
+        }).collect::<Vec<_>>().join("\n");
+
+        Ok(ExplainResult {
+            raw_plan,
+            json_plan: None,
+            query_result: result,
+            execution_time_ms: Some(0.0),
+            planning_time_ms: None,
+            dialect: "SQLite".to_string(),
+            has_analyze: analyze,
         })
     }
 

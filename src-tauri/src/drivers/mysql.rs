@@ -10,7 +10,7 @@ use crate::drivers::DatabaseAdapter;
 use crate::error::AppError;
 use crate::models::{
     connection::ConnectionConfig,
-    query::{ColumnMetadata, QueryResult},
+    query::{ColumnMetadata, QueryResult, ExplainResult},
     schema::{RelationEdge, SchemaTree, TableItem},
     transfer::ConflictStrategy,
 };
@@ -155,6 +155,63 @@ impl DatabaseAdapter for MySqlAdapter {
             affected_rows: affected,
             execution_time_ms: duration,
             total_rows: Some(affected),
+        })
+    }
+
+    async fn explain_query(&self, sql: &str, analyze: bool) -> Result<ExplainResult, AppError> {
+        let clean_sql = sql.trim().trim_end_matches(';');
+        let explain_sql = if analyze {
+            format!("EXPLAIN ANALYZE {}", clean_sql)
+        } else {
+            format!("EXPLAIN FORMAT=JSON {}", clean_sql)
+        };
+
+        let result = match self.execute_query(&explain_sql, None, None).await {
+            Ok(res) => res,
+            Err(err) => {
+                let fallback_sql = format!("EXPLAIN {}", clean_sql);
+                self.execute_query(&fallback_sql, None, None).await
+                    .map_err(|_| err)?
+            }
+        };
+
+        let mut raw_plan = String::new();
+        let mut json_plan: Option<serde_json::Value> = None;
+
+        if let Some(first_row) = result.rows.first() {
+            if let Some(first_cell) = first_row.first() {
+                if let Some(json_str) = first_cell.as_str() {
+                    raw_plan = json_str.to_string();
+                    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(json_str) {
+                        json_plan = Some(parsed);
+                    }
+                } else if first_cell.is_object() || first_cell.is_array() {
+                    json_plan = Some(first_cell.clone());
+                    raw_plan = serde_json::to_string_pretty(first_cell).unwrap_or_default();
+                }
+            }
+        }
+
+        if raw_plan.is_empty() {
+            raw_plan = result.rows.iter().map(|r| {
+                r.iter().map(|v| match v {
+                    serde_json::Value::String(s) => s.clone(),
+                    serde_json::Value::Null => "".to_string(),
+                    _ => v.to_string(),
+                }).collect::<Vec<_>>().join(" | ")
+            }).collect::<Vec<_>>().join("\n");
+        }
+
+        let query_duration = result.execution_time_ms;
+
+        Ok(ExplainResult {
+            raw_plan,
+            json_plan,
+            query_result: result,
+            execution_time_ms: Some(query_duration),
+            planning_time_ms: None,
+            dialect: "MySQL".to_string(),
+            has_analyze: analyze,
         })
     }
 

@@ -6,7 +6,7 @@ pub mod mssql;
 use async_trait::async_trait;
 use crate::error::AppError;
 use crate::models::{
-    query::QueryResult,
+    query::{QueryResult, ExplainResult},
     schema::{RelationEdge, SchemaTree},
     transfer::ConflictStrategy,
 };
@@ -16,6 +16,7 @@ use tokio::sync::mpsc;
 pub trait DatabaseAdapter: Send + Sync {
     async fn ping(&self) -> Result<(), AppError>;
     async fn execute_query(&self, sql: &str, page_size: Option<u64>, offset: Option<u64>) -> Result<QueryResult, AppError>;
+    async fn explain_query(&self, sql: &str, analyze: bool) -> Result<ExplainResult, AppError>;
     async fn fetch_schema_tree(&self) -> Result<SchemaTree, AppError>;
     async fn generate_erd_metadata(&self) -> Result<Vec<RelationEdge>, AppError>;
     async fn insert_mock_batch(&self, table: &str, count: u64) -> Result<u64, AppError>;

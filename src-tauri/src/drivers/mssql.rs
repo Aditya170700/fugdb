@@ -9,7 +9,7 @@ use crate::drivers::DatabaseAdapter;
 use crate::error::AppError;
 use crate::models::{
     connection::ConnectionConfig,
-    query::{ColumnMetadata, QueryResult},
+    query::{ColumnMetadata, QueryResult, ExplainResult},
     schema::{RelationEdge, SchemaTree, TableItem},
     transfer::ConflictStrategy,
 };
@@ -138,6 +138,81 @@ impl DatabaseAdapter for MssqlAdapter {
             affected_rows: affected,
             execution_time_ms: duration,
             total_rows: Some(affected),
+        })
+    }
+
+    async fn explain_query(&self, sql: &str, analyze: bool) -> Result<ExplainResult, AppError> {
+        let start = Instant::now();
+        let mut conn = self.pool.get().await
+            .map_err(|e| AppError::ConnectionError(e.to_string()))?;
+
+        let clean_sql = sql.trim().trim_end_matches(';');
+
+        // In SQL Server, SET SHOWPLAN_ALL must be the only statement in the batch.
+        // 1. First batch: Turn ON showplan on this dedicated connection
+        conn.simple_query("SET SHOWPLAN_ALL ON").await
+            .map_err(|e| AppError::QueryError(format!("Failed to enable MSSQL SHOWPLAN: {}", e)))?;
+
+        // 2. Second batch: Execute the target SQL query to retrieve estimated execution plan
+        let rows_result = {
+            match conn.simple_query(clean_sql).await {
+                Ok(stream) => stream.into_first_result().await.map_err(|e| e.to_string()),
+                Err(e) => Err(e.to_string()),
+            }
+        };
+
+        // 3. Third batch: Always turn OFF showplan so connection is returned clean to the pool
+        let _ = conn.simple_query("SET SHOWPLAN_ALL OFF").await;
+
+        let rows = rows_result.map_err(AppError::QueryError)?;
+
+        let duration = start.elapsed().as_secs_f64() * 1000.0;
+
+        let mut columns = Vec::new();
+        if let Some(first_row) = rows.first() {
+            for col in first_row.columns() {
+                columns.push(ColumnMetadata {
+                    name: col.name().to_string(),
+                    data_type: format!("{:?}", col.column_type()),
+                    is_primary_key: false,
+                    is_foreign_key: false,
+                    nullable: true,
+                });
+            }
+        }
+
+        let mut result_rows = Vec::new();
+        for row in rows {
+            let row_vals: Vec<serde_json::Value> = row.into_iter().map(|d| column_data_to_json(&d)).collect();
+            result_rows.push(row_vals);
+        }
+
+        let raw_plan = result_rows.iter().map(|r| {
+            r.iter().map(|v| match v {
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Null => "".to_string(),
+                _ => v.to_string(),
+            }).collect::<Vec<_>>().join(" | ")
+        }).collect::<Vec<_>>().join("\n");
+
+        let affected = result_rows.len() as u64;
+
+        let query_result = QueryResult {
+            columns,
+            rows: result_rows,
+            affected_rows: affected,
+            execution_time_ms: duration,
+            total_rows: Some(affected),
+        };
+
+        Ok(ExplainResult {
+            raw_plan,
+            json_plan: None,
+            query_result,
+            execution_time_ms: Some(duration),
+            planning_time_ms: None,
+            dialect: "Microsoft SQL Server".to_string(),
+            has_analyze: analyze,
         })
     }
 

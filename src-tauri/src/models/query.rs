@@ -28,3 +28,16 @@ pub struct QueryResult {
     pub execution_time_ms: f64,
     pub total_rows: Option<u64>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplainResult {
+    pub raw_plan: String,
+    pub json_plan: Option<serde_json::Value>,
+    pub query_result: QueryResult,
+    pub execution_time_ms: Option<f64>,
+    pub planning_time_ms: Option<f64>,
+    pub dialect: String,
+    pub has_analyze: bool,
+}
+

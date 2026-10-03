@@ -267,7 +267,12 @@ class ExplainStore {
         return this.parseSqlitePlan(result.queryResult.rows);
       }
 
-      // 3. Fallback: Parse indented text lines
+      // 3. MSSQL SHOWPLAN_ALL
+      if (result.queryResult?.rows && (result.dialect.toLowerCase().includes('mssql') || result.dialect.toLowerCase().includes('sql server') || result.queryResult.columns.some(c => c.name.toLowerCase() === 'stmttext'))) {
+        return this.parseMssqlShowplan(result.queryResult.columns, result.queryResult.rows);
+      }
+
+      // 4. Fallback: Parse indented text lines
       return this.parseIndentedTextPlan(result.rawPlan, result.dialect);
     } catch (e) {
       console.error('Failed to parse explain tree:', e);
@@ -433,6 +438,108 @@ class ExplainStore {
     };
   }
 
+  private parseMssqlShowplan(columns: any[], rows: any[][]): ParsedPlanTree {
+    const colNames = columns.map(c => (c.name || '').toLowerCase());
+    const stmtTextIdx = colNames.indexOf('stmttext');
+    const nodeIdIdx = colNames.indexOf('nodeid');
+    const parentIdx = colNames.indexOf('parent');
+    const physicalOpIdx = colNames.indexOf('physicalop');
+    const logicalOpIdx = colNames.indexOf('logicalop');
+    const estimateRowsIdx = colNames.indexOf('estimaterows');
+    const totalCostIdx = colNames.indexOf('totalsubtreecost');
+    const argumentIdx = colNames.indexOf('argument');
+    const warningsIdx = colNames.indexOf('warnings');
+
+    const nodeMap = new Map<number, PlanNode>();
+    let maxCost = 1.0;
+    let bottlenecksCount = 0;
+    let seqScansCount = 0;
+    let indexScansCount = 0;
+
+    for (const r of rows) {
+      if (totalCostIdx >= 0 && r[totalCostIdx] != null) {
+        const c = parseFloat(String(r[totalCostIdx]));
+        if (!isNaN(c) && c > maxCost) maxCost = c;
+      }
+    }
+
+    const root: PlanNode = {
+      id: 'mssql-root',
+      nodeType: 'MSSQL Execution Plan',
+      totalCost: maxCost,
+      costPercent: 100,
+      children: [],
+    };
+    nodeMap.set(0, root);
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const nodeId = nodeIdIdx >= 0 ? Number(r[nodeIdIdx]) : i + 1;
+      const parentId = parentIdx >= 0 ? Number(r[parentIdx]) : 0;
+      const stmtText = stmtTextIdx >= 0 ? String(r[stmtTextIdx] || '') : '';
+      const physicalOp = physicalOpIdx >= 0 ? String(r[physicalOpIdx] || '') : '';
+      const logicalOp = logicalOpIdx >= 0 ? String(r[logicalOpIdx] || '') : '';
+      const totalCost = totalCostIdx >= 0 && r[totalCostIdx] != null ? parseFloat(String(r[totalCostIdx])) : undefined;
+      const planRows = estimateRowsIdx >= 0 && r[estimateRowsIdx] != null ? parseFloat(String(r[estimateRowsIdx])) : undefined;
+      const argument = argumentIdx >= 0 ? String(r[argumentIdx] || '') : '';
+      const warnings = warningsIdx >= 0 ? String(r[warningsIdx] || '') : '';
+
+      const nodeType = physicalOp || logicalOp || (stmtText.replace(/^[|\-\s]+/, '') || `Step ${nodeId}`);
+      const t = nodeType.toLowerCase();
+      const isTableScan = t.includes('table scan');
+      const isIndex = t.includes('index') || t.includes('clustered index');
+
+      if (isTableScan) {
+        seqScansCount++;
+        bottlenecksCount++;
+      } else if (isIndex) {
+        indexScansCount++;
+      }
+
+      let relationName: string | undefined;
+      let indexName: string | undefined;
+
+      const objMatch = (argument || stmtText).match(/OBJECT:\(\[?([^\]]+)\]?\.\[?([^\]]+)\]?(?:\.\[?([^\]]+)\]?)?\)/i);
+      if (objMatch) {
+        if (objMatch[3]) {
+          relationName = `${objMatch[1]}.${objMatch[2]}`;
+          indexName = objMatch[3];
+        } else {
+          relationName = objMatch[2] ? `${objMatch[1]}.${objMatch[2]}` : objMatch[1];
+        }
+      }
+
+      const costPercent = totalCost && maxCost ? Math.min(100, Math.round((totalCost / maxCost) * 100)) : 0;
+
+      const node: PlanNode = {
+        id: `mssql-${nodeId}`,
+        nodeType,
+        relationName,
+        indexName,
+        totalCost,
+        planRows,
+        costPercent,
+        filter: argument || stmtText.trim(),
+        isBottleneck: isTableScan || !!warnings,
+        warningMessage: warnings || (isTableScan ? `Full table scan on ${relationName || 'table'}. Consider creating an index.` : undefined),
+        children: [],
+      };
+
+      nodeMap.set(nodeId, node);
+      const parent = nodeMap.get(parentId) || root;
+      parent.children.push(node);
+    }
+
+    return {
+      root,
+      maxCost,
+      nodeCount: rows.length + 1,
+      bottlenecksCount,
+      seqScansCount,
+      indexScansCount,
+    };
+  }
+
   private parseIndentedTextPlan(rawText: string, dialect: string): ParsedPlanTree {
     const lines = rawText.split('\n').filter(l => l.trim().length > 0);
     let bottlenecksCount = 0;
@@ -491,3 +598,4 @@ class ExplainStore {
 }
 
 export const explainStore = new ExplainStore();
+
