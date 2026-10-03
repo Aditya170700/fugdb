@@ -73,6 +73,29 @@ pub async fn export_data_dictionary_file(
 }
 
 #[tauri::command]
+pub async fn save_image_file(
+    target_path: String,
+    base64_data: String,
+) -> Result<String, AppError> {
+    let clean_base64 = if let Some(idx) = base64_data.find(',') {
+        &base64_data[idx + 1..]
+    } else {
+        &base64_data
+    };
+
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(clean_base64.trim())
+        .map_err(|e| AppError::Internal(format!("Base64 decode error: {}", e)))?;
+
+    fs::write(&target_path, &bytes)
+        .await
+        .map_err(AppError::IoError)?;
+
+    Ok(target_path)
+}
+
+#[tauri::command]
 pub async fn print_data_dictionary(
     connection_id: String,
     state: State<'_, AppState>,

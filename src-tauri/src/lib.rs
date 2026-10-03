@@ -15,7 +15,7 @@ use commands::{
         inspect_table_mock_config, preview_mock_rows,
     },
     query::execute_query,
-    schema::{export_data_dictionary_file, fetch_schema_tree, generate_data_dictionary, generate_erd_metadata, print_data_dictionary},
+    schema::{export_data_dictionary_file, fetch_schema_tree, generate_data_dictionary, generate_erd_metadata, print_data_dictionary, save_image_file},
     transfer::{cancel_transfer_job, inspect_file, start_db_to_db_job, start_export_job, start_import_job},
     ai::{generate_sql_from_prompt, test_ai_connection, list_ollama_models, fix_sql_error},
 };
@@ -36,6 +36,7 @@ pub fn run() {
             generate_data_dictionary,
             export_data_dictionary_file,
             print_data_dictionary,
+            save_image_file,
             inspect_table_mock_config,
             preview_mock_rows,
             generate_mock_sql_script,

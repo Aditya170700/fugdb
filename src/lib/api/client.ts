@@ -304,6 +304,13 @@ export const api = {
     return `/Users/fugdb/downloads/${defaultName || 'export_data.csv'}`;
   },
 
+  async saveImageFile(targetPath: string, base64Data: string): Promise<string> {
+    if (isTauri) {
+      return await invoke('save_image_file', { targetPath, base64Data });
+    }
+    return targetPath;
+  },
+
   // AI Copilot & NL-to-SQL API
   async testAiConnection(config: AiProviderConfig): Promise<string> {
     if (isTauri) {

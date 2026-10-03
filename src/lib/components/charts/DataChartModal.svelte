@@ -19,10 +19,12 @@
     Table,
     Sparkles,
     Hash,
-    Sigma
+    Sigma,
+    RefreshCw
   } from 'lucide-svelte';
   import type { QueryResult } from '$lib/api/types';
   import { themeStore } from '$lib/state/theme.svelte';
+  import { api } from '$lib/api/client';
   import {
     Chart,
     BarController,
@@ -85,6 +87,8 @@
   let isFullscreen = $state(false);
   let isCopying = $state(false);
   let copySuccess = $state(false);
+  let isExporting = $state(false);
+  let exportSuccess = $state(false);
 
   let canvasRef: HTMLCanvasElement | null = $state(null);
   let chartInstance: Chart | null = null;
@@ -402,27 +406,41 @@
   }
 
   // Export Chart as PNG Image
-  function downloadPng() {
+  async function downloadPng() {
     if (!canvasRef) return;
-    const isDark = themeStore.resolvedTheme === 'dark';
-    
-    // Create high-res offscreen canvas with background
-    const offscreen = document.createElement('canvas');
-    offscreen.width = canvasRef.width;
-    offscreen.height = canvasRef.height;
-    const ctx = offscreen.getContext('2d');
-    if (!ctx) return;
+    isExporting = true;
+    try {
+      const isDark = themeStore.resolvedTheme === 'dark';
+      
+      // Create high-res offscreen canvas with background
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvasRef.width;
+      offscreen.height = canvasRef.height;
+      const ctx = offscreen.getContext('2d');
+      if (!ctx) return;
 
-    // Background color
-    ctx.fillStyle = isDark ? '#020617' : '#ffffff';
-    ctx.fillRect(0, 0, offscreen.width, offscreen.height);
-    ctx.drawImage(canvasRef, 0, 0);
+      // Background color
+      ctx.fillStyle = isDark ? '#020617' : '#ffffff';
+      ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+      ctx.drawImage(canvasRef, 0, 0);
 
-    const dataUrl = offscreen.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_chart.png`;
-    a.click();
+      const dataUrl = offscreen.toDataURL('image/png');
+      const defaultFileName = `${title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_chart.png`;
+
+      const targetPath = await api.pickSaveFile(defaultFileName, [
+        { name: 'PNG Image (*.png)', extensions: ['png'] }
+      ]);
+
+      if (targetPath) {
+        await api.saveImageFile(targetPath, dataUrl);
+        exportSuccess = true;
+        setTimeout(() => { exportSuccess = false; }, 2500);
+      }
+    } catch (e) {
+      console.error('Failed to export chart PNG:', e);
+    } finally {
+      isExporting = false;
+    }
   }
 
   // Copy Chart Image to Clipboard
@@ -528,11 +546,20 @@
           <button
             type="button"
             onclick={downloadPng}
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
+            disabled={isExporting}
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:opacity-50"
             title="Export chart as PNG image file"
           >
-            <Download size={13} />
-            <span>Export PNG</span>
+            {#if isExporting}
+              <RefreshCw size={13} class="animate-spin" />
+              <span>Exporting...</span>
+            {:else if exportSuccess}
+              <Check size={13} class="text-white" />
+              <span>Exported!</span>
+            {:else}
+              <Download size={13} />
+              <span>Export PNG</span>
+            {/if}
           </button>
 
           <div class="h-4 w-px bg-slate-200 dark:border-slate-800 mx-1"></div>
