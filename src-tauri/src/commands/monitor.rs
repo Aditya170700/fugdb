@@ -113,8 +113,8 @@ pub async fn get_server_processes(
             SELECT 
                 CAST(s.session_id AS VARCHAR(20)) as pid,
                 coalesce(s.login_name, '') as [user],
-                coalesce(DB_NAME(r.database_id), '') as [database],
-                coalesce(s.client_net_address, 'local') as client_addr,
+                coalesce(DB_NAME(r.database_id), DB_NAME(s.database_id), '') as [database],
+                coalesce(c.client_net_address, s.host_name, 'local') as client_addr,
                 coalesce(s.program_name, '') as application_name,
                 coalesce(r.status, s.status) as [state],
                 coalesce(t.text, '') as query,
@@ -123,8 +123,9 @@ pub async fn get_server_processes(
                 CASE WHEN r.blocking_session_id IS NOT NULL AND r.blocking_session_id > 0 
                      THEN CAST(r.blocking_session_id AS VARCHAR(20)) 
                      ELSE '' END as blocked_by,
-                CONVERT(VARCHAR(19), r.start_time, 120) as started_at
+                CONVERT(VARCHAR(19), coalesce(r.start_time, s.last_request_start_time), 120) as started_at
             FROM sys.dm_exec_sessions s
+            LEFT JOIN sys.dm_exec_connections c ON s.session_id = c.session_id
             LEFT JOIN sys.dm_exec_requests r ON s.session_id = r.session_id
             OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) t
             WHERE s.session_id <> @@SPID AND s.is_user_process = 1
