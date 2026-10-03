@@ -4,37 +4,83 @@ import { connectionStore } from '$lib/state/connection.svelte';
 
 const STORAGE_KEY = 'fugdb_ai_config_v2';
 
-function createAiStore() {
-  let isDrawerOpen = $state<boolean>(false);
-  let isSettingsOpen = $state<boolean>(false);
-
-  // Configuration - Isolated per provider so keys and models don't mix
-  let provider = $state<AiProvider>('ollama');
-  let providerApiKeys = $state<Record<string, string>>({
+function loadInitialConfig() {
+  const defaultApiKeys: Record<string, string> = {
     ollama: '',
     openai: '',
     gemini: '',
     deepseek: '',
     anthropic: '',
     custom: '',
-  });
-  let providerModels = $state<Record<string, string>>({
+  };
+  const defaultModels: Record<string, string> = {
     ollama: 'qwen2.5-coder:latest',
     openai: 'gpt-4o-mini',
     gemini: 'gemini-1.5-flash',
     deepseek: 'deepseek-coder',
     anthropic: 'claude-3-5-sonnet-20241022',
     custom: 'custom-model',
-  });
-  let providerEndpoints = $state<Record<string, string>>({
+  };
+  const defaultEndpoints: Record<string, string> = {
     ollama: 'http://localhost:11434',
     openai: 'https://api.openai.com/v1',
     gemini: 'https://generativelanguage.googleapis.com/v1beta',
     deepseek: 'https://api.deepseek.com/v1',
     anthropic: 'https://api.anthropic.com/v1',
     custom: 'http://localhost:8000/v1',
-  });
-  let temperature = $state<number>(0.2);
+  };
+
+  let provider: AiProvider = 'ollama';
+  let apiKeys = { ...defaultApiKeys };
+  let models = { ...defaultModels };
+  let endpoints = { ...defaultEndpoints };
+  let temperature = 0.2;
+  let promptHistory: Array<{ prompt: string; sql: string; timestamp: number }> = [];
+
+  if (typeof window !== 'undefined') {
+    try {
+      const savedV2 = localStorage.getItem(STORAGE_KEY);
+      if (savedV2) {
+        const parsed = JSON.parse(savedV2);
+        if (parsed.provider) provider = parsed.provider;
+        if (parsed.providerApiKeys) apiKeys = { ...defaultApiKeys, ...parsed.providerApiKeys };
+        if (parsed.providerModels) models = { ...defaultModels, ...parsed.providerModels };
+        if (parsed.providerEndpoints) endpoints = { ...defaultEndpoints, ...parsed.providerEndpoints };
+        if (parsed.temperature !== undefined) temperature = parsed.temperature;
+        if (parsed.promptHistory) promptHistory = parsed.promptHistory;
+      } else {
+        // Fallback migration from legacy storage
+        const legacy = localStorage.getItem('fugdb_ai_config');
+        if (legacy) {
+          const parsed = JSON.parse(legacy);
+          if (parsed.provider) provider = parsed.provider;
+          if (parsed.apiKey) apiKeys[provider] = parsed.apiKey;
+          if (parsed.model) models[provider] = parsed.model;
+          if (parsed.endpoint) endpoints[provider] = parsed.endpoint;
+          if (parsed.temperature !== undefined) temperature = parsed.temperature;
+          if (parsed.promptHistory) promptHistory = parsed.promptHistory;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load AI settings from localStorage:', e);
+    }
+  }
+
+  return { provider, apiKeys, models, endpoints, temperature, promptHistory };
+}
+
+function createAiStore() {
+  const initial = loadInitialConfig();
+
+  let isDrawerOpen = $state<boolean>(false);
+  let isSettingsOpen = $state<boolean>(false);
+
+  // Configuration - Isolated per provider so keys and models don't mix
+  let provider = $state<AiProvider>(initial.provider);
+  let providerApiKeys = $state<Record<string, string>>(initial.apiKeys);
+  let providerModels = $state<Record<string, string>>(initial.models);
+  let providerEndpoints = $state<Record<string, string>>(initial.endpoints);
+  let temperature = $state<number>(initial.temperature);
 
   // Status & Runtime
   let isGenerating = $state<boolean>(false);
@@ -46,37 +92,7 @@ function createAiStore() {
   let errorMessage = $state<string | null>(null);
 
   // History
-  let promptHistory = $state<Array<{ prompt: string; sql: string; timestamp: number }>>([]);
-
-  // Load from localStorage on initialization
-  if (typeof window !== 'undefined') {
-    try {
-      const savedV2 = localStorage.getItem(STORAGE_KEY);
-      if (savedV2) {
-        const parsed = JSON.parse(savedV2);
-        if (parsed.provider) provider = parsed.provider;
-        if (parsed.providerApiKeys) providerApiKeys = { ...providerApiKeys, ...parsed.providerApiKeys };
-        if (parsed.providerModels) providerModels = { ...providerModels, ...parsed.providerModels };
-        if (parsed.providerEndpoints) providerEndpoints = { ...providerEndpoints, ...parsed.providerEndpoints };
-        if (parsed.temperature !== undefined) temperature = parsed.temperature;
-        if (parsed.promptHistory) promptHistory = parsed.promptHistory;
-      } else {
-        // Fallback migration from legacy storage
-        const legacy = localStorage.getItem('fugdb_ai_config');
-        if (legacy) {
-          const parsed = JSON.parse(legacy);
-          if (parsed.provider) provider = parsed.provider;
-          if (parsed.apiKey) providerApiKeys[provider] = parsed.apiKey;
-          if (parsed.model) providerModels[provider] = parsed.model;
-          if (parsed.endpoint) providerEndpoints[provider] = parsed.endpoint;
-          if (parsed.temperature !== undefined) temperature = parsed.temperature;
-          if (parsed.promptHistory) promptHistory = parsed.promptHistory;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load AI settings from localStorage:', e);
-    }
-  }
+  let promptHistory = $state<Array<{ prompt: string; sql: string; timestamp: number }>>(initial.promptHistory);
 
   function saveConfig() {
     if (typeof window === 'undefined') return;

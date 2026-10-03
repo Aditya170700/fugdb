@@ -274,65 +274,101 @@ impl AiClient {
                     return Err(AppError::Internal("Gemini API Key is required".into()));
                 }
 
-                let base_model = config.model.trim_start_matches("models/");
-                let candidate_urls = [
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", base_model, api_key),
-                    format!("https://generativelanguage.googleapis.com/v1/models/{}:generateContent?key={}", base_model, api_key),
-                    format!("https://generativelanguage.googleapis.com/v1beta/models/{}-latest:generateContent?key={}", base_model, api_key),
-                ];
+                let clean_model = config.model.trim_start_matches("models/");
 
-                let body = json!({
-                    "contents": [{
-                        "parts": [{ "text": format!("{}\n\n{}", system_prompt, user_prompt) }]
-                    }],
-                    "generationConfig": {
-                        "temperature": config.temperature.unwrap_or(0.2)
-                    }
+                // 1. Try Google Gemini's official OpenAI-compatible endpoint
+                let openai_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+                let openai_body = json!({
+                    "model": clean_model,
+                    "messages": [
+                        { "role": "system", "content": system_prompt },
+                        { "role": "user", "content": user_prompt }
+                    ],
+                    "temperature": config.temperature.unwrap_or(0.2)
                 });
 
-                let mut last_err = String::new();
-                let mut chosen_res_json: Option<Value> = None;
+                let mut result_text: Option<String> = None;
 
-                for url in &candidate_urls {
-                    let resp = client.post(url)
-                        .json(&body)
-                        .send()
-                        .await
-                        .map_err(|e| AppError::Internal(format!("Gemini request error: {}", e)))?;
-
+                if let Ok(resp) = client.post(openai_url)
+                    .header("Authorization", format!("Bearer {}", api_key))
+                    .json(&openai_body)
+                    .send()
+                    .await
+                {
                     if resp.status().is_success() {
-                        let res_json: Value = resp.json().await
-                            .map_err(|e| AppError::Internal(format!("Failed to parse Gemini response: {}", e)))?;
-                        chosen_res_json = Some(res_json);
-                        break;
-                    } else {
-                        let status = resp.status();
-                        let err_msg = resp.text().await.unwrap_or_default();
-                        last_err = format_api_error("Gemini", status, &err_msg);
-                        if status == reqwest::StatusCode::NOT_FOUND {
-                            continue;
-                        } else {
-                            return Err(AppError::Internal(last_err));
+                        if let Ok(res_json) = resp.json::<Value>().await {
+                            if let Some(content) = res_json.get("choices")
+                                .and_then(|c| c.as_array())
+                                .and_then(|a| a.first())
+                                .and_then(|f| f.get("message"))
+                                .and_then(|m| m.get("content"))
+                                .and_then(|s| s.as_str())
+                            {
+                                if !content.trim().is_empty() {
+                                    result_text = Some(content.to_string());
+                                }
+                            }
                         }
                     }
                 }
 
-                let res_json = match chosen_res_json {
-                    Some(j) => j,
-                    None => return Err(AppError::Internal(if !last_err.is_empty() { last_err } else { "Gemini model not found".into() })),
-                };
+                if let Some(text) = result_text {
+                    text
+                } else {
+                    // 2. Fallback to native generateContent endpoint
+                    let candidate_urls = [
+                        format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", clean_model, api_key),
+                        format!("https://generativelanguage.googleapis.com/v1/models/{}:generateContent?key={}", clean_model, api_key),
+                    ];
 
-                res_json.get("candidates")
-                    .and_then(|c| c.as_array())
-                    .and_then(|a| a.first())
-                    .and_then(|f| f.get("content"))
-                    .and_then(|c| c.get("parts"))
-                    .and_then(|p| p.as_array())
-                    .and_then(|pa| pa.first())
-                    .and_then(|t| t.get("text"))
-                    .and_then(|s| s.as_str())
-                    .unwrap_or_default()
-                    .to_string()
+                    let body = json!({
+                        "contents": [{
+                            "parts": [{ "text": format!("{}\n\n{}", system_prompt, user_prompt) }]
+                        }],
+                        "generationConfig": {
+                            "temperature": config.temperature.unwrap_or(0.2)
+                        }
+                    });
+
+                    let mut last_err = String::new();
+                    let mut chosen_res_json: Option<Value> = None;
+
+                    for url in &candidate_urls {
+                        let resp = client.post(url)
+                            .json(&body)
+                            .send()
+                            .await
+                            .map_err(|e| AppError::Internal(format!("Gemini request error: {}", e)))?;
+
+                        if resp.status().is_success() {
+                            let res_json: Value = resp.json().await
+                                .map_err(|e| AppError::Internal(format!("Failed to parse Gemini response: {}", e)))?;
+                            chosen_res_json = Some(res_json);
+                            break;
+                        } else {
+                            let status = resp.status();
+                            let err_msg = resp.text().await.unwrap_or_default();
+                            last_err = format_api_error("Gemini", status, &err_msg);
+                        }
+                    }
+
+                    let res_json = match chosen_res_json {
+                        Some(j) => j,
+                        None => return Err(AppError::Internal(if !last_err.is_empty() { last_err } else { "Gemini query generation failed".into() })),
+                    };
+
+                    res_json.get("candidates")
+                        .and_then(|c| c.as_array())
+                        .and_then(|a| a.first())
+                        .and_then(|f| f.get("content"))
+                        .and_then(|c| c.get("parts"))
+                        .and_then(|p| p.as_array())
+                        .and_then(|pa| pa.first())
+                        .and_then(|t| t.get("text"))
+                        .and_then(|s| s.as_str())
+                        .unwrap_or_default()
+                        .to_string()
+                }
             }
             "anthropic" => {
                 let api_key = config.api_key.as_deref().unwrap_or_default();
