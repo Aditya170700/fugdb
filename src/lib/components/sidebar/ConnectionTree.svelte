@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
+  import CustomSelect from '$lib/components/ui/CustomSelect.svelte';
   import { 
     Table, 
     Search, 
@@ -52,6 +53,16 @@
   const currentDatabase = $derived(connectionStore.activeSchemaTree?.currentDatabase || connectionStore.activeConnection?.database || '');
   const databases = $derived(connectionStore.activeSchemaTree?.databases || []);
 
+  const databaseOptions = $derived(
+    databases.map(dbName => ({
+      value: dbName,
+      label: dbName,
+      badge: isSystemDb(dbName) ? 'System' : undefined,
+      badgeColor: isSystemDb(dbName) ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30' : undefined,
+      dotColor: isSystemDb(dbName) ? 'bg-amber-500' : 'bg-indigo-500'
+    }))
+  );
+
   function isSystemDb(name: string) {
     const n = name.toLowerCase();
     return ['master', 'model', 'msdb', 'tempdb', 'information_schema', 'performance_schema', 'sys'].includes(n);
@@ -89,22 +100,16 @@
       </div>
     </div>
 
-    <!-- Database Switcher Dropdown (if multiple databases available on server) -->
+    <!-- Database Switcher Dropdown (CustomSelect Component) -->
     {#if databases.length > 1}
-      <div class="flex items-center gap-1.5 px-2 py-1 bg-surface-900 border border-slate-200 dark:border-slate-700/80 rounded-md text-xs text-slate-800 dark:text-slate-100 shadow-xs">
-        <Database size={13} class="text-indigo-500 shrink-0" />
-        <select 
-          value={currentDatabase} 
-          onchange={(e) => connectionStore.switchDatabase(e.currentTarget.value)}
-          class="bg-transparent border-0 text-[11.5px] font-semibold text-slate-800 dark:text-slate-100 focus:outline-none w-full cursor-pointer truncate"
-          title="Switch active database on this server"
-        >
-          {#each databases as dbName}
-            <option value={dbName} class="bg-surface-900 text-slate-100">
-              {dbName} {isSystemDb(dbName) ? ' (System DB)' : ''}
-            </option>
-          {/each}
-        </select>
+      <div class="w-full">
+        <CustomSelect
+          size="sm"
+          value={currentDatabase}
+          options={databaseOptions}
+          onchange={(newDb) => connectionStore.switchDatabase(newDb)}
+          placeholder="Select Database..."
+        />
       </div>
     {/if}
 
