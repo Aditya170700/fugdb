@@ -8,14 +8,15 @@
 
 | Kategori Fitur | Status | Progress | Keterangan & Catatan |
 | :--- | :---: | :---: | :--- |
-| **A. Connection & Safety** | 🟡 Sebagian | ~60% | PG, MySQL, SQLite, MSSQL ✅. Production Guard ⏳, SSH Tunnel ⏳, Keyring ⏳ |
-| **B. High-Performance SQL Editor** | 🟡 Sebagian | ~50% | CodeMirror 6 ✅, Shortcuts (`Cmd+Enter`) ✅. Autocomplete ⏳, History/Favorites ⏳, Visual EXPLAIN ⏳ |
-| **C. In-Cell Grid & Staged Mutations** | 🟢 Selesai | ~85% | Virtual Grid 100k rows @ 60FPS ✅, Staged Mutation Buffer & Diff Drawer ✅. Cell Inspectors ⏳, Quick Filter ⏳ |
-| **D. Multi-Source ETL & Data Transfer** | 🟡 Sebagian | ~35% | UI Wizard Modal ✅. Tokio Streaming Pipeline (CSV, JSON, Excel, DB-to-DB) ⏳ |
-| **E. Schema Explorer & ERD** | 🟡 Sebagian | ~55% | Schema Tree Navigator ✅, SvelteFlow ERD Component ✅. Live FK Extractor ⏳, Data Dictionary ⏳ |
-| **F. QA & Mock Data Engine** | 🟡 Sebagian | ~45% | Mock Data Modal UI ✅, `fake-rs` backend scaffold ✅. Smart Semantics & FK integrity ⏳, Data Diff ⏳ |
-| **G. "Vibe Coding" & AI Integration** | ⚪ Backlog | 0% | Zero-Data-Leak NL-to-SQL Drawer ⏳, Auto-Fix Error with AI ⏳, Ollama / Cloud API ⏳ |
-| **H. Data Visualization & Mini-BI** | ⚪ Backlog | 0% | 1-Click Chart Generator (Bar/Line/Pie) ⏳, SQL Scratchpad Notebooks ⏳ |
+| **A. Connection & Safety** | 🟢 Selesai | 100% | PG, MySQL, SQLite, MSSQL ✅, Production Guard ✅, SSH Tunnel ✅, OS Keyring ✅, Tx Control ✅ |
+| **B. High-Performance SQL Editor** | 🟢 Selesai | 100% | CodeMirror 6 ✅, Autocomplete ✅, History/Favorites ✅, Visual EXPLAIN ✅, Shortcuts ✅ |
+| **C. In-Cell Grid & Staged Mutations** | 🟢 Selesai | 100% | Virtual Grid 100k @ 60FPS ✅, Staged Diff Drawer ✅, Rich Cell Inspectors ✅, Quick Filter & Sort ✅ |
+| **D. Multi-Source ETL & Data Transfer** | 🟢 Selesai | 100% | Tokio Streaming Pipeline (CSV, JSON, Excel, SQL Dump) ✅, DB-to-DB Direct Transfer ✅ |
+| **E. Schema Explorer & ERD** | 🟢 Selesai | 100% | Schema Tree ✅, Live FK ERD Visualizer (@xyflow/svelte) ✅, 1-Click Data Dictionary ✅ |
+| **F. QA & Mock Data Engine** | 🟢 Selesai | 100% | Smart Semantic Column Inference ✅, FK Relational Validation ✅, Chunked Batch Inserts ✅ |
+| **G. "Vibe Coding" & AI Integration** | 🟢 Selesai | 100% | Privacy-First NL-to-SQL (Ollama + Cloud) ✅, 1-Click Fix with AI ✅, AI EXPLAIN Optimizer ✅ |
+| **H. Data Visualization & Mini-BI** | 🟢 Selesai | 100% | 1-Click Instant Data Charting (Bar/Line/Pie/Scatter) ✅ |
+| **I. Next-Level Server Intelligence** | ⚪ Baru (Phase 5) | 0% | Live Process Monitor ⏳, Schema Diff ⏳, SQL Notebooks ⏳, Redis ⏳, Automation ⏳ |
 
 ---
 
@@ -190,8 +191,47 @@
 
 ---
 
+### 🚀 Phase 5: Next-Level Server Intelligence & Powerhouse Features
+
+- [ ] **5.1 Live Server Health & Active Process Monitor**
+  - [ ] Pemantauan real-time proses & koneksi aktif (`pg_stat_activity` di Postgres, `SHOW FULL PROCESSLIST` di MySQL, `sys.dm_exec_requests` di MSSQL, lock state di SQLite).
+  - [ ] Deteksi durasi query runtime, resource CPU/memory, locking dependencies (**`🔒 Blocked by PID`**), serta status koneksi (`active`, `idle in transaction`, `waiting`).
+  - [ ] Tombol aksi 1-klik **`⚡ Kill Process / Terminate Backend`** untuk query hanging/blocking dengan konfirmasi safety.
+  - [ ] Auto-refresh polling (interval 2s, 5s, atau manual) dan instant filtering (query > 3s, active only, by user/database).
+  - *Files Terkait*: `src-tauri/src/commands/monitor.rs`, `src/lib/components/monitor/ServerMonitorModal.svelte`, `src/lib/state/monitor.svelte.ts`, `src/lib/api/client.ts`
+
+- [ ] **5.2 Schema & Data Diff Sync Tool (Database Comparison)**
+  - [ ] Komparasi struktur skema antar 2 database (Source vs Target: Dev vs Staging vs Prod).
+  - [ ] Visual side-by-side diff: tabel baru/hilang, tipe kolom berbeda, missing indexes, dan mismatch foreign keys.
+  - [ ] Generator otomatis script migrasi DDL sinkronisasi (`ALTER TABLE ...`, `CREATE INDEX ...`, `DROP COLUMN ...`).
+  - [ ] Opsi Data Diff (pengecekan selisih baris data via hash/checksum comparison).
+  - *Files Terkait*: `src-tauri/src/schema/diff.rs`, `src/lib/components/diff/SchemaDiffModal.svelte`, `src/lib/api/client.ts`
+
+- [ ] **5.3 Interactive SQL Scratchpad Notebooks (`.fugpad`)**
+  - [ ] Tab editor canvas bergaya notebook interaktif yang menggabungkan Markdown text blocks, SQL query blocks, dan visualisasi Chart.js interaktif dalam satu file.
+  - [ ] Eksekusi independen per blok query (**Run Cell: `Shift+Enter`**) dengan hasil data grid interaktif tersimpan di state.
+  - [ ] Ekspor notebook ke standalone HTML report interaktif atau file dokumen `.fugpad` JSON format.
+  - *Files Terkait*: `src/lib/components/notebook/SqlNotebookTab.svelte`, `src/lib/state/notebook.svelte.ts`, `src/lib/components/layout/Navbar.svelte`
+
+- [ ] **5.4 Redis & Key-Value Polyglot Inspector**
+  - [ ] Driver koneksi native Redis / KeyDB via `redis-rs`.
+  - [ ] Key tree pattern explorer (`user:*`, `session:*`, `cache:*` dengan namespace grouping).
+  - [ ] Editor interaktif untuk semua tipe data Redis: String, Hash, List, Set, ZSet, dan Stream lengkap dengan TTL inspector & TTL editor.
+  - [ ] Live Redis CLI console & Pub/Sub message stream monitor.
+  - *Files Terkait*: `src-tauri/src/drivers/redis.rs`, `src/lib/components/redis/RedisKeyViewer.svelte`, `src/lib/components/connection/ConnectionModal.svelte`
+
+- [ ] **5.5 Scheduled Query Automations & Local Backups**
+  - [ ] Local background scheduler (Cron pattern / Timer) untuk eksekusi query berkala di background.
+  - [ ] Export otomatis hasil query ke direktori lokal (CSV, JSON, Excel) dengan format penamaan berbasis timestamp.
+  - [ ] Automated lightweight database backup runner (SQL dump schedule harian/mingguan).
+  - *Files Terkait*: `src-tauri/src/scheduler/`, `src/lib/components/scheduler/SchedulerModal.svelte`, `src/lib/api/client.ts`
+
+---
+
 ## 🎯 Prioritas Pengerjaan Rekomendasi
 
-1. **Sprint 1 (Immediate)**: `1.1 Autocomplete Skema` ➔ `1.2 Production Safety Guard` ➔ `1.4 Rich Cell Inspectors (JSON/Date)`.
-2. **Sprint 2 (Architecture)**: `2.1 Live ERD Visualizer` ➔ `2.2 Streaming Import/Export (CSV/JSON/Excel)` ➔ `2.5 Smart Mock Data`.
-3. **Sprint 3 (Vibe & AI)**: `3.1 NL-to-SQL Copilot (Ollama/Cloud)` ➔ `3.2 Fix with AI` ➔ `3.3 1-Click Charting`.
+1. **Sprint 1 (Immediate - Selesai ✅)**: `1.1 Autocomplete Skema` ➔ `1.2 Production Safety Guard` ➔ `1.4 Rich Cell Inspectors (JSON/Date)`.
+2. **Sprint 2 (Architecture - Selesai ✅)**: `2.1 Live ERD Visualizer` ➔ `2.2 Streaming Import/Export` ➔ `2.5 Smart Mock Data`.
+3. **Sprint 3 (Vibe & AI - Selesai ✅)**: `3.1 NL-to-SQL Copilot` ➔ `3.2 Fix with AI` ➔ `3.3 1-Click Charting` ➔ `3.4 Visual EXPLAIN Plan`.
+4. **Sprint 4 (Security & Hardening - Selesai ✅)**: `4.1 OS Keyring` ➔ `4.2 SSH Bastion Tunneling` ➔ `4.3 Transaction Control`.
+5. **Sprint 5 (Powerhouse & Server Ops - Next Up 🚀)**: `5.1 Live Server Health & Process Monitor` ➔ `5.2 Schema Diff & Sync` ➔ `5.3 SQL Notebooks` ➔ `5.4 Redis Inspector` ➔ `5.5 Scheduled Automations`.
