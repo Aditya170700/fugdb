@@ -11,8 +11,7 @@ export class NotebookStore {
     return this.docs[id];
   }
 
-  createDefaultTemplate(title?: string, connId?: string): FugpadDocument {
-    const id = `pad-${Date.now()}`;
+  createDefaultTemplate(id: string, title?: string, connId?: string): FugpadDocument {
     const defaultConn = connId || connectionStore.activeConnectionId || '';
     const conn = connectionStore.connections.find(c => c.id === defaultConn);
     const isMssql = conn?.driver === 'mssql';
@@ -48,7 +47,7 @@ ORDER BY avg_revenue DESC;`;
         {
           id: `cell-md-1`,
           type: 'markdown',
-          content: `# 📊 Analytics & KPI Executive Summary\n\nWelcome to your **Interactive SQL Notebook** (` + '`.fugpad`' + `)! Use this scratchpad to query live data, document findings with markdown, and visualize metric charts side-by-side.\n\n### ⚡ Quick Tips:\n- **Shift+Enter**: Execute active SQL cell\n- **Double Click** markdown to edit raw text\n- Switch outputs between **Grid 📋**, **Chart 📈**, and **JSON 🔣**\n- Export to self-contained **HTML Reports** or **.fugpad** documents for team sharing.`
+          content: `# 📊 Analytics & KPI Executive Summary\n\nWelcome to your **Interactive SQL Notebook** (\`.fugpad\`)! Use this scratchpad to query live data, document findings with markdown, and visualize metric charts side-by-side.\n\n### ⚡ Quick Tips:\n- **Shift+Enter**: Execute active SQL cell\n- **Double Click** markdown to edit raw text\n- Switch outputs between **Grid 📋**, **Chart 📈**, and **JSON 🔣**\n- Export to self-contained **HTML Reports** or **.fugpad** documents for team sharing.`
         },
         {
           id: `cell-sql-1`,
@@ -81,10 +80,18 @@ ORDER BY avg_revenue DESC;`;
     return template;
   }
 
-  createNotebook(title?: string, connectionId?: string, customDoc?: FugpadDocument): string {
-    const doc = customDoc || this.createDefaultTemplate(title, connectionId);
-    this.docs[doc.id] = doc;
-    return doc.id;
+  createNotebook(id: string, title?: string, connectionId?: string, customDoc?: FugpadDocument): string {
+    const doc = customDoc || this.createDefaultTemplate(id, title, connectionId);
+    doc.id = id;
+    this.docs[id] = doc;
+    return id;
+  }
+
+  getOrCreate(id: string, title?: string, connectionId?: string): FugpadDocument {
+    if (!this.docs[id]) {
+      this.createNotebook(id, title, connectionId);
+    }
+    return this.docs[id];
   }
 
   updateTitle(notebookId: string, title: string) {

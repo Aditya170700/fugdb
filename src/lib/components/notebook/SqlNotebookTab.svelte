@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { notebookStore } from '$lib/state/notebook.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
+  import CustomSelect from '$lib/components/ui/CustomSelect.svelte';
   import MarkdownCell from './MarkdownCell.svelte';
   import SqlCell from './SqlCell.svelte';
   import { 
@@ -31,24 +31,19 @@
   const currentTab = $derived(tabsStore.tabs.find(t => t.id === tabId));
   const connections = $derived(connectionStore.connections);
 
-  // Initialize or get document
-  let docId = $state<string>('');
-  
-  onMount(() => {
-    if (!docId) {
-      // Check if doc exists for this tab or create new
-      const existingDoc = notebookStore.getNotebook(tabId);
-      if (existingDoc) {
-        docId = tabId;
-      } else {
-        docId = notebookStore.createNotebook(currentTab?.title, currentTab?.connectionId);
-      }
-    }
-  });
+  // Directly derive persistent document from notebookStore keyed by tabId
+  const doc = $derived(
+    notebookStore.getOrCreate(tabId, currentTab?.title, currentTab?.connectionId)
+  );
 
-  const doc = $derived(docId ? notebookStore.getNotebook(docId) : undefined);
-  const activeConn = $derived(
-    connections.find(c => c.id === (doc?.defaultConnectionId || connectionStore.activeConnectionId))
+  const connectionOptions = $derived(
+    connections.map(c => ({
+      value: c.id,
+      label: c.name,
+      badge: c.driver.toUpperCase(),
+      badgeColor: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-mono text-[9.5px]',
+      dotColor: c.environment === 'production' ? 'bg-rose-500' : c.environment === 'staging' ? 'bg-amber-500' : 'bg-emerald-500'
+    }))
   );
 
   let isEditingTitle = $state(false);
@@ -66,8 +61,8 @@
   }
 
   function saveTitle() {
-    if (docId && titleInput.trim()) {
-      notebookStore.updateTitle(docId, titleInput.trim());
+    if (tabId && titleInput.trim()) {
+      notebookStore.updateTitle(tabId, titleInput.trim());
       if (currentTab) {
         currentTab.title = titleInput.trim();
       }
@@ -76,55 +71,58 @@
   }
 
   async function handleRunAll() {
-    if (!docId) return;
+    if (!tabId) return;
     isRunningAll = true;
     try {
-      await notebookStore.runAllCells(docId);
+      await notebookStore.runAllCells(tabId);
     } finally {
       isRunningAll = false;
     }
   }
 
   function handleAddSql() {
-    if (docId) {
-      notebookStore.addCell(docId, 'sql');
+    if (tabId) {
+      notebookStore.addCell(tabId, 'sql');
     }
   }
 
   function handleAddMarkdown() {
-    if (docId) {
-      notebookStore.addCell(docId, 'markdown');
+    if (tabId) {
+      notebookStore.addCell(tabId, 'markdown');
     }
   }
 
   async function handleSaveFugpad() {
-    if (docId) {
+    if (tabId) {
       isExportDropdownOpen = false;
-      await notebookStore.saveAsFugpadFile(docId);
+      await notebookStore.saveAsFugpadFile(tabId);
     }
   }
 
   async function handleExportHtml() {
-    if (docId) {
+    if (tabId) {
       isExportDropdownOpen = false;
-      await notebookStore.exportHtmlReport(docId);
+      await notebookStore.exportHtmlReport(tabId);
     }
   }
 
   async function handleExportMarkdown() {
-    if (docId) {
+    if (tabId) {
       isExportDropdownOpen = false;
-      await notebookStore.exportMarkdownReport(docId);
+      await notebookStore.exportMarkdownReport(tabId);
     }
   }
 
   async function handleOpenFile() {
     const loadedDocId = await notebookStore.openFugpadFile();
     if (loadedDocId) {
-      docId = loadedDocId;
       const newDoc = notebookStore.getNotebook(loadedDocId);
-      if (newDoc && currentTab) {
-        currentTab.title = newDoc.title;
+      if (newDoc) {
+        // Copy into this tab's document
+        notebookStore.createNotebook(tabId, newDoc.title, newDoc.defaultConnectionId, newDoc);
+        if (currentTab) {
+          currentTab.title = newDoc.title;
+        }
       }
     }
   }
@@ -169,20 +167,17 @@
       </div>
     </div>
 
-    <!-- Center: Connection Picker -->
+    <!-- Center: Custom Connection Picker -->
     <div class="flex items-center gap-2">
       <span class="text-xs text-slate-500 font-medium hidden md:inline">Database:</span>
-      <select
-        value={doc?.defaultConnectionId || connectionStore.activeConnectionId}
-        onchange={(e) => {
-          if (docId) notebookStore.setConnection(docId, (e.target as HTMLSelectElement).value);
-        }}
-        class="px-2.5 py-1 text-xs font-semibold bg-surface-950 border border-slate-300 dark:border-slate-800 rounded-lg text-slate-800 dark:text-slate-200 cursor-pointer max-w-[200px] truncate"
-      >
-        {#each connections as conn (conn.id)}
-          <option value={conn.id}>{conn.name} ({conn.driver})</option>
-        {/each}
-      </select>
+      <div class="w-48 sm:w-56">
+        <CustomSelect
+          value={doc?.defaultConnectionId || connectionStore.activeConnectionId}
+          options={connectionOptions}
+          size="sm"
+          onchange={(newConnId) => notebookStore.setConnection(tabId, newConnId)}
+        />
+      </div>
     </div>
 
     <!-- Right Actions: Run All, Add Cells, Export Dropdown -->
@@ -292,9 +287,9 @@
     </div>
   </header>
 
-  <!-- Main Scrollable Canvas Content -->
-  <main class="flex-1 overflow-y-auto p-6 md:p-8">
-    <div class="max-w-4xl mx-auto">
+  <!-- Main Scrollable Canvas Content (Full Width) -->
+  <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+    <div class="w-full max-w-[1600px] mx-auto">
       
       {#if doc && doc.cells.length > 0}
         <!-- List of Cells -->

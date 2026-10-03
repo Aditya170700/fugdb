@@ -12,6 +12,7 @@
   import { notebookStore } from '$lib/state/notebook.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
+  import CustomSelect, { type SelectOption } from '$lib/components/ui/CustomSelect.svelte';
   import { createSqlLanguageSupport } from '../editor/sqlCompletion';
   import { 
     Play, 
@@ -36,6 +37,14 @@
 
   // Register Chart.js components
   Chart.register(...registerables);
+
+  const chartTypeOptions: SelectOption[] = [
+    { value: 'bar', label: 'Bar Chart', badge: 'BAR' },
+    { value: 'line', label: 'Line Chart', badge: 'LINE' },
+    { value: 'area', label: 'Area Chart', badge: 'AREA' },
+    { value: 'pie', label: 'Pie Chart', badge: 'PIE' },
+    { value: 'doughnut', label: 'Doughnut Chart', badge: 'DONUT' }
+  ];
 
   let { 
     notebookId, 
@@ -66,6 +75,15 @@
 
   const isDark = $derived(themeStore.resolvedTheme === 'dark');
   const result = $derived(cell.result);
+
+  const columnOptions = $derived<SelectOption[]>(
+    (result?.columns || []).map(col => ({
+      value: col.name,
+      label: col.name,
+      badge: col.dataType || undefined,
+      badgeColor: 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-[9.5px]'
+    }))
+  );
 
   const lightSyntaxHighlight = HighlightStyle.define([
     { tag: tags.keyword, color: '#4338ca', fontWeight: '700' },
@@ -455,53 +473,50 @@
           <!-- Chart Controls Bar -->
           <div class="flex flex-wrap items-center justify-between gap-3 p-2 bg-surface-900/90 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
             <div class="flex items-center gap-2">
-              <span class="font-bold text-slate-700 dark:text-slate-300">Type:</span>
-              <select
-                value={cell.chartConfig?.type || 'bar'}
-                onchange={(e) => {
-                  notebookStore.updateChartConfig(notebookId, cell.id, { type: (e.target as HTMLSelectElement).value as any });
-                  renderChart();
-                }}
-                class="px-2 py-1 bg-surface-800 border border-slate-300 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 font-medium cursor-pointer"
-              >
-                <option value="bar">Bar Chart</option>
-                <option value="line">Line Chart</option>
-                <option value="area">Area Chart</option>
-                <option value="pie">Pie Chart</option>
-                <option value="doughnut">Doughnut Chart</option>
-              </select>
+              <span class="font-bold text-slate-700 dark:text-slate-300 shrink-0">Type:</span>
+              <div class="w-36">
+                <CustomSelect
+                  value={cell.chartConfig?.type || 'bar'}
+                  options={chartTypeOptions}
+                  size="sm"
+                  onchange={(val) => {
+                    notebookStore.updateChartConfig(notebookId, cell.id, { type: val });
+                    renderChart();
+                  }}
+                />
+              </div>
             </div>
 
             <div class="flex items-center gap-2">
-              <span class="font-bold text-slate-700 dark:text-slate-300">X-Axis:</span>
-              <select
-                value={cell.chartConfig?.xAxisColumn || result.columns[0]?.name}
-                onchange={(e) => {
-                  notebookStore.updateChartConfig(notebookId, cell.id, { xAxisColumn: (e.target as HTMLSelectElement).value });
-                  renderChart();
-                }}
-                class="px-2 py-1 bg-surface-800 border border-slate-300 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 font-mono cursor-pointer"
-              >
-                {#each result.columns as col (col.name)}
-                  <option value={col.name}>{col.name}</option>
-                {/each}
-              </select>
+              <span class="font-bold text-slate-700 dark:text-slate-300 shrink-0">X-Axis:</span>
+              <div class="w-44">
+                <CustomSelect
+                  value={cell.chartConfig?.xAxisColumn || result.columns[0]?.name}
+                  options={columnOptions}
+                  size="sm"
+                  fontMono={true}
+                  onchange={(val) => {
+                    notebookStore.updateChartConfig(notebookId, cell.id, { xAxisColumn: val });
+                    renderChart();
+                  }}
+                />
+              </div>
             </div>
 
             <div class="flex items-center gap-2">
-              <span class="font-bold text-slate-700 dark:text-slate-300">Y-Metric:</span>
-              <select
-                value={cell.chartConfig?.yAxisColumns?.[0] || result.columns[1]?.name || result.columns[0]?.name}
-                onchange={(e) => {
-                  notebookStore.updateChartConfig(notebookId, cell.id, { yAxisColumns: [(e.target as HTMLSelectElement).value] });
-                  renderChart();
-                }}
-                class="px-2 py-1 bg-surface-800 border border-slate-300 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 font-mono cursor-pointer"
-              >
-                {#each result.columns as col (col.name)}
-                  <option value={col.name}>{col.name}</option>
-                {/each}
-              </select>
+              <span class="font-bold text-slate-700 dark:text-slate-300 shrink-0">Y-Metric:</span>
+              <div class="w-44">
+                <CustomSelect
+                  value={cell.chartConfig?.yAxisColumns?.[0] || result.columns[1]?.name || result.columns[0]?.name}
+                  options={columnOptions}
+                  size="sm"
+                  fontMono={true}
+                  onchange={(val) => {
+                    notebookStore.updateChartConfig(notebookId, cell.id, { yAxisColumns: [val] });
+                    renderChart();
+                  }}
+                />
+              </div>
             </div>
           </div>
 

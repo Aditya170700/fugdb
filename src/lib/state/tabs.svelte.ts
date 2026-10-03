@@ -5,6 +5,7 @@ import { assessSqlRisk } from '../utils/safetyGuard';
 import { safetyStore } from './safety.svelte';
 import { historyStore } from './history.svelte';
 import { sessionStore } from './session.svelte';
+import { notebookStore } from './notebook.svelte';
 
 export interface TabItem {
   id: string;
@@ -29,9 +30,12 @@ export class TabsStore {
 
   openNewNotebookTab(title?: string, initialDocId?: string) {
     const newId = initialDocId || `tab-pad-${Date.now()}`;
+    const defaultTitle = title || `Notebook ${this.tabs.filter(t => t.type === 'notebook').length + 1}`;
+    notebookStore.getOrCreate(newId, defaultTitle, connectionStore.activeConnectionId);
+
     const newTab: TabItem = {
       id: newId,
-      title: title || `Notebook ${this.tabs.filter(t => t.type === 'notebook').length + 1}`,
+      title: defaultTitle,
       type: 'notebook',
       connectionId: connectionStore.activeConnectionId,
     };
