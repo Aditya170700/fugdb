@@ -42,6 +42,7 @@
     { id: 'mysql', label: 'MariaDB', icon: '🦭', category: 'Relational (SQL)', defaultPort: 3306, description: 'High-performance MySQL drop-in alternative', isSupported: true },
     { id: 'sqlite', label: 'SQLite', icon: '🪶', category: 'Embedded / Local', description: 'Self-contained, serverless zero-configuration DB', isSupported: true },
     { id: 'duckdb', label: 'DuckDB', icon: '🦆', category: 'Embedded / Analytics', description: 'Fast in-process analytical SQL database', isSupported: false },
+    { id: 'redis', label: 'Redis / KeyDB', icon: '🔴', category: 'In-Memory / Key-Value', defaultPort: 6379, description: 'Ultra-fast in-memory key-value data store & polyglot inspector', isSupported: true },
     { id: 'mssql', label: 'Microsoft SQL Server', icon: '🪟', category: 'Enterprise (SQL)', defaultPort: 1433, description: 'Enterprise relational database from Microsoft', isSupported: true },
     { id: 'postgres', label: 'CockroachDB', icon: '🪳', category: 'Distributed SQL', defaultPort: 26257, description: 'Cloud-native distributed PostgreSQL-wire DB', isSupported: true },
     { id: 'postgres', label: 'TimescaleDB', icon: '⏱️', category: 'Time-Series', defaultPort: 5432, description: 'Time-series database built on PostgreSQL', isSupported: true },
@@ -123,6 +124,12 @@
       database = 'master';
       username = 'sa';
       name = 'MSSQL Connection';
+    } else if (engine.id === 'redis') {
+      port = 6379;
+      database = '0';
+      username = '';
+      password = '';
+      name = 'Redis Server';
     }
   }
 

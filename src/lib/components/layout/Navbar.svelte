@@ -65,6 +65,7 @@
       case 'sqlite': return '🪶';
       case 'mssql': return '🪟';
       case 'duckdb': return '🦆';
+      case 'redis': return '🔴';
       default: return '🗄️';
     }
   }
@@ -152,7 +153,7 @@
         onclick={() => tabsStore.activeTabId = tab.id}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') tabsStore.activeTabId = tab.id; }}
       >
-        <span class="text-[11px] opacity-80">{tab.type === 'notebook' ? '📓' : tab.type === 'table_grid' ? '📋' : '📝'}</span>
+        <span class="text-[11px] opacity-80">{tab.type === 'notebook' ? '📓' : tab.type === 'redis' ? '🔴' : tab.type === 'table_grid' ? '📋' : '📝'}</span>
         <span class="truncate max-w-[120px]">{tab.title || 'Untitled Tab'}</span>
         <button 
           type="button"

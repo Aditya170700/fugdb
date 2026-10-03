@@ -20,7 +20,14 @@ import type {
   ExplainResult,
   ServerProcess,
   ServerHealthStats,
-  SchemaDiffResult
+  SchemaDiffResult,
+  RedisKeyItem,
+  RedisScanResult,
+  RedisKeyDetail,
+  RedisZSetMember,
+  RedisStreamEntry,
+  RedisServerInfo,
+  RedisCliResponse
 } from './types';
 
 // Check if running in Tauri environment
@@ -862,6 +869,376 @@ export const api = {
       return selected as string | null;
     }
     return null;
+  },
+
+  // 5.4 Redis & Key-Value Polyglot Inspector API
+  async testRedisConnection(config: ConnectionConfig): Promise<{ success: boolean; message: string; latencyMs: number }> {
+    if (isTauri) {
+      return await invoke('test_redis_connection', { config });
+    }
+    await new Promise(r => setTimeout(r, 100));
+    return { success: true, message: "Redis server responded 'PONG' successfully in 2 ms! (Mock)", latencyMs: 2 };
+  },
+
+  async connectRedis(config: ConnectionConfig): Promise<void> {
+    if (isTauri) {
+      return await invoke('connect_redis', { config });
+    }
+    console.log('[Mock Redis] Connected to:', config.name);
+  },
+
+  async disconnectRedis(connectionId: string): Promise<void> {
+    if (isTauri) {
+      return await invoke('disconnect_redis', { connectionId });
+    }
+    console.log('[Mock Redis] Disconnected from:', connectionId);
+  },
+
+  async scanRedisKeys(
+    connectionId: string,
+    pattern?: string,
+    dbIndex?: number,
+    cursor?: number,
+    count?: number
+  ): Promise<RedisScanResult> {
+    if (isTauri) {
+      return await invoke('scan_redis_keys', {
+        connectionId,
+        pattern,
+        dbIndex,
+        cursor,
+        count
+      });
+    }
+    // Rich mock keys
+    await new Promise(r => setTimeout(r, 120));
+    const mockKeys: RedisKeyItem[] = [
+      { key: 'user:101:profile', keyType: 'hash', ttl: -1, size: 5, memoryBytes: 420 },
+      { key: 'user:101:sessions', keyType: 'set', ttl: 86400, size: 3, memoryBytes: 180 },
+      { key: 'user:102:profile', keyType: 'hash', ttl: -1, size: 4, memoryBytes: 390 },
+      { key: 'auth:token:jwt_98f4a', keyType: 'string', ttl: 3540, size: 148, memoryBytes: 256 },
+      { key: 'auth:rate_limit:ip_192.168.1.1', keyType: 'string', ttl: 45, size: 2, memoryBytes: 80 },
+      { key: 'cache:product:latest_items', keyType: 'string', ttl: 600, size: 1240, memoryBytes: 1450 },
+      { key: 'cache:config:global_features', keyType: 'string', ttl: -1, size: 420, memoryBytes: 560 },
+      { key: 'queue:email_notifications', keyType: 'list', ttl: -1, size: 12, memoryBytes: 890 },
+      { key: 'queue:analytics_events', keyType: 'list', ttl: -1, size: 48, memoryBytes: 3400 },
+      { key: 'leaderboard:global_highscores', keyType: 'zset', ttl: -1, size: 8, memoryBytes: 640 },
+      { key: 'leaderboard:weekly_challenge', keyType: 'zset', ttl: 604800, size: 5, memoryBytes: 520 },
+      { key: 'stream:app_audit_logs', keyType: 'stream', ttl: -1, size: 24, memoryBytes: 4200 },
+      { key: 'session:cart:guest_882', keyType: 'hash', ttl: 1800, size: 3, memoryBytes: 310 }
+    ];
+
+    const filter = pattern ? pattern.replace('*', '') : '';
+    const filtered = filter
+      ? mockKeys.filter(k => k.key.toLowerCase().includes(filter.toLowerCase()))
+      : mockKeys;
+
+    return {
+      cursor: 0,
+      keys: filtered,
+      totalKeys: filtered.length,
+      dbIndex: dbIndex ?? 0
+    };
+  },
+
+  async getRedisKeyDetail(connectionId: string, key: string, dbIndex?: number): Promise<RedisKeyDetail> {
+    if (isTauri) {
+      return await invoke('get_redis_key_detail', { connectionId, key, dbIndex });
+    }
+    await new Promise(r => setTimeout(r, 100));
+
+    if (key.includes('profile')) {
+      return {
+        key,
+        keyType: 'hash',
+        ttl: -1,
+        memoryUsageBytes: 420,
+        valueHash: {
+          id: '101',
+          username: 'aditya_dev',
+          email: 'aditya@example.com',
+          role: 'admin',
+          created_at: '2026-01-15T08:30:00Z'
+        }
+      };
+    } else if (key.includes('sessions')) {
+      return {
+        key,
+        keyType: 'set',
+        ttl: 86400,
+        memoryUsageBytes: 180,
+        valueSet: ['sess_9f81a', 'sess_bc209', 'sess_33dd1']
+      };
+    } else if (key.includes('queue')) {
+      return {
+        key,
+        keyType: 'list',
+        ttl: -1,
+        memoryUsageBytes: 890,
+        valueList: [
+          JSON.stringify({ to: 'john@example.com', subject: 'Welcome to FugDB!', template: 'welcome_v2' }),
+          JSON.stringify({ to: 'sarah@example.com', subject: 'Your invoice is ready', template: 'invoice_v1' }),
+          JSON.stringify({ to: 'alex@example.com', subject: 'Security alert: New login detected', template: 'security_v1' })
+        ]
+      };
+    } else if (key.includes('leaderboard')) {
+      return {
+        key,
+        keyType: 'zset',
+        ttl: -1,
+        memoryUsageBytes: 640,
+        valueZset: [
+          { member: 'player:super_mario', score: 9940 },
+          { member: 'player:sonic_speed', score: 8820 },
+          { member: 'player:donkey_kong', score: 7650 },
+          { member: 'player:zelda_link', score: 6500 }
+        ]
+      };
+    } else if (key.includes('stream')) {
+      return {
+        key,
+        keyType: 'stream',
+        ttl: -1,
+        memoryUsageBytes: 4200,
+        valueStream: [
+          {
+            id: '1727982000000-0',
+            fields: { action: 'user.login', user_id: '101', ip: '192.168.1.5', user_agent: 'FugDB Desktop v1.0' }
+          },
+          {
+            id: '1727982045000-0',
+            fields: { action: 'table.query', table: 'orders', duration_ms: '14.2', status: '200' }
+          },
+          {
+            id: '1727982120000-0',
+            fields: { action: 'data.export', format: 'csv', total_rows: '15000', filename: 'sales_2026.csv' }
+          }
+        ]
+      };
+    }
+
+    return {
+      key,
+      keyType: 'string',
+      ttl: 3600,
+      memoryUsageBytes: 256,
+      valueString: '{"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", "expiresIn": 3600, "scope": "read:all write:all"}'
+    };
+  },
+
+  async setRedisString(
+    connectionId: string,
+    key: string,
+    value: string,
+    ttl?: number,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('set_redis_string', { connectionId, key, value, ttl, dbIndex });
+    }
+    console.log('[Mock Redis] SET', key, value, 'TTL:', ttl);
+  },
+
+  async setRedisHashField(
+    connectionId: string,
+    key: string,
+    field: string,
+    value: string,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('set_redis_hash_field', { connectionId, key, field, value, dbIndex });
+    }
+    console.log('[Mock Redis] HSET', key, field, value);
+  },
+
+  async deleteRedisHashField(
+    connectionId: string,
+    key: string,
+    field: string,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('delete_redis_hash_field', { connectionId, key, field, dbIndex });
+    }
+    console.log('[Mock Redis] HDEL', key, field);
+  },
+
+  async pushRedisListElement(
+    connectionId: string,
+    key: string,
+    value: string,
+    position: 'left' | 'right',
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('push_redis_list_element', { connectionId, key, value, position, dbIndex });
+    }
+    console.log('[Mock Redis] PUSH', position, key, value);
+  },
+
+  async removeRedisListElement(
+    connectionId: string,
+    key: string,
+    value: string,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('remove_redis_list_element', { connectionId, key, value, dbIndex });
+    }
+    console.log('[Mock Redis] LREM', key, value);
+  },
+
+  async addRedisSetMember(
+    connectionId: string,
+    key: string,
+    member: string,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('add_redis_set_member', { connectionId, key, member, dbIndex });
+    }
+    console.log('[Mock Redis] SADD', key, member);
+  },
+
+  async removeRedisSetMember(
+    connectionId: string,
+    key: string,
+    member: string,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('remove_redis_set_member', { connectionId, key, member, dbIndex });
+    }
+    console.log('[Mock Redis] SREM', key, member);
+  },
+
+  async addRedisZSetMember(
+    connectionId: string,
+    key: string,
+    member: string,
+    score: number,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('add_redis_zset_member', { connectionId, key, member, score, dbIndex });
+    }
+    console.log('[Mock Redis] ZADD', key, score, member);
+  },
+
+  async removeRedisZSetMember(
+    connectionId: string,
+    key: string,
+    member: string,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('remove_redis_zset_member', { connectionId, key, member, dbIndex });
+    }
+    console.log('[Mock Redis] ZREM', key, member);
+  },
+
+  async setRedisKeyTtl(
+    connectionId: string,
+    key: string,
+    ttl: number,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('set_redis_key_ttl', { connectionId, key, ttl, dbIndex });
+    }
+    console.log('[Mock Redis] EXPIRE / PERSIST', key, ttl);
+  },
+
+  async deleteRedisKeys(
+    connectionId: string,
+    keys: string[],
+    dbIndex?: number
+  ): Promise<number> {
+    if (isTauri) {
+      return await invoke('delete_redis_keys', { connectionId, keys, dbIndex });
+    }
+    console.log('[Mock Redis] DEL', keys);
+    return keys.length;
+  },
+
+  async renameRedisKey(
+    connectionId: string,
+    oldKey: string,
+    newKey: string,
+    dbIndex?: number
+  ): Promise<void> {
+    if (isTauri) {
+      return await invoke('rename_redis_key', { connectionId, oldKey, newKey, dbIndex });
+    }
+    console.log('[Mock Redis] RENAME', oldKey, '->', newKey);
+  },
+
+  async getRedisServerInfo(connectionId: string): Promise<RedisServerInfo> {
+    if (isTauri) {
+      return await invoke('get_redis_server_info', { connectionId });
+    }
+    await new Promise(r => setTimeout(r, 80));
+    return {
+      version: '7.2.4',
+      os: 'Darwin 23.4.0 arm64',
+      uptimeSeconds: 384920,
+      connectedClients: 4,
+      usedMemoryHuman: '14.28M',
+      usedMemoryPeakHuman: '22.80M',
+      totalKeys: 42,
+      rawInfo: {
+        redis_version: '7.2.4',
+        os: 'Darwin 23.4.0 arm64',
+        tcp_port: '6379',
+        uptime_in_days: '4',
+        connected_clients: '4',
+        used_memory_human: '14.28M',
+        used_memory_peak_human: '22.80M',
+        maxmemory_human: '2.00G',
+        rdb_last_bgsave_status: 'ok',
+        instantaneous_ops_per_sec: '45'
+      }
+    };
+  },
+
+  async executeRedisCliCommand(
+    connectionId: string,
+    commandLine: string,
+    dbIndex?: number
+  ): Promise<RedisCliResponse> {
+    if (isTauri) {
+      return await invoke('execute_redis_cli_command', { connectionId, commandLine, dbIndex });
+    }
+    await new Promise(r => setTimeout(r, 60));
+    const trimmed = commandLine.trim();
+    if (trimmed.toUpperCase() === 'PING') {
+      return { command: commandLine, response: 'PONG', responseType: 'status', durationMs: 0.8 };
+    }
+    if (trimmed.toUpperCase().startsWith('GET ')) {
+      return { command: commandLine, response: '"sample_mock_value"', responseType: 'string', durationMs: 1.2 };
+    }
+    if (trimmed.toUpperCase().startsWith('KEYS ')) {
+      return {
+        command: commandLine,
+        response: '1) "user:101:profile"\n2) "user:101:sessions"\n3) "queue:email_notifications"',
+        responseType: 'array',
+        durationMs: 2.1
+      };
+    }
+    return {
+      command: commandLine,
+      response: 'OK',
+      responseType: 'status',
+      durationMs: 1.0
+    };
+  },
+
+  async flushRedisDb(connectionId: string, dbIndex?: number): Promise<void> {
+    if (isTauri) {
+      return await invoke('flush_redis_db', { connectionId, dbIndex });
+    }
+    console.log('[Mock Redis] FLUSHDB on db', dbIndex);
   }
 };
 

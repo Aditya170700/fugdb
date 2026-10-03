@@ -18,7 +18,10 @@
     Calendar,
     Check,
     BookOpen,
-    Database
+    Database,
+    Terminal,
+    Key,
+    Layers
   } from 'lucide-svelte';
 
   let { 
@@ -143,6 +146,51 @@
         >
           Retry Connect
         </button>
+      </div>
+    {:else if connectionStore.activeConnection?.driver === 'redis'}
+      <div class="p-3 flex flex-col gap-3">
+        <div class="p-3 bg-red-950/20 border border-red-500/30 rounded-lg flex flex-col gap-2">
+          <div class="flex items-center gap-2">
+            <span class="text-base">🔴</span>
+            <div class="flex flex-col">
+              <span class="font-bold text-xs text-red-300">Redis In-Memory Node</span>
+              <span class="text-[10px] text-zinc-400 font-mono">{connectionStore.activeConnection.host || '127.0.0.1'}:{connectionStore.activeConnection.port || 6379}</span>
+            </div>
+          </div>
+          <p class="text-[11px] text-zinc-400">Manage keys, strings, hashes, sets, zsets, streams, and run CLI commands.</p>
+        </div>
+
+        <div class="space-y-1.5">
+          <button
+            type="button"
+            onclick={() => tabsStore.openRedisTab(connectionStore.activeConnectionId)}
+            class="w-full flex items-center justify-between p-2 rounded-lg bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition-colors"
+          >
+            <div class="flex items-center gap-2">
+              <Key class="w-3.5 h-3.5 text-indigo-400" />
+              <span>Key-Value Explorer</span>
+            </div>
+            <span class="text-[10px] bg-indigo-500/20 px-1.5 py-0.2 rounded font-mono">Open Tab</span>
+          </button>
+
+          <button
+            type="button"
+            onclick={() => {
+              tabsStore.openRedisTab(connectionStore.activeConnectionId);
+              // Set subview to cli
+              import('../../state/redis.svelte').then(({ redisStore }) => {
+                redisStore.getState(connectionStore.activeConnectionId).activeSubView = 'cli';
+              });
+            }}
+            class="w-full flex items-center justify-between p-2 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 text-xs font-semibold transition-colors"
+          >
+            <div class="flex items-center gap-2">
+              <Terminal class="w-3.5 h-3.5 text-emerald-400" />
+              <span>Interactive CLI</span>
+            </div>
+            <span class="text-[10px] bg-emerald-500/20 px-1.5 py-0.2 rounded font-mono">Terminal</span>
+          </button>
+        </div>
       </div>
     {:else if connectionStore.filteredTables.length === 0}
       <div class="p-4 text-center text-xs text-slate-500">

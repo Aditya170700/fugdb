@@ -6,3 +6,4 @@ pub mod transfer;
 pub mod ai;
 pub mod monitor;
 pub mod notebook;
+pub mod redis;

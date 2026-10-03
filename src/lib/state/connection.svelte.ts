@@ -114,9 +114,17 @@ export class ConnectionStore {
     try {
       // 1. Ensure connected in backend
       await api.connect(config);
-      // 2. Fetch schema tree
-      const tree = await api.fetchSchema(connectionId);
-      this.schemas[connectionId] = tree;
+      if (config.driver === 'redis') {
+        this.schemas[connectionId] = {
+          databases: Array.from({ length: 16 }, (_, i) => `db${i}`),
+          currentDatabase: config.database || '0',
+          tables: []
+        };
+      } else {
+        // 2. Fetch schema tree for relational DBs
+        const tree = await api.fetchSchema(connectionId);
+        this.schemas[connectionId] = tree;
+      }
     } catch (err: any) {
       console.error('Failed to load schema:', err);
       this.errorMessage = typeof err === 'string' ? err : err?.message || JSON.stringify(err);

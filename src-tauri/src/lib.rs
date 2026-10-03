@@ -25,6 +25,14 @@ use commands::{
     ai::{generate_sql_from_prompt, test_ai_connection, list_ollama_models, fix_sql_error, optimize_query_explain},
     monitor::{get_server_processes, kill_server_process, cancel_server_query},
     notebook::{save_fugpad_file, read_fugpad_file, export_notebook_html_file},
+    redis::{
+        test_redis_connection, connect_redis, disconnect_redis, scan_redis_keys,
+        get_redis_key_detail, set_redis_string, set_redis_hash_field, delete_redis_hash_field,
+        push_redis_list_element, remove_redis_list_element, add_redis_set_member,
+        remove_redis_set_member, add_redis_zset_member, remove_redis_zset_member,
+        set_redis_key_ttl, delete_redis_keys, rename_redis_key, get_redis_server_info,
+        execute_redis_cli_command, flush_redis_db,
+    },
 };
 use state::AppState;
 
@@ -74,7 +82,27 @@ pub fn run() {
             cancel_server_query,
             save_fugpad_file,
             read_fugpad_file,
-            export_notebook_html_file
+            export_notebook_html_file,
+            test_redis_connection,
+            connect_redis,
+            disconnect_redis,
+            scan_redis_keys,
+            get_redis_key_detail,
+            set_redis_string,
+            set_redis_hash_field,
+            delete_redis_hash_field,
+            push_redis_list_element,
+            remove_redis_list_element,
+            add_redis_set_member,
+            remove_redis_set_member,
+            add_redis_zset_member,
+            remove_redis_zset_member,
+            set_redis_key_ttl,
+            delete_redis_keys,
+            rename_redis_key,
+            get_redis_server_info,
+            execute_redis_cli_command,
+            flush_redis_db
         ])
         .run(tauri::generate_context!())
         .expect("error while running FugDB application");

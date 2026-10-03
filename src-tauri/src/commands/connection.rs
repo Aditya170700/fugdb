@@ -93,6 +93,10 @@ pub async fn test_connection(config: ConnectionConfig) -> Result<TestConnectionR
         (None, effective_config)
     };
 
+    if target_config.driver == DriverType::Redis {
+        return crate::commands::redis::test_redis_connection(target_config).await;
+    }
+
     let adapter: Box<dyn DatabaseAdapter> = match target_config.driver {
         DriverType::Postgres => Box::new(PostgresAdapter::new(&target_config).await?),
         DriverType::Mysql => Box::new(MySqlAdapter::new(&target_config).await?),
@@ -161,6 +165,10 @@ pub async fn connect_database(
         effective_config.clone()
     };
 
+    if target_config.driver == DriverType::Redis {
+        return crate::commands::redis::connect_redis(target_config, state).await;
+    }
+
     let adapter: Box<dyn DatabaseAdapter> = match target_config.driver {
         DriverType::Postgres => Box::new(PostgresAdapter::new(&target_config).await?),
         DriverType::Mysql => Box::new(MySqlAdapter::new(&target_config).await?),
@@ -185,7 +193,12 @@ pub async fn disconnect_database(
         let mut pools = state.pools.write().await;
         pools.remove(&connection_id);
     }
-    // 2. Close and remove SSH Tunnel
+    // 2. Close and remove Redis client
+    {
+        let mut redis_clients = state.redis_clients.write().await;
+        redis_clients.remove(&connection_id);
+    }
+    // 3. Close and remove SSH Tunnel
     {
         let mut tunnels = state.tunnels.write().await;
         if let Some(mut tunnel) = tunnels.remove(&connection_id) {

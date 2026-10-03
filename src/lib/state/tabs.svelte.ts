@@ -10,7 +10,7 @@ import { notebookStore } from './notebook.svelte';
 export interface TabItem {
   id: string;
   title: string;
-  type: 'sql' | 'table_grid' | 'erd' | 'scratchpad' | 'notebook';
+  type: 'sql' | 'table_grid' | 'erd' | 'scratchpad' | 'notebook' | 'redis';
   connectionId: string;
   sql?: string;
   tableName?: string;
@@ -27,6 +27,26 @@ export class TabsStore {
   activeTab = $derived(
     this.tabs.find(t => t.id === this.activeTabId)
   );
+
+  openRedisTab(connectionId: string, title?: string) {
+    const existing = this.tabs.find(t => t.type === 'redis' && t.connectionId === connectionId);
+    if (existing) {
+      this.activeTabId = existing.id;
+      return;
+    }
+
+    const conn = connectionStore.connections.find(c => c.id === connectionId);
+    const tabTitle = title || `Redis: ${conn?.name || 'Server'}`;
+    const newId = `tab-redis-${Date.now()}`;
+    const newTab: TabItem = {
+      id: newId,
+      title: tabTitle,
+      type: 'redis',
+      connectionId
+    };
+    this.tabs.push(newTab);
+    this.activeTabId = newId;
+  }
 
   openNewNotebookTab(title?: string, initialDocId?: string) {
     const newId = initialDocId || `tab-pad-${Date.now()}`;

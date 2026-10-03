@@ -20,6 +20,7 @@
   import ServerMonitorModal from '$lib/components/monitor/ServerMonitorModal.svelte';
   import SchemaDiffModal from '$lib/components/diff/SchemaDiffModal.svelte';
   import SqlNotebookTab from '$lib/components/notebook/SqlNotebookTab.svelte';
+  import RedisTab from '$lib/components/redis/RedisTab.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
@@ -194,6 +195,9 @@
         {#if activeTab.type === 'notebook'}
           <!-- Full Canvas SQL Scratchpad Notebook -->
           <SqlNotebookTab tabId={activeTab.id} />
+        {:else if activeTab.type === 'redis'}
+          <!-- Dedicated Polyglot Redis Key-Value Tab -->
+          <RedisTab tabId={activeTab.id} connectionId={activeTab.connectionId} />
         {:else}
           <!-- Top Split: SQL Editor -->
           <div style="height: {editorHeightPercent}%;" class="min-h-[60px] relative shrink-0 overflow-hidden">

@@ -219,12 +219,16 @@
   - [x] Akses cepat via Navbar tab button (`BookText`), tab switch, dan shortcut global `Cmd+Shift+N` / `Ctrl+Shift+N`.
   - *Files Terkait*: `src-tauri/src/commands/notebook.rs`, `src/lib/components/notebook/SqlNotebookTab.svelte`, `src/lib/components/notebook/SqlCell.svelte`, `src/lib/components/notebook/MarkdownCell.svelte`, `src/lib/state/notebook.svelte.ts`, `src/lib/utils/notebookExport.ts`
 
-- [ ] **5.4 Redis & Key-Value Polyglot Inspector**
-  - [ ] Driver koneksi native Redis / KeyDB via `redis-rs`.
-  - [ ] Key tree pattern explorer (`user:*`, `session:*`, `cache:*` dengan namespace grouping).
-  - [ ] Editor interaktif untuk semua tipe data Redis: String, Hash, List, Set, ZSet, dan Stream lengkap dengan TTL inspector & TTL editor.
-  - [ ] Live Redis CLI console & Pub/Sub message stream monitor.
-  - *Files Terkait*: `src-tauri/src/drivers/redis.rs`, `src/lib/components/redis/RedisKeyViewer.svelte`, `src/lib/components/connection/ConnectionModal.svelte`
+- [x] **5.4 Redis & Key-Value Polyglot Inspector**
+  - [x] Driver koneksi native Redis / KeyDB via `redis` async crate dengan Multiplexed Connection pool.
+  - [x] Key tree pattern explorer dengan namespace hierarchy grouping (`user:*`, `session:*`, `cache:*`), search filter, cursor scan, dan database selector (DB 0-15).
+  - [x] Multi-data-type visual inspector & inline editor untuk seluruh 6 struktur data Redis: String (Raw/JSON), Hash table, List (LPUSH/RPUSH/LREM), Set (SADD/SREM), ZSet (Sorted Set with score editor), dan Stream (XREVRANGE entries).
+  - [x] TTL management (view TTL in seconds / human time, set expiration, atau persist).
+  - [x] Key lifecycle actions: Create New Key (dengan type & initial value), Inline Rename (`RENAME`), Delete (`DEL`), serta Flush DB dengan Safety Confirmation.
+  - [x] Interactive Redis CLI Console dengan retro terminal theme, latency display, quick command shortcuts, dan command history navigation (`Up`/`Down`).
+  - [x] Server Telemetry dashboard dengan live server metrics (version, memory human, peak memory, connected clients, total keys, throughput ops/sec).
+  - [x] Integrasi polyglot di Connection Modal, Sidebar Connection Tree, dan dedicated Workspace Tab.
+  - *Files Terkait*: `src-tauri/src/commands/redis.rs`, `src-tauri/src/models/redis.rs`, `src/lib/components/redis/RedisTab.svelte`, `src/lib/components/redis/RedisKeyTree.svelte`, `src/lib/components/redis/RedisKeyDetailView.svelte`, `src/lib/components/redis/RedisCliConsole.svelte`, `src/lib/components/redis/RedisServerInfoView.svelte`, `src/lib/components/redis/RedisNewKeyModal.svelte`, `src/lib/state/redis.svelte.ts`, `src/lib/api/client.ts`
 
 - [ ] **5.5 Scheduled Query Automations & Local Backups**
   - [ ] Local background scheduler (Cron pattern / Timer) untuk eksekusi query berkala di background.

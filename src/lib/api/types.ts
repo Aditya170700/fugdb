@@ -1,4 +1,4 @@
-export type DriverType = 'postgres' | 'mysql' | 'sqlite' | 'mssql' | 'duckdb';
+export type DriverType = 'postgres' | 'mysql' | 'sqlite' | 'mssql' | 'duckdb' | 'redis';
 
 export type Environment = 'dev' | 'staging' | 'production';
 
@@ -306,4 +306,63 @@ export interface FugpadDocument {
   createdAt: number;
   updatedAt: number;
   cells: NotebookCell[];
+}
+
+// 5.4 Redis & Key-Value Polyglot Inspector Types
+export type RedisKeyType = 'string' | 'hash' | 'list' | 'set' | 'zset' | 'stream' | 'none';
+
+export interface RedisKeyItem {
+  key: string;
+  keyType: string;
+  ttl: number; // -1 = persist, -2 = does not exist, >0 = seconds
+  size?: number;
+  memoryBytes?: number;
+}
+
+export interface RedisScanResult {
+  cursor: number;
+  keys: RedisKeyItem[];
+  totalKeys: number;
+  dbIndex: number;
+}
+
+export interface RedisZSetMember {
+  member: string;
+  score: number;
+}
+
+export interface RedisStreamEntry {
+  id: string;
+  fields: Record<string, string>;
+}
+
+export interface RedisKeyDetail {
+  key: string;
+  keyType: string;
+  ttl: number;
+  memoryUsageBytes?: number;
+  valueString?: string | null;
+  valueHash?: Record<string, string> | null;
+  valueList?: string[] | null;
+  valueSet?: string[] | null;
+  valueZset?: RedisZSetMember[] | null;
+  valueStream?: RedisStreamEntry[] | null;
+}
+
+export interface RedisServerInfo {
+  version: string;
+  os: string;
+  uptimeSeconds: number;
+  connectedClients: number;
+  usedMemoryHuman: string;
+  usedMemoryPeakHuman: string;
+  totalKeys: number;
+  rawInfo: Record<string, string>;
+}
+
+export interface RedisCliResponse {
+  command: string;
+  response: string;
+  responseType: string;
+  durationMs: number;
 }
