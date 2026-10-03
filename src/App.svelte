@@ -9,6 +9,7 @@
   import ErdModal from '$lib/components/erd/ErdModal.svelte';
   import TransferModal from '$lib/components/transfer/TransferModal.svelte';
   import MockDataModal from '$lib/components/qa/MockDataModal.svelte';
+  import DataDictionaryModal from '$lib/components/dictionary/DataDictionaryModal.svelte';
   import SafetyModal from '$lib/components/ui/SafetyModal.svelte';
   import QueryHistoryDrawer from '$lib/components/editor/QueryHistoryDrawer.svelte';
   import CellInspectorModal from '$lib/components/inspectors/CellInspectorModal.svelte';
@@ -19,6 +20,7 @@
   let isErdOpen = $state(false);
   let isTransferOpen = $state(false);
   let isMockDataOpen = $state(false);
+  let isDictionaryOpen = $state(false);
 
   const activeTab = $derived(tabsStore.activeTab);
 
@@ -128,12 +130,16 @@
     onOpenErd={() => isErdOpen = true}
     onOpenTransfer={() => isTransferOpen = true}
     onOpenMockData={() => isMockDataOpen = true}
+    onOpenDictionary={() => isDictionaryOpen = true}
   />
 
   <!-- Main Content Layout (Sidebar + Resizable Split Area) -->
   <div class="flex-1 flex overflow-hidden relative">
     <!-- Left Sidebar -->
-    <ConnectionTree width={sidebarWidth} />
+    <ConnectionTree 
+      width={sidebarWidth} 
+      onOpenDictionary={() => isDictionaryOpen = true}
+    />
 
     <!-- 1. Vertical Resizer Handle (Sidebar <-> Main Area) -->
     <button 
@@ -204,6 +210,7 @@
   <ErdModal isOpen={isErdOpen} onClose={() => isErdOpen = false} />
   <TransferModal isOpen={isTransferOpen} onClose={() => isTransferOpen = false} />
   <MockDataModal isOpen={isMockDataOpen} onClose={() => isMockDataOpen = false} />
+  <DataDictionaryModal isOpen={isDictionaryOpen} onClose={() => isDictionaryOpen = false} />
   <SafetyModal />
   <QueryHistoryDrawer />
   <CellInspectorModal />

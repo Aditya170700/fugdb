@@ -15,10 +15,17 @@
     Hash,
     Type,
     Calendar,
-    Check
+    Check,
+    BookOpen
   } from 'lucide-svelte';
 
-  let { width = 260 }: { width?: number } = $props();
+  let { 
+    width = 260,
+    onOpenDictionary
+  }: { 
+    width?: number;
+    onOpenDictionary?: () => void;
+  } = $props();
 
   let expandedTables = $state<Record<string, boolean>>({});
 
@@ -51,14 +58,26 @@
   <div class="p-3 border-b border-slate-200 dark:border-slate-800 flex flex-col gap-2">
     <div class="flex items-center justify-between">
       <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Schema Explorer</span>
-      <button 
-        type="button"
-        onclick={() => connectionStore.loadSchema(connectionStore.activeConnectionId)}
-        class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1 rounded hover:bg-surface-800 cursor-pointer"
-        title="Refresh Schema"
-      >
-        <RefreshCw size={13} class={connectionStore.isLoading ? 'animate-spin' : ''} />
-      </button>
+      <div class="flex items-center gap-1">
+        {#if onOpenDictionary}
+          <button 
+            type="button"
+            onclick={onOpenDictionary}
+            class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1 rounded hover:bg-surface-800 cursor-pointer"
+            title="Generate Data Dictionary (Markdown/HTML/PDF)"
+          >
+            <BookOpen size={13} />
+          </button>
+        {/if}
+        <button 
+          type="button"
+          onclick={() => connectionStore.loadSchema(connectionStore.activeConnectionId)}
+          class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1 rounded hover:bg-surface-800 cursor-pointer"
+          title="Refresh Schema"
+        >
+          <RefreshCw size={13} class={connectionStore.isLoading ? 'animate-spin' : ''} />
+        </button>
+      </div>
     </div>
 
     <!-- Quick Search Input -->

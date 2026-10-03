@@ -7,6 +7,7 @@
     Play, 
     Plus, 
     X, 
+    BookOpen,
     Network, 
     ArrowLeftRight, 
     Sparkles, 
@@ -26,11 +27,13 @@
     onOpenErd, 
     onOpenTransfer, 
     onOpenMockData,
+    onOpenDictionary,
     onOpenNewConnection
   }: { 
     onOpenErd: () => void; 
     onOpenTransfer: () => void; 
     onOpenMockData: () => void; 
+    onOpenDictionary: () => void;
     onOpenNewConnection: () => void;
   } = $props();
 
@@ -203,6 +206,14 @@
       title="Interactive ERD Visualizer"
     >
       <Network size={15} />
+    </button>
+
+    <button 
+      onclick={onOpenDictionary}
+      class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors" 
+      title="1-Click Data Dictionary Generator (Markdown/HTML/PDF)"
+    >
+      <BookOpen size={15} />
     </button>
 
     <button 

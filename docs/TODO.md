@@ -113,9 +113,13 @@
   - [x] **Real-time Pipeline Monitor**: Dashboard pemantauan kecepatan live (*rows/sec*), progres baris, estimasi waktu (ETA), dan pembatalan instan.
   - *Files Terkait*: `src-tauri/src/transfer/db_to_db.rs`, `src-tauri/src/commands/transfer.rs`, `src/lib/components/transfer/TransferModal.svelte`, `src/lib/api/client.ts`
 
-- [ ] **2.4 1-Click Data Dictionary Generator**
-  - [ ] Ekspor dokumentasi skema lengkap (daftar tabel, tipe kolom, nullability, PK/FK, indeks, deskripsi) ke format **Markdown** dan **HTML**.
-  - *Files Terkait*: `src/lib/components/sidebar/SchemaTree.svelte`, `src-tauri/src/commands/schema.rs`
+- [x] **2.4 1-Click Data Dictionary Generator**
+  - [x] **Multi-Format Compilation Suite**: Generator dokumentasi skema instan ke format **Markdown (`.md`)**, styled modern self-contained **HTML (`.html`)**, dan **JSON Schema (`.json`)**.
+  - [x] **Print-Ready & PDF Output**: Layout styling `@media print` untuk mencetak langsung atau menyimpannya sebagai dokumen PDF arsitektur database resmi.
+  - [x] **Instant Table & Column Filtering**: Script embedded pencarian cepat pada output HTML untuk navigasi entitas secara instan.
+  - [x] **Interactive Dictionary Modal**: Viewer terintegrasi dengan tab HTML iframe sandbox, Markdown monospace viewer, JSON editor, Copy to Clipboard, serta tombol Save File picker.
+  - [x] **Quick-Access Integration**: Tombol akses 1-klik di Navbar (`BookOpen`) dan Header Schema Explorer di sidebar.
+  - *Files Terkait*: `src-tauri/src/schema/dictionary.rs`, `src-tauri/src/commands/schema.rs`, `src/lib/components/dictionary/DataDictionaryModal.svelte`, `src/lib/api/client.ts`
 
 - [ ] **2.5 Smart QA Mock Data Generator**
   - [ ] Deteksi tipe semantik kolom secara otomatis (Nama, Email, Alamat, Nomor Telepon, UUID, Tanggal).
