@@ -23,12 +23,14 @@
     Activity,
     GitCompare,
     BookText,
+    CalendarClock,
     History as HistoryIcon
   } from 'lucide-svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
   import { monitorStore } from '$lib/state/monitor.svelte';
   import { diffStore } from '$lib/state/diff.svelte';
+  import { schedulerStore } from '$lib/state/scheduler.svelte';
 
   let { 
     onOpenErd, 
@@ -227,6 +229,17 @@
       title="Schema & Data Diff Sync Tool (Cmd+Shift+D / Ctrl+Shift+D)"
     >
       <GitCompare size={15} />
+    </button>
+
+    <button 
+      onclick={() => schedulerStore.openModal()}
+      class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors relative" 
+      title="Scheduled Automations & Local Backups (Cmd+Shift+A / Ctrl+Shift+A)"
+    >
+      <CalendarClock size={15} />
+      {#if schedulerStore.stats.active > 0}
+        <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+      {/if}
     </button>
 
     <button 

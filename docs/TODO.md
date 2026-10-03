@@ -230,11 +230,15 @@
   - [x] Integrasi polyglot di Connection Modal, Sidebar Connection Tree, dan dedicated Workspace Tab.
   - *Files Terkait*: `src-tauri/src/commands/redis.rs`, `src-tauri/src/models/redis.rs`, `src/lib/components/redis/RedisTab.svelte`, `src/lib/components/redis/RedisKeyTree.svelte`, `src/lib/components/redis/RedisKeyDetailView.svelte`, `src/lib/components/redis/RedisCliConsole.svelte`, `src/lib/components/redis/RedisServerInfoView.svelte`, `src/lib/components/redis/RedisNewKeyModal.svelte`, `src/lib/state/redis.svelte.ts`, `src/lib/api/client.ts`
 
-- [ ] **5.5 Scheduled Query Automations & Local Backups**
-  - [ ] Local background scheduler (Cron pattern / Timer) untuk eksekusi query berkala di background.
-  - [ ] Export otomatis hasil query ke direktori lokal (CSV, JSON, Excel) dengan format penamaan berbasis timestamp.
-  - [ ] Automated lightweight database backup runner (SQL dump schedule harian/mingguan).
-  - *Files Terkait*: `src-tauri/src/scheduler/`, `src/lib/components/scheduler/SchedulerModal.svelte`, `src/lib/api/client.ts`
+- [x] **5.5 Scheduled Query Automations & Local Backups**
+  - [x] Local background scheduler daemon di Rust (Cron pattern / Timer interval polling) untuk eksekusi berkala di background tanpa memblokir UI thread.
+  - [x] Export query terjadwal otomatis ke disk lokal dalam aneka format (`.csv`, `.tsv`, `.json`, `.ndjson`, `.xlsx` Excel via `rust_xlsxwriter`) dengan pola penamaan dinamis berbasis token (`{name}`, `{db}`, `{timestamp}`, `{date}`).
+  - [x] Automated lightweight database backup runner (menghasilkan full DDL schema snapshot dan batch INSERT data dump `.sql`).
+  - [x] Dashboard manajemen jadwal (`SchedulerModal.svelte`) dengan cards statistik (Total, Active, Paused, Query Exports, Backups, Success/Failed executions), filter, dan live running indicators.
+  - [x] Modal konfigurasi lengkap (`ScheduleEditorModal.svelte`) dengan query editor, table multi-selector, frequency presets (`15m`, `30m`, `1h`, `6h`, `12h`, Daily, Weekly, Custom 5-field Cron), serta folder picker via `@tauri-apps/plugin-dialog`.
+  - [x] Execution History & Logs viewer dengan status visual, durasi eksekusi, row count / file size, error trace, serta 1-click **Open Output Folder** di OS Finder/Explorer.
+  - [x] Manual trigger ("Run Now"), toggle enable/pause, live Tauri IPC notification events (`scheduler:job-started`, `scheduler:job-completed`, `scheduler:job-failed`), dan shortcut global `Cmd+Shift+A` / `Ctrl+Shift+A`.
+  - *Files Terkait*: `src-tauri/src/scheduler/mod.rs`, `src-tauri/src/models/scheduler.rs`, `src-tauri/src/commands/scheduler.rs`, `src/lib/components/scheduler/SchedulerModal.svelte`, `src/lib/components/scheduler/ScheduleEditorModal.svelte`, `src/lib/state/scheduler.svelte.ts`, `src/lib/api/client.ts`
 
 ---
 
@@ -244,4 +248,4 @@
 2. **Sprint 2 (Architecture - Selesai ✅)**: `2.1 Live ERD Visualizer` ➔ `2.2 Streaming Import/Export` ➔ `2.5 Smart Mock Data`.
 3. **Sprint 3 (Vibe & AI - Selesai ✅)**: `3.1 NL-to-SQL Copilot` ➔ `3.2 Fix with AI` ➔ `3.3 1-Click Charting` ➔ `3.4 Visual EXPLAIN Plan`.
 4. **Sprint 4 (Security & Hardening - Selesai ✅)**: `4.1 OS Keyring` ➔ `4.2 SSH Bastion Tunneling` ➔ `4.3 Transaction Control`.
-5. **Sprint 5 (Powerhouse & Server Ops - Next Up 🚀)**: `5.1 Live Server Health & Process Monitor` ➔ `5.2 Schema Diff & Sync` ➔ `5.3 SQL Notebooks` ➔ `5.4 Redis Inspector` ➔ `5.5 Scheduled Automations`.
+5. **Sprint 5 (Powerhouse & Server Ops - Selesai ✅)**: `5.1 Live Server Health & Process Monitor` ➔ `5.2 Schema Diff & Sync` ➔ `5.3 SQL Notebooks` ➔ `5.4 Redis Inspector` ➔ `5.5 Scheduled Automations`.

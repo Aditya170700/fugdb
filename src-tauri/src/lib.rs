@@ -9,7 +9,9 @@ mod transfer;
 mod ai;
 mod keyring;
 mod ssh;
+mod scheduler;
 
+use tauri::Manager;
 use commands::{
     connection::{
         connect_database, disconnect_database, test_connection, test_ssh_tunnel,
@@ -33,6 +35,11 @@ use commands::{
         set_redis_key_ttl, delete_redis_keys, rename_redis_key, get_redis_server_info,
         execute_redis_cli_command, flush_redis_db,
     },
+    scheduler::{
+        list_schedules, create_or_update_schedule, delete_schedule, toggle_schedule_enabled,
+        run_schedule_now, get_schedule_logs, clear_schedule_logs, open_schedule_output_folder,
+        get_default_backup_directory,
+    },
 };
 use state::AppState;
 
@@ -41,6 +48,15 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::new())
+        .setup(|app| {
+            let state = app.state::<AppState>();
+            scheduler::start_scheduler_background_worker(
+                app.handle().clone(),
+                state.scheduler.clone(),
+                state.pools.clone(),
+            );
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             test_connection,
             test_ssh_tunnel,
@@ -102,8 +118,18 @@ pub fn run() {
             rename_redis_key,
             get_redis_server_info,
             execute_redis_cli_command,
-            flush_redis_db
+            flush_redis_db,
+            list_schedules,
+            create_or_update_schedule,
+            delete_schedule,
+            toggle_schedule_enabled,
+            run_schedule_now,
+            get_schedule_logs,
+            clear_schedule_logs,
+            open_schedule_output_folder,
+            get_default_backup_directory
         ])
         .run(tauri::generate_context!())
         .expect("error while running FugDB application");
 }
+

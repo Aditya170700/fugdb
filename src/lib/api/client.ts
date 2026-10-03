@@ -27,7 +27,11 @@ import type {
   RedisZSetMember,
   RedisStreamEntry,
   RedisServerInfo,
-  RedisCliResponse
+  RedisCliResponse,
+  ScheduleJob,
+  ScheduleLog,
+  ScheduleJobType,
+  ScheduleRunStatus
 } from './types';
 
 // Check if running in Tauri environment
@@ -1239,6 +1243,196 @@ export const api = {
       return await invoke('flush_redis_db', { connectionId, dbIndex });
     }
     console.log('[Mock Redis] FLUSHDB on db', dbIndex);
+  },
+
+  // 5.5 Scheduled Query Automations & Local Backups
+  async listSchedules(): Promise<ScheduleJob[]> {
+    if (isTauri) {
+      return await invoke('list_schedules');
+    }
+    const stored = localStorage.getItem('fugdb_mock_schedules');
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch {}
+    }
+    return [
+      {
+        id: 'job-1',
+        name: 'Daily Sales & Revenue Report',
+        description: 'Automated CSV export of daily completed orders and totals',
+        enabled: true,
+        job_type: 'query_export',
+        connection_id: 'default',
+        database: 'ecommerce',
+        cron_expression: 'daily:02:00',
+        frequency_display: 'Daily at 02:00',
+        query_config: {
+          sql: 'SELECT id, customer_id, total_amount, status, created_at FROM orders WHERE status = \'completed\' ORDER BY created_at DESC LIMIT 1000;',
+          format: 'csv',
+          target_dir: '/Users/macbookair/Downloads',
+          filename_pattern: 'sales_report_{timestamp}.csv'
+        },
+        created_at: Date.now() - 86400000 * 3,
+        updated_at: Date.now() - 3600000,
+        last_run_at: Date.now() - 3600000 * 4,
+        last_run_status: 'success',
+        last_run_duration_ms: 245,
+        last_run_file: '/Users/macbookair/Downloads/sales_report_20261003_020000.csv',
+        last_run_rows: 850,
+        last_run_bytes: 48920,
+        next_run_at: Date.now() + 3600000 * 20
+      },
+      {
+        id: 'job-2',
+        name: 'Weekly Full Database Backup',
+        description: 'Full schema and table data SQL dump',
+        enabled: true,
+        job_type: 'database_backup',
+        connection_id: 'default',
+        database: 'ecommerce',
+        cron_expression: 'weekly:sun:03:00',
+        frequency_display: 'Every Sunday at 03:00',
+        backup_config: {
+          tables: [],
+          include_schema: true,
+          include_data: true,
+          target_dir: '/Users/macbookair/Downloads',
+          filename_pattern: 'backup_{db}_{timestamp}.sql'
+        },
+        created_at: Date.now() - 86400000 * 7,
+        updated_at: Date.now() - 86400000,
+        last_run_at: Date.now() - 86400000 * 2,
+        last_run_status: 'success',
+        last_run_duration_ms: 1240,
+        last_run_file: '/Users/macbookair/Downloads/backup_ecommerce_20261002_030000.sql',
+        last_run_rows: 14200,
+        last_run_bytes: 2450000,
+        next_run_at: Date.now() + 86400000 * 5
+      }
+    ];
+  },
+
+  async createOrUpdateSchedule(job: ScheduleJob): Promise<ScheduleJob> {
+    if (isTauri) {
+      return await invoke('create_or_update_schedule', { job });
+    }
+    const current = await this.listSchedules();
+    const idx = current.findIndex(j => j.id === job.id);
+    if (idx >= 0) {
+      current[idx] = { ...job, updated_at: Date.now() };
+    } else {
+      current.push({ ...job, created_at: Date.now(), updated_at: Date.now() });
+    }
+    localStorage.setItem('fugdb_mock_schedules', JSON.stringify(current));
+    return job;
+  },
+
+  async deleteSchedule(id: string): Promise<void> {
+    if (isTauri) {
+      return await invoke('delete_schedule', { id });
+    }
+    const current = await this.listSchedules();
+    const updated = current.filter(j => j.id !== id);
+    localStorage.setItem('fugdb_mock_schedules', JSON.stringify(updated));
+  },
+
+  async toggleScheduleEnabled(id: string, enabled: boolean): Promise<ScheduleJob> {
+    if (isTauri) {
+      return await invoke('toggle_schedule_enabled', { id, enabled });
+    }
+    const current = await this.listSchedules();
+    const target = current.find(j => j.id === id);
+    if (!target) throw new Error('Schedule not found');
+    target.enabled = enabled;
+    target.updated_at = Date.now();
+    localStorage.setItem('fugdb_mock_schedules', JSON.stringify(current));
+    return target;
+  },
+
+  async runScheduleNow(id: string): Promise<ScheduleLog> {
+    if (isTauri) {
+      return await invoke('run_schedule_now', { id });
+    }
+    await new Promise(r => setTimeout(r, 600));
+    return {
+      id: `log_${id}_${Date.now()}`,
+      job_id: id,
+      job_name: 'Manual Test Run',
+      started_at: Date.now() - 600,
+      completed_at: Date.now(),
+      duration_ms: 600,
+      status: 'success',
+      file_path: '/Users/macbookair/Downloads/manual_export_sample.csv',
+      rows_processed: 250,
+      bytes_written: 15400
+    };
+  },
+
+  async getScheduleLogs(jobId?: string): Promise<ScheduleLog[]> {
+    if (isTauri) {
+      return await invoke('get_schedule_logs', { jobId });
+    }
+    const logsJson = localStorage.getItem('fugdb_mock_schedule_logs');
+    if (logsJson) {
+      try {
+        const logs: ScheduleLog[] = JSON.parse(logsJson);
+        return jobId ? logs.filter(l => l.job_id === jobId) : logs;
+      } catch {}
+    }
+    return [
+      {
+        id: 'log-101',
+        job_id: 'job-1',
+        job_name: 'Daily Sales & Revenue Report',
+        started_at: Date.now() - 3600000 * 4,
+        completed_at: Date.now() - 3600000 * 4 + 245,
+        duration_ms: 245,
+        status: 'success',
+        file_path: '/Users/macbookair/Downloads/sales_report_20261003_020000.csv',
+        rows_processed: 850,
+        bytes_written: 48920
+      },
+      {
+        id: 'log-102',
+        job_id: 'job-2',
+        job_name: 'Weekly Full Database Backup',
+        started_at: Date.now() - 86400000 * 2,
+        completed_at: Date.now() - 86400000 * 2 + 1240,
+        duration_ms: 1240,
+        status: 'success',
+        file_path: '/Users/macbookair/Downloads/backup_ecommerce_20261002_030000.sql',
+        rows_processed: 14200,
+        bytes_written: 2450000
+      }
+    ];
+  },
+
+  async clearScheduleLogs(jobId?: string): Promise<void> {
+    if (isTauri) {
+      return await invoke('clear_schedule_logs', { jobId });
+    }
+    if (jobId) {
+      const logs = await this.getScheduleLogs();
+      const filtered = logs.filter(l => l.job_id !== jobId);
+      localStorage.setItem('fugdb_mock_schedule_logs', JSON.stringify(filtered));
+    } else {
+      localStorage.removeItem('fugdb_mock_schedule_logs');
+    }
+  },
+
+  async openScheduleOutputFolder(path: string): Promise<void> {
+    if (isTauri) {
+      return await invoke('open_schedule_output_folder', { path });
+    }
+    console.log('[Mock Scheduler] Open folder:', path);
+  },
+
+  async getDefaultBackupDirectory(): Promise<string> {
+    if (isTauri) {
+      return await invoke('get_default_backup_directory');
+    }
+    return '/Users/macbookair/Downloads';
   }
 };
 

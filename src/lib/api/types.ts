@@ -366,3 +366,60 @@ export interface RedisCliResponse {
   responseType: string;
   durationMs: number;
 }
+
+// 5.5 Scheduled Automations & Backups Types
+export type ScheduleJobType = 'query_export' | 'database_backup';
+export type ScheduleRunStatus = 'pending' | 'running' | 'success' | 'failed';
+
+export interface ScheduledQueryConfig {
+  sql: string;
+  format: string; // "csv" | "json" | "tsv" | "excel" | "ndjson"
+  target_dir: string;
+  filename_pattern: string;
+}
+
+export interface ScheduledBackupConfig {
+  tables: string[];
+  include_schema: boolean;
+  include_data: boolean;
+  target_dir: string;
+  filename_pattern: string;
+}
+
+export interface ScheduleJob {
+  id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  job_type: ScheduleJobType;
+  connection_id: string;
+  database?: string;
+  cron_expression: string;
+  frequency_display: string;
+  query_config?: ScheduledQueryConfig;
+  backup_config?: ScheduledBackupConfig;
+  created_at: number;
+  updated_at: number;
+  last_run_at?: number;
+  last_run_status?: ScheduleRunStatus;
+  last_run_duration_ms?: number;
+  last_run_error?: string;
+  last_run_file?: string;
+  last_run_rows?: number;
+  last_run_bytes?: number;
+  next_run_at?: number;
+}
+
+export interface ScheduleLog {
+  id: string;
+  job_id: string;
+  job_name: string;
+  started_at: number;
+  completed_at?: number;
+  duration_ms?: number;
+  status: ScheduleRunStatus;
+  file_path?: string;
+  rows_processed?: number;
+  bytes_written?: number;
+  error_message?: string;
+}

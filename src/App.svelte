@@ -19,6 +19,7 @@
   import ExplainPlanModal from '$lib/components/editor/ExplainPlanModal.svelte';
   import ServerMonitorModal from '$lib/components/monitor/ServerMonitorModal.svelte';
   import SchemaDiffModal from '$lib/components/diff/SchemaDiffModal.svelte';
+  import SchedulerModal from '$lib/components/scheduler/SchedulerModal.svelte';
   import SqlNotebookTab from '$lib/components/notebook/SqlNotebookTab.svelte';
   import RedisTab from '$lib/components/redis/RedisTab.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
@@ -27,6 +28,7 @@
   import { explainStore } from '$lib/state/explain.svelte';
   import { monitorStore } from '$lib/state/monitor.svelte';
   import { diffStore } from '$lib/state/diff.svelte';
+  import { schedulerStore } from '$lib/state/scheduler.svelte';
 
   let isNewConnOpen = $state(false);
   let isErdOpen = $state(false);
@@ -36,7 +38,7 @@
 
   const activeTab = $derived(tabsStore.activeTab);
 
-  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, Cmd+Shift+M for Monitor, Cmd+Shift+D for Diff, Cmd+Shift+N for Notebook, etc.)
+  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, Cmd+Shift+M for Monitor, Cmd+Shift+D for Diff, Cmd+Shift+A for Scheduler, Cmd+Shift+N for Notebook, etc.)
   function handleGlobalKeyDown(e: KeyboardEvent) {
     const isMod = e.metaKey || e.ctrlKey;
     if (isMod && e.shiftKey && e.key.toLowerCase() === 'm') {
@@ -45,6 +47,9 @@
     } else if (isMod && e.shiftKey && e.key.toLowerCase() === 'd') {
       e.preventDefault();
       diffStore.toggle();
+    } else if (isMod && e.shiftKey && e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      schedulerStore.toggle();
     } else if (isMod && e.shiftKey && e.key.toLowerCase() === 'n') {
       e.preventDefault();
       tabsStore.openNewNotebookTab();
@@ -64,6 +69,8 @@
         monitorStore.close();
       } else if (diffStore.isOpen) {
         diffStore.close();
+      } else if (schedulerStore.isOpen && !schedulerStore.isEditorOpen) {
+        schedulerStore.closeModal();
       }
     }
   }
@@ -265,6 +272,7 @@
   <ExplainPlanModal />
   <ServerMonitorModal />
   <SchemaDiffModal />
+  <SchedulerModal />
 </main>
 
 <svelte:window onkeydown={handleGlobalKeyDown} />
