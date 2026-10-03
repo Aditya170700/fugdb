@@ -274,101 +274,47 @@ impl AiClient {
                     return Err(AppError::Internal("Gemini API Key is required".into()));
                 }
 
-                let clean_model = config.model.trim_start_matches("models/");
+                let resolved_model = resolve_gemini_model(&client, api_key, &config.model).await?;
+                let url = format!(
+                    "https://generativelanguage.googleapis.com/v1beta/{}:generateContent?key={}",
+                    resolved_model, api_key
+                );
 
-                // 1. Try Google Gemini's official OpenAI-compatible endpoint
-                let openai_url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-                let openai_body = json!({
-                    "model": clean_model,
-                    "messages": [
-                        { "role": "system", "content": system_prompt },
-                        { "role": "user", "content": user_prompt }
-                    ],
-                    "temperature": config.temperature.unwrap_or(0.2)
+                let body = json!({
+                    "contents": [{
+                        "parts": [{ "text": format!("{}\n\n{}", system_prompt, user_prompt) }]
+                    }],
+                    "generationConfig": {
+                        "temperature": config.temperature.unwrap_or(0.2)
+                    }
                 });
 
-                let mut result_text: Option<String> = None;
-
-                if let Ok(resp) = client.post(openai_url)
-                    .header("Authorization", format!("Bearer {}", api_key))
-                    .json(&openai_body)
+                let resp = client.post(&url)
+                    .json(&body)
                     .send()
                     .await
-                {
-                    if resp.status().is_success() {
-                        if let Ok(res_json) = resp.json::<Value>().await {
-                            if let Some(content) = res_json.get("choices")
-                                .and_then(|c| c.as_array())
-                                .and_then(|a| a.first())
-                                .and_then(|f| f.get("message"))
-                                .and_then(|m| m.get("content"))
-                                .and_then(|s| s.as_str())
-                            {
-                                if !content.trim().is_empty() {
-                                    result_text = Some(content.to_string());
-                                }
-                            }
-                        }
-                    }
+                    .map_err(|e| AppError::Internal(format!("Gemini request error: {}", e)))?;
+
+                if !resp.status().is_success() {
+                    let status = resp.status();
+                    let err_msg = resp.text().await.unwrap_or_default();
+                    return Err(AppError::Internal(format_api_error("Gemini", status, &err_msg)));
                 }
 
-                if let Some(text) = result_text {
-                    text
-                } else {
-                    // 2. Fallback to native generateContent endpoint
-                    let candidate_urls = [
-                        format!("https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}", clean_model, api_key),
-                        format!("https://generativelanguage.googleapis.com/v1/models/{}:generateContent?key={}", clean_model, api_key),
-                    ];
+                let res_json: Value = resp.json().await
+                    .map_err(|e| AppError::Internal(format!("Failed to parse Gemini response: {}", e)))?;
 
-                    let body = json!({
-                        "contents": [{
-                            "parts": [{ "text": format!("{}\n\n{}", system_prompt, user_prompt) }]
-                        }],
-                        "generationConfig": {
-                            "temperature": config.temperature.unwrap_or(0.2)
-                        }
-                    });
-
-                    let mut last_err = String::new();
-                    let mut chosen_res_json: Option<Value> = None;
-
-                    for url in &candidate_urls {
-                        let resp = client.post(url)
-                            .json(&body)
-                            .send()
-                            .await
-                            .map_err(|e| AppError::Internal(format!("Gemini request error: {}", e)))?;
-
-                        if resp.status().is_success() {
-                            let res_json: Value = resp.json().await
-                                .map_err(|e| AppError::Internal(format!("Failed to parse Gemini response: {}", e)))?;
-                            chosen_res_json = Some(res_json);
-                            break;
-                        } else {
-                            let status = resp.status();
-                            let err_msg = resp.text().await.unwrap_or_default();
-                            last_err = format_api_error("Gemini", status, &err_msg);
-                        }
-                    }
-
-                    let res_json = match chosen_res_json {
-                        Some(j) => j,
-                        None => return Err(AppError::Internal(if !last_err.is_empty() { last_err } else { "Gemini query generation failed".into() })),
-                    };
-
-                    res_json.get("candidates")
-                        .and_then(|c| c.as_array())
-                        .and_then(|a| a.first())
-                        .and_then(|f| f.get("content"))
-                        .and_then(|c| c.get("parts"))
-                        .and_then(|p| p.as_array())
-                        .and_then(|pa| pa.first())
-                        .and_then(|t| t.get("text"))
-                        .and_then(|s| s.as_str())
-                        .unwrap_or_default()
-                        .to_string()
-                }
+                res_json.get("candidates")
+                    .and_then(|c| c.as_array())
+                    .and_then(|a| a.first())
+                    .and_then(|f| f.get("content"))
+                    .and_then(|c| c.get("parts"))
+                    .and_then(|p| p.as_array())
+                    .and_then(|pa| pa.first())
+                    .and_then(|t| t.get("text"))
+                    .and_then(|s| s.as_str())
+                    .unwrap_or_default()
+                    .to_string()
             }
             "anthropic" => {
                 let api_key = config.api_key.as_deref().unwrap_or_default();
@@ -515,4 +461,72 @@ fn extract_referenced_tables(sql: &str) -> Vec<String> {
         }
     }
     tables
+}
+
+async fn resolve_gemini_model(client: &reqwest::Client, api_key: &str, preferred_model: &str) -> Result<String, AppError> {
+    let list_url = format!("https://generativelanguage.googleapis.com/v1beta/models?key={}", api_key);
+    let resp = client.get(&list_url).send().await
+        .map_err(|e| AppError::Internal(format!("Failed to connect to Gemini API: {}", e)))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let err_text = resp.text().await.unwrap_or_default();
+        return Err(AppError::Internal(format_api_error("Gemini", status, &err_text)));
+    }
+
+    let json_data: Value = resp.json().await
+        .map_err(|e| AppError::Internal(format!("Failed to parse Gemini models list: {}", e)))?;
+
+    let models = json_data.get("models").and_then(|m| m.as_array());
+    if let Some(list) = models {
+        let mut available_generate_models = Vec::new();
+        for m in list {
+            let name = m.get("name").and_then(|n| n.as_str()).unwrap_or_default();
+            let methods = m.get("supportedGenerationMethods").and_then(|meth| meth.as_array());
+            let supports_generate = methods.map_or(false, |arr| {
+                arr.iter().any(|v| v.as_str() == Some("generateContent"))
+            });
+            if supports_generate && !name.is_empty() {
+                available_generate_models.push(name.to_string());
+            }
+        }
+
+        let clean_pref = preferred_model.trim_start_matches("models/").to_lowercase();
+
+        // 1. Exact match with preferred model (with or without models/ prefix)
+        for m in &available_generate_models {
+            let m_clean = m.trim_start_matches("models/").to_lowercase();
+            if m_clean == clean_pref {
+                return Ok(m.clone());
+            }
+        }
+
+        // 2. Prefix or substring match (e.g. gemini-1.5-flash matching models/gemini-1.5-flash-001, models/gemini-1.5-flash-latest, etc.)
+        for m in &available_generate_models {
+            let m_clean = m.trim_start_matches("models/").to_lowercase();
+            if m_clean.starts_with(&clean_pref) || clean_pref.starts_with(&m_clean) {
+                return Ok(m.clone());
+            }
+        }
+
+        // 3. Fallback to any flash or pro model that supports generateContent
+        for m in &available_generate_models {
+            let m_lower = m.to_lowercase();
+            if m_lower.contains("flash") || m_lower.contains("pro") {
+                return Ok(m.clone());
+            }
+        }
+
+        // 4. Fallback to first available model that supports generateContent
+        if let Some(first) = available_generate_models.first() {
+            return Ok(first.clone());
+        }
+    }
+
+    let default_model = if preferred_model.starts_with("models/") {
+        preferred_model.to_string()
+    } else {
+        format!("models/{}", preferred_model)
+    };
+    Ok(default_model)
 }
