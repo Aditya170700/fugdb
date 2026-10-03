@@ -309,11 +309,11 @@
 
         <!-- Error Alert if failed -->
         {#if aiStore.errorMessage}
-          <div class="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-150">
+          <div class="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in duration-150 overflow-hidden">
             <AlertCircle size={16} class="shrink-0 mt-0.5 text-rose-600" />
-            <div class="space-y-1">
+            <div class="space-y-1 min-w-0 flex-1">
               <strong class="font-bold block">Generation Failed:</strong>
-              <p class="font-mono text-[11px] leading-relaxed">{aiStore.errorMessage}</p>
+              <p class="font-mono text-[11px] leading-relaxed break-words break-all whitespace-pre-wrap">{aiStore.errorMessage}</p>
               {#if aiStore.provider === 'ollama'}
                 <p class="text-[10px] text-rose-600 dark:text-rose-400 mt-1">
                   Tip: Ensure Ollama is running (`ollama serve` or app active) with model `{aiStore.model}` installed.

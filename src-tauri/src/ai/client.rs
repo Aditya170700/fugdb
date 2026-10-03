@@ -86,7 +86,9 @@ impl AiClient {
                 if res.status().is_success() {
                     Ok("Successfully connected to local Ollama instance!".into())
                 } else {
-                    Err(AppError::Internal(format!("Ollama returned status {}", res.status())))
+                    let status = res.status();
+                    let err_text = res.text().await.unwrap_or_default();
+                    Err(AppError::Internal(format_api_error("Ollama", status, &err_text)))
                 }
             }
             "openai" | "deepseek" | "custom" => {
@@ -102,18 +104,26 @@ impl AiClient {
                     }
                 }).trim_end_matches('/');
 
-                let url = format!("{}/models", base_url);
-                let mut req = client.get(&url);
+                let url = format!("{}/chat/completions", base_url);
+                let body = json!({
+                    "model": config.model,
+                    "max_tokens": 5,
+                    "messages": [
+                        { "role": "user", "content": "ping" }
+                    ]
+                });
+                let mut req = client.post(&url).json(&body);
                 if !api_key.is_empty() {
                     req = req.header("Authorization", format!("Bearer {}", api_key));
                 }
                 let res = req.send().await
                     .map_err(|e| AppError::Internal(format!("Failed to reach {}: {}", config.provider, e)))?;
                 if res.status().is_success() {
-                    Ok(format!("Successfully connected to {}!", config.provider))
+                    Ok(format!("Successfully connected to {} ({})!", config.provider, config.model))
                 } else {
+                    let status = res.status();
                     let err_text = res.text().await.unwrap_or_default();
-                    Err(AppError::Internal(format!("Connection error ({}): {}", config.provider, err_text)))
+                    Err(AppError::Internal(format_api_error(&config.provider, status, &err_text)))
                 }
             }
             "gemini" => {
@@ -121,17 +131,27 @@ impl AiClient {
                 if api_key.is_empty() {
                     return Err(AppError::Internal("Gemini API Key is required".into()));
                 }
+                let model_name = if config.model.starts_with("models/") {
+                    config.model.clone()
+                } else {
+                    format!("models/{}", config.model)
+                };
                 let url = format!(
-                    "https://generativelanguage.googleapis.com/v1beta/models?key={}",
-                    api_key
+                    "https://generativelanguage.googleapis.com/v1beta/{}:generateContent?key={}",
+                    model_name, api_key
                 );
-                let res = client.get(&url).send().await
+                let body = json!({
+                    "contents": [{ "parts": [{ "text": "ping" }] }],
+                    "generationConfig": { "maxOutputTokens": 5 }
+                });
+                let res = client.post(&url).json(&body).send().await
                     .map_err(|e| AppError::Internal(format!("Gemini connection failed: {}", e)))?;
                 if res.status().is_success() {
                     Ok("Successfully connected to Google Gemini API!".into())
                 } else {
+                    let status = res.status();
                     let err_text = res.text().await.unwrap_or_default();
-                    Err(AppError::Internal(format!("Gemini API error: {}", err_text)))
+                    Err(AppError::Internal(format_api_error("Gemini", status, &err_text)))
                 }
             }
             "anthropic" => {
@@ -142,8 +162,8 @@ impl AiClient {
                 // Test lightweight message
                 let body = json!({
                     "model": config.model,
-                    "max_tokens": 10,
-                    "messages": [{"role": "user", "content": "hi"}]
+                    "max_tokens": 5,
+                    "messages": [{"role": "user", "content": "ping"}]
                 });
                 let res = client.post("https://api.anthropic.com/v1/messages")
                     .header("x-api-key", api_key)
@@ -156,8 +176,9 @@ impl AiClient {
                 if res.status().is_success() {
                     Ok("Successfully connected to Anthropic Claude API!".into())
                 } else {
+                    let status = res.status();
                     let err_text = res.text().await.unwrap_or_default();
-                    Err(AppError::Internal(format!("Anthropic API error: {}", err_text)))
+                    Err(AppError::Internal(format_api_error("Anthropic", status, &err_text)))
                 }
             }
             _ => Err(AppError::Internal(format!("Unsupported provider: {}", config.provider))),
@@ -241,7 +262,7 @@ impl AiClient {
                 if !resp.status().is_success() {
                     let status = resp.status();
                     let err_msg = resp.text().await.unwrap_or_default();
-                    return Err(AppError::Internal(format!("{} API error (HTTP {}): {}", config.provider, status, err_msg)));
+                    return Err(AppError::Internal(format_api_error(&config.provider, status, &err_msg)));
                 }
 
                 let res_json: Value = resp.json().await
@@ -294,7 +315,7 @@ impl AiClient {
                 if !resp.status().is_success() {
                     let status = resp.status();
                     let err_msg = resp.text().await.unwrap_or_default();
-                    return Err(AppError::Internal(format!("Gemini API error (HTTP {}): {}", status, err_msg)));
+                    return Err(AppError::Internal(format_api_error("Gemini", status, &err_msg)));
                 }
 
                 let res_json: Value = resp.json().await
@@ -338,7 +359,7 @@ impl AiClient {
                 if !resp.status().is_success() {
                     let status = resp.status();
                     let err_msg = resp.text().await.unwrap_or_default();
-                    return Err(AppError::Internal(format!("Anthropic API error (HTTP {}): {}", status, err_msg)));
+                    return Err(AppError::Internal(format_api_error("Anthropic", status, &err_msg)));
                 }
 
                 let res_json: Value = resp.json().await
@@ -368,6 +389,27 @@ impl AiClient {
             execution_time_ms,
         })
     }
+}
+
+fn format_api_error(provider: &str, status: reqwest::StatusCode, raw_body: &str) -> String {
+    let clean_body = raw_body.trim();
+    if let Ok(v) = serde_json::from_str::<Value>(clean_body) {
+        if let Some(msg) = v.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
+            let clean_msg = if let Some(idx) = msg.find(" (request_id:") {
+                &msg[..idx]
+            } else {
+                msg
+            };
+            return format!("{} error (HTTP {}): {}", provider, status, clean_msg);
+        }
+        if let Some(msg) = v.get("error").and_then(|e| e.as_str()) {
+            return format!("{} error (HTTP {}): {}", provider, status, msg);
+        }
+        if let Some(msg) = v.get("message").and_then(|m| m.as_str()) {
+            return format!("{} error (HTTP {}): {}", provider, status, msg);
+        }
+    }
+    format!("{} error (HTTP {}): {}", provider, status, clean_body)
 }
 
 fn extract_sql_and_explanation(raw: &str) -> (String, String) {
