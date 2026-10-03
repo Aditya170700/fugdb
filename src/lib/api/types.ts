@@ -127,3 +127,32 @@ export interface FileInspectionResult {
   totalBytes: number;
   sheetNames?: string[];
 }
+
+// QA Smart Mock Data Generator Types
+export interface ColumnMockRule {
+  columnName: string;
+  dataType: string;
+  isPrimaryKey: boolean;
+  isForeignKey: boolean;
+  nullable: boolean;
+  include: boolean;
+  generatorType: string;
+  nullPercentage: number;
+  customOptions?: string;
+  fkTargetTable?: string;
+  fkTargetColumn?: string;
+  sampleFkValues?: any[];
+}
+
+export interface TableMockInspection {
+  tableName: string;
+  columns: ColumnMockRule[];
+}
+
+export interface MockBatchResult {
+  insertedRows: number;
+  executionTimeMs: number;
+  chunksCount: number;
+  tableName: string;
+}
+

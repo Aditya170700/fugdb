@@ -3,12 +3,16 @@ mod drivers;
 mod error;
 mod models;
 mod schema;
+mod qa;
 mod state;
 mod transfer;
 
 use commands::{
     connection::{connect_database, disconnect_database, test_connection},
-    mock_data::generate_mock_batch,
+    mock_data::{
+        execute_mock_batch_insert, generate_mock_batch, generate_mock_sql_script,
+        inspect_table_mock_config, preview_mock_rows,
+    },
     query::execute_query,
     schema::{export_data_dictionary_file, fetch_schema_tree, generate_data_dictionary, generate_erd_metadata, print_data_dictionary},
     transfer::{cancel_transfer_job, inspect_file, start_db_to_db_job, start_export_job, start_import_job},
@@ -30,6 +34,10 @@ pub fn run() {
             generate_data_dictionary,
             export_data_dictionary_file,
             print_data_dictionary,
+            inspect_table_mock_config,
+            preview_mock_rows,
+            generate_mock_sql_script,
+            execute_mock_batch_insert,
             generate_mock_batch,
             inspect_file,
             start_export_job,

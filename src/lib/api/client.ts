@@ -10,7 +10,10 @@ import type {
   ImportJobRequest,
   DbToDbTransferRequest,
   TransferProgressEvent,
-  FileInspectionResult
+  FileInspectionResult,
+  ColumnMockRule,
+  TableMockInspection,
+  MockBatchResult
 } from './types';
 
 // Check if running in Tauri environment
@@ -128,7 +131,60 @@ export const api = {
     };
   },
 
-  // Mock data batch generator
+  // Smart QA Mock Data Generator API
+  async inspectTableMockConfig(connectionId: string, tableName: string): Promise<TableMockInspection> {
+    if (isTauri) {
+      return await invoke('inspect_table_mock_config', { connectionId, tableName });
+    }
+    // Mock for browser testing
+    return {
+      tableName,
+      columns: [
+        { columnName: 'id', dataType: 'int4', isPrimaryKey: true, isForeignKey: false, nullable: false, include: false, generatorType: 'auto_increment', nullPercentage: 0 },
+        { columnName: 'name', dataType: 'varchar', isPrimaryKey: false, isForeignKey: false, nullable: false, include: true, generatorType: 'full_name', nullPercentage: 0 },
+        { columnName: 'email', dataType: 'varchar', isPrimaryKey: false, isForeignKey: false, nullable: false, include: true, generatorType: 'email', nullPercentage: 0 },
+        { columnName: 'phone', dataType: 'varchar', isPrimaryKey: false, isForeignKey: false, nullable: true, include: true, generatorType: 'phone', nullPercentage: 10 },
+        { columnName: 'role', dataType: 'varchar', isPrimaryKey: false, isForeignKey: false, nullable: false, include: true, generatorType: 'custom_list', customOptions: 'admin, editor, viewer, qa', nullPercentage: 0 },
+        { columnName: 'is_active', dataType: 'bool', isPrimaryKey: false, isForeignKey: false, nullable: false, include: true, generatorType: 'boolean', nullPercentage: 0 },
+        { columnName: 'created_at', dataType: 'timestamptz', isPrimaryKey: false, isForeignKey: false, nullable: false, include: true, generatorType: 'timestamp_past', nullPercentage: 0 },
+      ]
+    };
+  },
+
+  async previewMockRows(rules: ColumnMockRule[], count: number = 10): Promise<Record<string, any>[]> {
+    if (isTauri) {
+      return await invoke('preview_mock_rows', { rules, count });
+    }
+    return Array.from({ length: count }, (_, i) => ({
+      name: `User ${i + 1}`,
+      email: `user${i + 1}@example.com`,
+      phone: `+62-812-${1000 + i}-4455`,
+      role: 'developer',
+      is_active: true,
+      created_at: '2026-09-30 12:00:00'
+    }));
+  },
+
+  async generateMockSqlScript(tableName: string, rules: ColumnMockRule[], count: number = 100): Promise<string> {
+    if (isTauri) {
+      return await invoke('generate_mock_sql_script', { tableName, rules, count });
+    }
+    return `-- Smart QA Mock Data Script for \`${tableName}\`\nINSERT INTO ${tableName} (name, email) VALUES ('Demo User', 'demo@fugdb.dev');`;
+  },
+
+  async executeMockBatchInsert(connectionId: string, tableName: string, rules: ColumnMockRule[], count: number, chunkSize?: number): Promise<MockBatchResult> {
+    if (isTauri) {
+      return await invoke('execute_mock_batch_insert', { connectionId, tableName, rules, count, chunkSize });
+    }
+    await new Promise(r => setTimeout(r, 600));
+    return {
+      insertedRows: count,
+      executionTimeMs: 42.5,
+      chunksCount: Math.ceil(count / 250),
+      tableName
+    };
+  },
+
   async generateMockBatch(connectionId: string, table: string, count: number): Promise<number> {
     if (isTauri) {
       return await invoke('generate_mock_batch', { connectionId, table, count });
