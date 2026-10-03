@@ -18,7 +18,8 @@
     CheckCircle2,
     AlertCircle,
     Download,
-    Play
+    Play,
+    Search
   } from 'lucide-svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
@@ -33,7 +34,7 @@
   let selectedTable = $state<string>('');
   let activeTab = $state<'rules' | 'preview' | 'sql'>('rules');
   let rowCount = $state<number>(100);
-  let customRowCount = $state<number>(100);
+  let columnSearch = $state<string>('');
   let chunkSize = $state<number>(250);
 
   // Table rules state
@@ -55,6 +56,12 @@
   const connections = $derived(connectionStore.connections);
   const activeConn = $derived(connectionStore.activeConnection);
   const tables = $derived(selectedConnectionId ? (connectionStore.schemas[selectedConnectionId]?.tables || []) : []);
+
+  const filteredRules = $derived.by(() => {
+    if (!columnSearch.trim()) return columnRules;
+    const q = columnSearch.toLowerCase();
+    return columnRules.filter(r => r.columnName.toLowerCase().includes(q) || r.dataType.toLowerCase().includes(q));
+  });
 
   const generatorOptions = [
     { value: 'full_name', label: '👤 Person: Full Name (e.g. Aditya Pratama)' },
@@ -288,7 +295,7 @@
           </div>
 
           <!-- Target Table Selector -->
-          <div class="w-52">
+          <div class="w-64">
             <CustomSelect
               id="qa-table-select"
               size="sm"
@@ -323,7 +330,7 @@
       </div>
 
       <!-- Mode Tabs & Top Toolbar -->
-      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-surface-950/50 px-5 py-2">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-surface-950/50 px-5 py-2 flex-wrap gap-2">
         <div class="flex items-center gap-1.5 text-xs font-semibold">
           <button 
             type="button"
@@ -331,7 +338,7 @@
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all cursor-pointer {activeTab === 'rules' ? 'bg-white dark:bg-surface-800 text-violet-600 dark:text-violet-400 border-slate-300 dark:border-slate-700 shadow-xs font-bold' : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}"
           >
             <Sliders size={13} />
-            <span>Column Rules & Mappings</span>
+            <span>Column Rules</span>
             <span class="px-1.5 py-0.2 text-[10px] rounded-full bg-violet-500/15 text-violet-700 dark:text-violet-300 font-mono">
               {includedColumnsCount}/{columnRules.length}
             </span>
@@ -343,7 +350,7 @@
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all cursor-pointer {activeTab === 'preview' ? 'bg-white dark:bg-surface-800 text-violet-600 dark:text-violet-400 border-slate-300 dark:border-slate-700 shadow-xs font-bold' : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}"
           >
             <Eye size={13} />
-            <span>Live Sample Preview (10 Rows)</span>
+            <span>Live Sample (10 Rows)</span>
           </button>
 
           <button 
@@ -352,27 +359,38 @@
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all cursor-pointer {activeTab === 'sql' ? 'bg-white dark:bg-surface-800 text-violet-600 dark:text-violet-400 border-slate-300 dark:border-slate-700 shadow-xs font-bold' : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'}"
           >
             <Code size={13} />
-            <span>SQL Insert Script</span>
+            <span>SQL Script</span>
           </button>
         </div>
 
         {#if activeTab === 'rules'}
-          <div class="flex items-center gap-2 text-xs">
-            <button
-              type="button"
-              onclick={() => toggleAllColumns(true)}
-              class="px-2.5 py-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded hover:bg-slate-200/70 dark:hover:bg-surface-800 transition-colors font-medium cursor-pointer"
-            >
-              Select All
-            </button>
-            <span class="text-slate-300 dark:text-slate-700">•</span>
-            <button
-              type="button"
-              onclick={() => toggleAllColumns(false)}
-              class="px-2.5 py-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded hover:bg-slate-200/70 dark:hover:bg-surface-800 transition-colors font-medium cursor-pointer"
-            >
-              Deselect All
-            </button>
+          <div class="flex items-center gap-2.5 text-xs">
+            <div class="relative w-44">
+              <Search size={12} class="absolute left-2.5 top-2 text-slate-400 dark:text-slate-500" />
+              <input 
+                type="text"
+                bind:value={columnSearch}
+                placeholder="Search columns..."
+                class="w-full pl-7 pr-2 py-1 text-xs bg-white dark:bg-surface-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-violet-500 shadow-xs"
+              />
+            </div>
+            <div class="flex items-center gap-1">
+              <button
+                type="button"
+                onclick={() => toggleAllColumns(true)}
+                class="px-2 py-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded hover:bg-slate-200/70 dark:hover:bg-surface-800 transition-colors font-medium cursor-pointer"
+              >
+                Select All
+              </button>
+              <span class="text-slate-300 dark:text-slate-700">•</span>
+              <button
+                type="button"
+                onclick={() => toggleAllColumns(false)}
+                class="px-2 py-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded hover:bg-slate-200/70 dark:hover:bg-surface-800 transition-colors font-medium cursor-pointer"
+              >
+                Deselect All
+              </button>
+            </div>
           </div>
         {:else if activeTab === 'sql'}
           <div class="flex items-center gap-2 text-xs">
@@ -426,7 +444,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-200 dark:divide-slate-800/80">
-                {#each columnRules as rule (rule.columnName)}
+                {#each filteredRules as rule (rule.columnName)}
                   <tr class="hover:bg-slate-50 dark:hover:bg-surface-800/50 transition-colors {rule.include ? '' : 'opacity-40'}">
                     <!-- Include Checkbox -->
                     <td class="py-2.5 px-3 text-center">
@@ -601,19 +619,33 @@
       </div>
 
       <!-- Modal Footer (Row Count Selector & Action Trigger) -->
-      <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-surface-950/80 flex items-center justify-between gap-4">
-        <!-- Preset Row Count Buttons -->
-        <div class="flex items-center gap-2 text-xs">
+      <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-surface-950/80 flex items-center justify-between gap-4 flex-wrap">
+        <!-- Preset Row Count Buttons & Custom Input -->
+        <div class="flex items-center gap-2 text-xs flex-wrap">
           <span class="font-semibold text-slate-600 dark:text-slate-400">Generate Rows:</span>
           {#each [10, 50, 100, 500, 1000, 5000, 10000] as count}
             <button
               type="button"
-              onclick={() => { rowCount = count; customRowCount = count; }}
+              onclick={() => { rowCount = count; }}
               class="px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-colors cursor-pointer border {rowCount === count ? 'bg-violet-600 text-white border-violet-600 shadow-xs' : 'bg-white dark:bg-surface-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-surface-700'}"
             >
               {count >= 1000 ? `${count / 1000}k` : count}
             </button>
           {/each}
+
+          <!-- Custom Count Input -->
+          <div class="flex items-center gap-1.5 ml-1 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-xs">
+            <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Custom:</span>
+            <input
+              type="number"
+              min="1"
+              max="100000"
+              bind:value={rowCount}
+              class="w-20 bg-transparent text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none text-right"
+              placeholder="Count"
+            />
+            <span class="text-[10px] text-slate-400">rows</span>
+          </div>
         </div>
 
         <!-- Action Buttons -->
@@ -632,15 +664,15 @@
           <button
             type="button"
             onclick={handleExecuteBatch}
-            disabled={isInserting || includedColumnsCount === 0}
+            disabled={isInserting || includedColumnsCount === 0 || !rowCount || rowCount <= 0}
             class="px-4 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 rounded-lg flex items-center gap-2 cursor-pointer shadow-md shadow-violet-600/20 transition-all disabled:opacity-50"
           >
             {#if isInserting}
               <RefreshCw size={13} class="animate-spin text-white" />
-              <span>Inserting {rowCount.toLocaleString()} Rows...</span>
+              <span>Inserting {rowCount?.toLocaleString() || 0} Rows...</span>
             {:else}
               <Play size={13} fill="currentColor" />
-              <span>Generate & Insert {rowCount.toLocaleString()} Rows</span>
+              <span>Generate & Insert {rowCount?.toLocaleString() || 0} Rows</span>
             {/if}
           </button>
         </div>

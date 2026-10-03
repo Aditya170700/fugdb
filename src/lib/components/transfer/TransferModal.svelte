@@ -53,6 +53,7 @@
   let crossTargetConnId = $state<string>('');
   let crossTargetSchema = $state<string>('public');
   let crossTargetTable = $state<string>('');
+  let crossTargetMode = $state<'existing' | 'new'>('new');
   let crossConflictStrategy = $state<'fail' | 'ignore' | 'upsert'>('fail');
   let crossCreateTable = $state<boolean>(true);
   let crossTruncateTarget = $state<boolean>(false);
@@ -78,6 +79,7 @@
   let importConnId = $state<string>('');
   let importTargetSchema = $state<string>('public');
   let importTargetTable = $state<string>('');
+  let importTargetMode = $state<'existing' | 'new'>('existing');
   let importFormatType = $state<'csv' | 'tsv' | 'json' | 'excel' | 'sql'>('csv');
   let importCsvDelimiter = $state<string>(',');
   let importConflictStrategy = $state<'fail' | 'ignore' | 'upsert'>('fail');
@@ -157,6 +159,24 @@
     if (exportTables.length > 0) {
       if (!exportSelectedTable || !exportTables.some(t => t.name === exportSelectedTable)) {
         exportSelectedTable = exportTables[0].name;
+      }
+    }
+  });
+
+  // When tables list updates for cross target, if in existing mode, ensure crossTargetTable is valid
+  $effect(() => {
+    if (crossTargetMode === 'existing' && crossTargetTables.length > 0) {
+      if (!crossTargetTable || !crossTargetTables.some(t => t.name === crossTargetTable)) {
+        crossTargetTable = crossTargetTables[0].name;
+      }
+    }
+  });
+
+  // When tables list updates for import target, if in existing mode, ensure importTargetTable is valid
+  $effect(() => {
+    if (importTargetMode === 'existing' && importTables.length > 0) {
+      if (!importTargetTable || !importTables.some(t => t.name === importTargetTable)) {
+        importTargetTable = importTables[0].name;
       }
     }
   });
@@ -602,14 +622,46 @@
                       />
                     </div>
                     <div>
-                      <label for="cross-tgt-table" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Target Table</label>
-                      <input
-                        id="cross-tgt-table"
-                        type="text"
-                        bind:value={crossTargetTable}
-                        placeholder="e.g. users_backup"
-                        class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                      />
+                      <div class="flex items-center justify-between mb-1">
+                        <label for="cross-tgt-table" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Target Table</label>
+                        <div class="flex items-center gap-1 text-[10px]">
+                          <button
+                            type="button"
+                            onclick={() => crossTargetMode = 'existing'}
+                            class="px-1.5 py-0.5 rounded cursor-pointer transition-colors {crossTargetMode === 'existing' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/30' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}"
+                          >
+                            Select Table
+                          </button>
+                          <span class="text-slate-300 dark:text-slate-700">•</span>
+                          <button
+                            type="button"
+                            onclick={() => crossTargetMode = 'new'}
+                            class="px-1.5 py-0.5 rounded cursor-pointer transition-colors {crossTargetMode === 'new' ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-500/30' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}"
+                          >
+                            New Table
+                          </button>
+                        </div>
+                      </div>
+                      {#if crossTargetMode === 'existing'}
+                        <CustomSelect
+                          id="cross-tgt-table-select"
+                          fontMono={true}
+                          bind:value={crossTargetTable}
+                          options={crossTargetTables.length > 0 ? crossTargetTables.map(tbl => ({
+                            value: tbl.name,
+                            label: `${tbl.schema}.${tbl.name}`,
+                            badge: `${(tbl.rowCountEstimate ?? 0).toLocaleString()} rows`
+                          })) : [{ value: '', label: connectionStore.isLoading ? 'Loading tables...' : 'No tables in target database' }]}
+                        />
+                      {:else}
+                        <input
+                          id="cross-tgt-table"
+                          type="text"
+                          bind:value={crossTargetTable}
+                          placeholder="e.g. users_backup"
+                          class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        />
+                      {/if}
                     </div>
                   </div>
                 </div>
@@ -960,14 +1012,46 @@
                 </div>
 
                 <div>
-                  <label for="import-table" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Target Table Name</label>
-                  <input
-                    id="import-table"
-                    type="text"
-                    bind:value={importTargetTable}
-                    placeholder="e.g. users"
-                    class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-indigo-500 font-bold text-indigo-600 dark:text-indigo-400 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  />
+                  <div class="flex items-center justify-between mb-1">
+                    <label for="import-table" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Target Table</label>
+                    <div class="flex items-center gap-1 text-[10px]">
+                      <button
+                        type="button"
+                        onclick={() => importTargetMode = 'existing'}
+                        class="px-1.5 py-0.5 rounded cursor-pointer transition-colors {importTargetMode === 'existing' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/30' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}"
+                      >
+                        Select Table
+                      </button>
+                      <span class="text-slate-300 dark:text-slate-700">•</span>
+                      <button
+                        type="button"
+                        onclick={() => importTargetMode = 'new'}
+                        class="px-1.5 py-0.5 rounded cursor-pointer transition-colors {importTargetMode === 'new' ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-500/30' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}"
+                      >
+                        New Table
+                      </button>
+                    </div>
+                  </div>
+                  {#if importTargetMode === 'existing'}
+                    <CustomSelect
+                      id="import-table-select"
+                      fontMono={true}
+                      bind:value={importTargetTable}
+                      options={importTables.length > 0 ? importTables.map(tbl => ({
+                        value: tbl.name,
+                        label: `${tbl.schema}.${tbl.name}`,
+                        badge: `${(tbl.rowCountEstimate ?? 0).toLocaleString()} rows`
+                      })) : [{ value: '', label: connectionStore.isLoading ? 'Loading tables...' : 'No tables found in database' }]}
+                    />
+                  {:else}
+                    <input
+                      id="import-table"
+                      type="text"
+                      bind:value={importTargetTable}
+                      placeholder="e.g. users"
+                      class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:border-indigo-500 font-bold text-indigo-600 dark:text-indigo-400 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    />
+                  {/if}
                 </div>
               </div>
 
