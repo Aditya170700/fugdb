@@ -190,6 +190,7 @@
             connectionId={activeTab.connectionId}
             result={activeTab.queryResult} 
             errorMessage={activeTab.errorMessage} 
+            isExecuting={activeTab.isExecuting}
           />
         </div>
       {:else}

@@ -28,7 +28,9 @@
     ArrowUpDown,
     Search,
     FilterX,
-    SlidersHorizontal
+    SlidersHorizontal,
+    Database,
+    Loader2
   } from 'lucide-svelte';
   import { mutationStore, TabMutationState } from '$lib/state/mutations.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
@@ -41,7 +43,8 @@
     tableName = '',
     connectionId = '',
     result, 
-    errorMessage 
+    errorMessage,
+    isExecuting = false
   }: { 
     tabId?: string;
     sql?: string;
@@ -49,7 +52,24 @@
     connectionId?: string;
     result?: QueryResult; 
     errorMessage?: string;
+    isExecuting?: boolean;
   } = $props();
+
+  let executionStartTime = $state<number>(0);
+  let elapsedMs = $state<number>(0);
+
+  $effect(() => {
+    if (isExecuting) {
+      executionStartTime = Date.now();
+      elapsedMs = 0;
+      const interval = setInterval(() => {
+        elapsedMs = Date.now() - executionStartTime;
+      }, 50);
+      return () => clearInterval(interval);
+    } else {
+      elapsedMs = 0;
+    }
+  });
 
   const mutationState = $derived(mutationStore.getTabState(tabId));
   const activeConn = $derived(connectionStore.activeConnection);
@@ -665,7 +685,63 @@
 </script>
 
 <div class="w-full h-full flex flex-col bg-surface-950 select-none overflow-hidden relative">
-  {#if errorMessage}
+  {#if isExecuting && !result}
+    <!-- Initial Query / Empty Grid Loading State -->
+    <div class="flex-1 flex flex-col relative overflow-hidden bg-surface-950/60 p-4">
+      <!-- Animated Shimmer Skeleton Table -->
+      <div class="w-full border border-slate-200 dark:border-slate-800/60 rounded-xl overflow-hidden bg-surface-900/40 divide-y divide-slate-200 dark:divide-slate-800/40 pointer-events-none opacity-40 select-none">
+        <!-- Mock Skeleton Header -->
+        <div class="flex items-center bg-surface-900 h-9 px-4 gap-4">
+          <div class="w-8 h-3.5 bg-slate-300 dark:bg-slate-700 rounded animate-pulse"></div>
+          <div class="w-24 h-3.5 bg-slate-300 dark:bg-slate-700 rounded animate-pulse"></div>
+          <div class="w-32 h-3.5 bg-slate-300 dark:bg-slate-700 rounded animate-pulse"></div>
+          <div class="w-28 h-3.5 bg-slate-300 dark:bg-slate-700 rounded animate-pulse"></div>
+          <div class="w-36 h-3.5 bg-slate-300 dark:bg-slate-700 rounded animate-pulse"></div>
+        </div>
+        <!-- Mock Skeleton Rows -->
+        {#each Array(8) as _, i}
+          <div class="flex items-center h-8 px-4 gap-4 bg-surface-950/20">
+            <div class="w-6 h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
+            <div class="w-20 h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" style="animation-delay: {i * 75}ms"></div>
+            <div class="w-28 h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" style="animation-delay: {i * 100}ms"></div>
+            <div class="w-24 h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" style="animation-delay: {i * 125}ms"></div>
+            <div class="w-32 h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" style="animation-delay: {i * 150}ms"></div>
+          </div>
+        {/each}
+      </div>
+
+      <!-- Center Floating Glowing Loader Card -->
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none p-4">
+        <div class="bg-surface-900/95 dark:bg-surface-900/95 border border-indigo-500/30 dark:border-indigo-500/25 backdrop-blur-md rounded-2xl shadow-2xl p-6 flex flex-col items-center gap-3.5 max-w-sm w-full text-center animate-in fade-in zoom-in-95 duration-200">
+          <div class="relative flex items-center justify-center w-14 h-14">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+              <Database size={22} class="animate-pulse" />
+            </div>
+            <Loader2 size={44} class="animate-spin text-indigo-500 absolute inset-0 m-auto" />
+          </div>
+
+          <div class="space-y-1">
+            <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center justify-center gap-1.5">
+              <span>Executing Query</span>
+              <span class="inline-flex gap-0.5">
+                <span class="animate-bounce" style="animation-delay: 0ms">.</span>
+                <span class="animate-bounce" style="animation-delay: 150ms">.</span>
+                <span class="animate-bounce" style="animation-delay: 300ms">.</span>
+              </span>
+            </h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-mono truncate max-w-[280px]">
+              {resolvedTableName ? `Fetching ${resolvedTableName}...` : 'Running SQL query on database...'}
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-950/80 border border-slate-200 dark:border-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-400">
+            <Clock size={11} class="text-indigo-500" />
+            <span>{(elapsedMs / 1000).toFixed(1)}s elapsed</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  {:else if errorMessage}
     <div class="flex-1 flex flex-col items-center justify-center p-6 text-center">
       <div class="max-w-md bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 text-xs space-y-2 text-left shadow-lg">
         <span class="font-bold text-[11px] uppercase tracking-wider text-rose-600 dark:text-rose-400 block">Query Execution Error</span>
@@ -1287,6 +1363,23 @@
         {connectionId} 
         tableName={resolvedTableName} 
       />
+    {/if}
+
+    <!-- In-flight query execution overlay over existing grid result -->
+    {#if isExecuting}
+      <!-- Top indeterminate progress line -->
+      <div class="absolute top-0 inset-x-0 h-0.5 bg-indigo-500/20 z-40 overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-indigo-500 via-violet-400 to-indigo-500 animate-indeterminate"></div>
+      </div>
+
+      <!-- In-flight backdrop blur & floating pill -->
+      <div class="absolute inset-0 z-30 bg-surface-950/30 dark:bg-surface-950/40 backdrop-blur-[1px] flex items-center justify-center pointer-events-auto">
+        <div class="bg-surface-900/95 dark:bg-surface-900/95 border border-indigo-500/40 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 text-slate-800 dark:text-slate-100 animate-in fade-in zoom-in-95 duration-150">
+          <Loader2 size={16} class="animate-spin text-indigo-500" />
+          <span class="text-xs font-semibold">Executing query...</span>
+          <span class="text-[11px] font-mono text-slate-500 dark:text-slate-400 border-l border-slate-300 dark:border-slate-700 pl-2">{(elapsedMs / 1000).toFixed(1)}s</span>
+        </div>
+      </div>
     {/if}
   {/if}
 </div>
