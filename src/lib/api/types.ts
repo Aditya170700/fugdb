@@ -182,3 +182,13 @@ export interface OllamaModelInfo {
   modifiedAt: string;
 }
 
+export interface ExplainResult {
+  rawPlan: string;
+  jsonPlan?: any;
+  queryResult: QueryResult;
+  executionTimeMs?: number;
+  planningTimeMs?: number;
+  dialect: string;
+  hasAnalyze: boolean;
+}
+

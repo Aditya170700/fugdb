@@ -14,10 +14,10 @@ use commands::{
         execute_mock_batch_insert, generate_mock_batch, generate_mock_sql_script,
         inspect_table_mock_config, preview_mock_rows,
     },
-    query::execute_query,
+    query::{execute_query, explain_query},
     schema::{export_data_dictionary_file, fetch_schema_tree, generate_data_dictionary, generate_erd_metadata, print_data_dictionary, save_image_file},
     transfer::{cancel_transfer_job, inspect_file, start_db_to_db_job, start_export_job, start_import_job},
-    ai::{generate_sql_from_prompt, test_ai_connection, list_ollama_models, fix_sql_error},
+    ai::{generate_sql_from_prompt, test_ai_connection, list_ollama_models, fix_sql_error, optimize_query_explain},
 };
 use state::AppState;
 
@@ -50,7 +50,9 @@ pub fn run() {
             generate_sql_from_prompt,
             test_ai_connection,
             list_ollama_models,
-            fix_sql_error
+            fix_sql_error,
+            explain_query,
+            optimize_query_explain
         ])
         .run(tauri::generate_context!())
         .expect("error while running FugDB application");

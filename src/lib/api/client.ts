@@ -16,7 +16,8 @@ import type {
   MockBatchResult,
   AiProviderConfig,
   AiSqlResponse,
-  OllamaModelInfo
+  OllamaModelInfo,
+  ExplainResult
 } from './types';
 
 // Check if running in Tauri environment
@@ -382,6 +383,150 @@ export const api = {
       dialect: driver || 'PostgreSQL',
       modelUsed: config.model,
       executionTimeMs: 280.0
+    };
+  },
+
+  async explainQuery(
+    connectionId: string,
+    sql: string,
+    analyze: boolean = true,
+    driver?: string
+  ): Promise<ExplainResult> {
+    if (isTauri) {
+      return await invoke('explain_query', {
+        connectionId,
+        sql,
+        analyze,
+        driver
+      });
+    }
+    await new Promise(r => setTimeout(r, 450));
+    
+    // Mock Postgres JSON Plan for browser demo
+    const mockJsonPlan = [
+      {
+        "Plan": {
+          "Node Type": "Hash Join",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Join Type": "Inner",
+          "Startup Cost": 25.50,
+          "Total Cost": 142.80,
+          "Plan Rows": 1250,
+          "Plan Width": 64,
+          "Actual Startup Time": 0.42,
+          "Actual Total Time": 3.85,
+          "Actual Rows": 1200,
+          "Actual Loops": 1,
+          "Hash Cond": "(o.user_id = u.id)",
+          "Shared Hit Blocks": 42,
+          "Shared Read Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "orders",
+              "Alias": "o",
+              "Startup Cost": 0.00,
+              "Total Cost": 65.00,
+              "Plan Rows": 4500,
+              "Plan Width": 32,
+              "Actual Startup Time": 0.02,
+              "Actual Total Time": 1.25,
+              "Actual Rows": 4500,
+              "Actual Loops": 1,
+              "Filter": "(total_amount > 100.00)",
+              "Rows Removed by Filter": 350,
+              "Shared Hit Blocks": 28
+            },
+            {
+              "Node Type": "Hash",
+              "Parent Relationship": "Inner",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 15.00,
+              "Total Cost": 15.00,
+              "Plan Rows": 1200,
+              "Plan Width": 32,
+              "Actual Startup Time": 0.35,
+              "Actual Total Time": 0.35,
+              "Actual Rows": 1200,
+              "Actual Loops": 1,
+              "Hash Buckets": 2048,
+              "Hash Batches": 1,
+              "Original Hash Batches": 1,
+              "Peak Memory Usage": 85,
+              "Plans": [
+                {
+                  "Node Type": "Index Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Index Name": "users_pkey",
+                  "Relation Name": "users",
+                  "Alias": "u",
+                  "Startup Cost": 0.28,
+                  "Total Cost": 15.00,
+                  "Plan Rows": 1200,
+                  "Plan Width": 32,
+                  "Actual Startup Time": 0.04,
+                  "Actual Total Time": 0.28,
+                  "Actual Rows": 1200,
+                  "Actual Loops": 1,
+                  "Index Cond": "(id IS NOT NULL)",
+                  "Shared Hit Blocks": 14
+                }
+              ]
+            }
+          ]
+        },
+        "Planning Time": 0.34,
+        "Execution Time": 4.12
+      }
+    ];
+
+    return {
+      rawPlan: JSON.stringify(mockJsonPlan, null, 2),
+      jsonPlan: mockJsonPlan,
+      queryResult: {
+        columns: [{ name: 'QUERY PLAN', dataType: 'json', isPrimaryKey: false, isForeignKey: false, nullable: false }],
+        rows: [[JSON.stringify(mockJsonPlan)]],
+        affectedRows: 1,
+        executionTimeMs: 4.12
+      },
+      executionTimeMs: 4.12,
+      planningTimeMs: 0.34,
+      dialect: driver || 'PostgreSQL',
+      hasAnalyze: analyze
+    };
+  },
+
+  async optimizeQueryExplain(
+    connectionId: string,
+    config: AiProviderConfig,
+    sql: string,
+    explainPlan: string,
+    driver?: string
+  ): Promise<AiSqlResponse> {
+    if (isTauri) {
+      return await invoke('optimize_query_explain', {
+        connectionId,
+        config,
+        sql,
+        explainPlan,
+        driver
+      });
+    }
+    await new Promise(r => setTimeout(r, 900));
+    return {
+      sql: `-- Recommended Indexes:\nCREATE INDEX idx_orders_user_amount ON orders (user_id, total_amount);\n\n-- Optimized Query:\nSELECT u.id, u.name, o.id AS order_id, o.total_amount\nFROM users u\nJOIN orders o ON u.id = o.user_id\nWHERE o.total_amount > 100.00;`,
+      explanation: `1. **Sequential Scan Bottleneck Detected**: The \`orders\` table scan spent significant execution time filtering \`total_amount > 100.00\`.\n2. **Composite Index Recommendation**: Creating \`idx_orders_user_amount\` eliminates the Seq Scan and converts the join into an Index Scan with direct filter pushdown.\n3. **Memory & I/O Reduction**: Expected cost drops from ~142.80 to ~18.50 with 0 buffer misses.`,
+      tablesUsed: ['orders', 'users'],
+      dialect: driver || 'PostgreSQL',
+      modelUsed: config.model,
+      executionTimeMs: 420.0
     };
   }
 };

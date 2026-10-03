@@ -16,9 +16,11 @@
   import AiAssistantDrawer from '$lib/components/ai/AiAssistantDrawer.svelte';
   import AiSettingsModal from '$lib/components/ai/AiSettingsModal.svelte';
   import AiFixModal from '$lib/components/ai/AiFixModal.svelte';
+  import ExplainPlanModal from '$lib/components/editor/ExplainPlanModal.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
+  import { explainStore } from '$lib/state/explain.svelte';
 
   let isNewConnOpen = $state(false);
   let isErdOpen = $state(false);
@@ -28,7 +30,7 @@
 
   const activeTab = $derived(tabsStore.activeTab);
 
-  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, etc.)
+  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, Cmd+E for Explain, etc.)
   function handleGlobalKeyDown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h') {
       e.preventDefault();
@@ -36,6 +38,11 @@
     } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       aiStore.isDrawerOpen = !aiStore.isDrawerOpen;
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+      if (activeTab?.sql?.trim()) {
+        e.preventDefault();
+        explainStore.open(activeTab.id, activeTab.sql, true);
+      }
     }
   }
 
@@ -225,6 +232,7 @@
   <AiAssistantDrawer />
   <AiSettingsModal isOpen={aiStore.isSettingsOpen} onClose={() => aiStore.closeSettings()} />
   <AiFixModal />
+  <ExplainPlanModal />
 </main>
 
 <svelte:window onkeydown={handleGlobalKeyDown} />

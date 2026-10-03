@@ -102,3 +102,37 @@ pub async fn fix_sql_error(
 
     AiClient::generate_sql(&config, &system_prompt, &fix_prompt, dialect).await
 }
+
+#[tauri::command]
+pub async fn optimize_query_explain(
+    connection_id: String,
+    config: AiProviderConfig,
+    sql: String,
+    explain_plan: String,
+    driver: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<AiSqlResponse, AppError> {
+    let pools = state.pools.read().await;
+    let adapter = pools
+        .get(&connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(connection_id.clone()))?;
+
+    let schema_tree = adapter.fetch_schema_tree().await?;
+    let dialect = resolve_dialect(driver.as_deref(), &schema_tree.current_database);
+
+    let schema_context = build_schema_context(&schema_tree, dialect, None);
+
+    let system_prompt = format!(
+        "{}\n\nDATABASE SCHEMA CONTEXT (ZERO DATA LEAK - STRUCTURE ONLY):\n{}",
+        build_system_prompt(dialect),
+        schema_context
+    );
+
+    let optimize_prompt = format!(
+        "Analyze the following SQL query and its EXPLAIN execution plan for performance bottlenecks in {} database:\n\nORIGINAL SQL QUERY:\n```sql\n{}\n```\n\nEXPLAIN PLAN OUTPUT:\n```\n{}\n```\n\nPlease provide an optimized version of the query and actionable recommendations.\nIn your explanation:\n1. Identify key bottlenecks (e.g. Sequential Scans, missing indexes, costly hash joins, sorting overhead, inaccurate row estimates).\n2. Provide specific index suggestions (e.g. `CREATE INDEX idx_... ON ... (...)`).\n3. Explain the query rewrites or transformations applied.\n4. Return the optimized SQL in the `sql` field (and any recommended CREATE INDEX statements formatted clearly).",
+        dialect, sql, explain_plan
+    );
+
+    AiClient::generate_sql(&config, &system_prompt, &optimize_prompt, dialect).await
+}
+

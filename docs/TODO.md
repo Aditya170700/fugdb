@@ -151,9 +151,14 @@
   - [x] Opsi 1-klik export chart: **High-Resolution PNG Image Download** & **Direct Copy Image to System Clipboard**.
   - *Files Terkait*: `src/lib/components/charts/DataChartModal.svelte`, `src/lib/components/grid/DataGrid.svelte`
 
-- [ ] **3.4 Visual Query EXPLAIN Plan**
-  - [ ] Visualisasi pohon grafis untuk hasil `EXPLAIN (ANALYZE, BUFFERS)` untuk mempermudah identifikasi bottleneck performa query (Seq Scan vs Index Scan).
-  - *Files Terkait*: `src/lib/components/editor/ExplainPlanModal.svelte`
+- [x] **3.4 Visual Query EXPLAIN Plan**
+  - [x] Visualisasi pohon grafis interaktif untuk hasil `EXPLAIN (ANALYZE, COSTS, BUFFERS)` dengan multi-dialect parser (PostgreSQL, MySQL, SQLite, MSSQL).
+  - [x] Deteksi otomatis bottleneck & warning badges: Sequential / Full Table Scan vs Index Scan, misprediksi estimasi baris (misprediction ratio > 10x), sort overhead.
+  - [x] Node detail inspector panel: Shared Cache Hit Blocks vs Disk Read Blocks, predicate filter conditions, join hashing, loops & actual execution times.
+  - [x] Monospace Raw Plan viewer dengan search filtering dan 1-click Copy.
+  - [x] ✨ **AI Performance Optimizer Studio**: Analisis gabungan SQL + EXPLAIN plan + skema database, rekomendasi compound indexes (`CREATE INDEX ...`), penulisan ulang query yang dioptimasi, dan 1-klik "Apply to Editor".
+  - [x] Shortcut global `Cmd+E` / `Ctrl+E` dan tombol Explain di bottom toolbar SQL Editor.
+  - *Files Terkait*: `src/lib/components/editor/ExplainPlanModal.svelte`, `src/lib/components/editor/ExplainTreeNode.svelte`, `src/lib/state/explain.svelte.ts`, `src-tauri/src/commands/query.rs`, `src-tauri/src/commands/ai.rs`
 
 ---
 

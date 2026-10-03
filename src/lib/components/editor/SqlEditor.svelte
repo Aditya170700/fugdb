@@ -7,12 +7,13 @@
   import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
   import { oneDark } from '@codemirror/theme-one-dark';
-  import { Play, ShieldAlert, AlertTriangle, History, Sparkles, AlertCircle, X } from 'lucide-svelte';
+  import { Play, ShieldAlert, AlertTriangle, History, Sparkles, AlertCircle, X, Activity } from 'lucide-svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
+  import { explainStore } from '$lib/state/explain.svelte';
   import { assessSqlRisk } from '$lib/utils/safetyGuard';
   import { createSqlLanguageSupport } from './sqlCompletion';
 
@@ -163,6 +164,16 @@
             key: 'Mod-Enter',
             run: runCurrentQuery,
           },
+          {
+            key: 'Mod-e',
+            run: () => {
+              const doc = view?.state.doc.toString() || currentSql;
+              if (doc.trim()) {
+                explainStore.open(tabId, doc, true);
+              }
+              return true;
+            },
+          },
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -269,6 +280,17 @@
       >
         <Play size={12} class="fill-current" />
         <span>Run</span>
+      </button>
+
+      <button 
+        type="button"
+        onclick={() => explainStore.open(tabId, currentSql, true)}
+        class="flex items-center gap-1.5 px-2.5 py-1 bg-surface-800 hover:bg-surface-700 text-slate-200 border border-slate-700 rounded text-xs transition-colors cursor-pointer"
+        title="Visual Query EXPLAIN Execution Plan (Cmd+E / Ctrl+E)"
+      >
+        <Activity size={12} class="text-indigo-400" />
+        <span>Explain</span>
+        <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">⌘E</span>
       </button>
 
       {#if isProduction}
