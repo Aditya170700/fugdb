@@ -218,6 +218,7 @@ function createAiStore() {
     get isGenerating() { return isGenerating; },
     get isTesting() { return isTesting; },
     get testResult() { return testResult; },
+    set testResult(v) { testResult = v; },
     get ollamaModels() { return ollamaModels; },
     get isLoadingOllama() { return isLoadingOllama; },
     get lastResponse() { return lastResponse; },

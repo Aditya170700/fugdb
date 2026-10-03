@@ -112,6 +112,35 @@
         </button>
       </div>
 
+      <!-- Test Connection Result Alert Banner (Placed at top so it is immediately visible) -->
+      {#if aiStore.testResult}
+        <div class="mx-5 mt-4 p-3 rounded-xl flex items-start justify-between gap-3 text-xs {aiStore.testResult.success ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-200' : 'bg-rose-500/10 dark:bg-rose-500/15 border border-rose-500/30 dark:border-rose-500/40 text-rose-950 dark:text-rose-200'} animate-in fade-in duration-150">
+          <div class="flex items-start gap-2.5 min-w-0">
+            {#if aiStore.testResult.success}
+              <CheckCircle2 size={17} class="shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+              <div class="space-y-0.5 min-w-0">
+                <span class="font-bold text-emerald-900 dark:text-emerald-300 block">AI Connection Successful!</span>
+                <p class="text-[11px] text-emerald-800 dark:text-emerald-300/90 leading-snug break-words">{aiStore.testResult.message}</p>
+              </div>
+            {:else}
+              <AlertCircle size={17} class="shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+              <div class="space-y-0.5 min-w-0">
+                <span class="font-bold text-rose-900 dark:text-rose-300 block">AI Connection Failed</span>
+                <p class="text-[11px] text-rose-800 dark:text-rose-200/90 leading-snug break-words whitespace-pre-wrap">{aiStore.testResult.message}</p>
+              </div>
+            {/if}
+          </div>
+          <button 
+            type="button" 
+            onclick={() => aiStore.testResult = null}
+            class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-surface-800 p-1 rounded-md transition-colors shrink-0 cursor-pointer"
+            title="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      {/if}
+
       <!-- Modal Body -->
       <div class="p-5 space-y-5 overflow-y-auto max-h-[75vh] text-xs bg-slate-50/50 dark:bg-surface-950/40">
         <!-- 1. Provider Cards Grid -->
@@ -287,17 +316,6 @@
           </div>
         </div>
 
-        <!-- Connection Test Status Banner -->
-        {#if aiStore.testResult}
-          <div class="p-3 rounded-xl border text-xs flex items-center gap-2.5 {aiStore.testResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-800 dark:text-rose-300'} animate-in fade-in duration-150">
-            {#if aiStore.testResult.success}
-              <CheckCircle2 size={16} class="shrink-0 text-emerald-600" />
-            {:else}
-              <AlertCircle size={16} class="shrink-0 text-rose-600" />
-            {/if}
-            <span class="font-mono text-[11px]">{aiStore.testResult.message}</span>
-          </div>
-        {/if}
       </div>
 
       <!-- Modal Footer -->
