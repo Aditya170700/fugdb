@@ -13,7 +13,10 @@ import type {
   FileInspectionResult,
   ColumnMockRule,
   TableMockInspection,
-  MockBatchResult
+  MockBatchResult,
+  AiProviderConfig,
+  AiSqlResponse,
+  OllamaModelInfo
 } from './types';
 
 // Check if running in Tauri environment
@@ -300,4 +303,74 @@ export const api = {
     }
     return `/Users/fugdb/downloads/${defaultName || 'export_data.csv'}`;
   },
+
+  // AI Copilot & NL-to-SQL API
+  async testAiConnection(config: AiProviderConfig): Promise<string> {
+    if (isTauri) {
+      return await invoke('test_ai_connection', { config });
+    }
+    await new Promise(r => setTimeout(r, 400));
+    return `Successfully connected to ${config.provider}!`;
+  },
+
+  async listOllamaModels(endpoint?: string): Promise<OllamaModelInfo[]> {
+    if (isTauri) {
+      return await invoke('list_ollama_models', { endpoint });
+    }
+    return [
+      { name: 'qwen2.5-coder:latest', size: 4500000000, modifiedAt: '2026-10-01T10:00:00Z' },
+      { name: 'llama3.2:latest', size: 2000000000, modifiedAt: '2026-10-02T10:00:00Z' },
+      { name: 'sqlcoder:latest', size: 4100000000, modifiedAt: '2026-09-28T10:00:00Z' },
+    ];
+  },
+
+  async generateSqlFromPrompt(
+    connectionId: string,
+    config: AiProviderConfig,
+    userPrompt: string,
+    selectedTables?: string[]
+  ): Promise<AiSqlResponse> {
+    if (isTauri) {
+      return await invoke('generate_sql_from_prompt', {
+        connectionId,
+        config,
+        userPrompt,
+        selectedTables
+      });
+    }
+    await new Promise(r => setTimeout(r, 800));
+    return {
+      sql: `SELECT u.id, u.name, u.email, COUNT(o.id) AS total_orders, COALESCE(SUM(o.total_amount), 0) AS lifetime_value\nFROM users u\nLEFT JOIN orders o ON u.id = o.user_id\nWHERE u.status = 'active'\nGROUP BY u.id, u.name, u.email\nORDER BY lifetime_value DESC\nLIMIT 10;`,
+      explanation: `1. Joins the \`users\` table with \`orders\` on \`user_id\`.\n2. Filters active users.\n3. Aggregates order count and sum of total_amount.\n4. Sorts by highest lifetime value and limits to top 10.`,
+      tablesUsed: ['users', 'orders'],
+      dialect: 'PostgreSQL',
+      modelUsed: config.model,
+      executionTimeMs: 342.1
+    };
+  },
+
+  async fixSqlError(
+    connectionId: string,
+    config: AiProviderConfig,
+    sql: string,
+    errorMessage: string
+  ): Promise<AiSqlResponse> {
+    if (isTauri) {
+      return await invoke('fix_sql_error', {
+        connectionId,
+        config,
+        sql,
+        errorMessage
+      });
+    }
+    await new Promise(r => setTimeout(r, 700));
+    return {
+      sql: `-- Fixed Query\nSELECT * FROM users WHERE email ILIKE '%@gmail.com';`,
+      explanation: `Corrected column name syntax and adjusted case-insensitive comparison operator for PostgreSQL.`,
+      tablesUsed: ['users'],
+      dialect: 'PostgreSQL',
+      modelUsed: config.model,
+      executionTimeMs: 280.0
+    };
+  }
 };

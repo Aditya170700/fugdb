@@ -21,6 +21,7 @@ tokio = { version = "1.38", features = ["full"] }
 async-trait = "0.1"
 thiserror = "1.0"
 anyhow = "1.0"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Database Drivers
 sqlx = { version = "0.8", default-features = false, features = [

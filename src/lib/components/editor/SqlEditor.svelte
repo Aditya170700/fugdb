@@ -7,11 +7,12 @@
   import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
   import { oneDark } from '@codemirror/theme-one-dark';
-  import { Play, ShieldAlert, AlertTriangle, History } from 'lucide-svelte';
+  import { Play, ShieldAlert, AlertTriangle, History, Sparkles } from 'lucide-svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { historyStore } from '$lib/state/history.svelte';
+  import { aiStore } from '$lib/state/ai.svelte';
   import { assessSqlRisk } from '$lib/utils/safetyGuard';
   import { createSqlLanguageSupport } from './sqlCompletion';
 
@@ -260,6 +261,17 @@
         <History size={13} />
         <span>History</span>
         <span class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">⌘H</span>
+      </button>
+
+      <button 
+        type="button"
+        onclick={() => aiStore.openDrawer()}
+        class="flex items-center gap-1.5 px-2 py-1 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded text-xs transition-colors cursor-pointer font-semibold"
+        title="NL-to-SQL AI Assistant (Cmd+K / Ctrl+K)"
+      >
+        <Sparkles size={13} />
+        <span>Ask AI</span>
+        <span class="text-[10px] text-violet-500/70 font-mono">⌘K</span>
       </button>
     </div>
 

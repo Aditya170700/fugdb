@@ -22,6 +22,7 @@
     History as HistoryIcon
   } from 'lucide-svelte';
   import { historyStore } from '$lib/state/history.svelte';
+  import { aiStore } from '$lib/state/ai.svelte';
 
   let { 
     onOpenErd, 
@@ -222,6 +223,16 @@
       title="QA Smart Mock Data Generator"
     >
       <Dices size={15} />
+    </button>
+
+    <!-- AI Copilot Button -->
+    <button 
+      onclick={() => aiStore.openDrawer()}
+      class="p-1.5 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-md transition-colors font-semibold flex items-center gap-1 cursor-pointer" 
+      title="NL-to-SQL AI Copilot (Cmd+K / Ctrl+K)"
+    >
+      <Sparkles size={15} />
+      <span class="text-[10px] hidden sm:inline font-mono px-1 py-0.2 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300 font-bold">AI</span>
     </button>
 
     <!-- Theme Mode Switcher Dropdown (Dark / Light / Auto) -->

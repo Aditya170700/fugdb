@@ -26,6 +26,12 @@ pub enum AppError {
 
     #[error("Internal error: {0}")]
     InternalError(String),
+
+    #[error("Internal error: {0}")]
+    Internal(String),
+
+    #[error("AI error: {0}")]
+    AiError(String),
 }
 
 impl Serialize for AppError {

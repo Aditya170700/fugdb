@@ -156,3 +156,29 @@ export interface MockBatchResult {
   tableName: string;
 }
 
+// AI Copilot & NL-to-SQL Types
+export type AiProvider = 'ollama' | 'openai' | 'gemini' | 'anthropic' | 'deepseek' | 'custom';
+
+export interface AiProviderConfig {
+  provider: AiProvider;
+  model: string;
+  apiKey?: string;
+  endpoint?: string;
+  temperature?: number;
+}
+
+export interface AiSqlResponse {
+  sql: string;
+  explanation: string;
+  tablesUsed: string[];
+  dialect: string;
+  modelUsed: string;
+  executionTimeMs: number;
+}
+
+export interface OllamaModelInfo {
+  name: string;
+  size: number;
+  modifiedAt: string;
+}
+

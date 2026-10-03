@@ -133,11 +133,11 @@
 
 ### 🤖 Phase 3: AI Copilot & Mini-BI Visualization
 
-- [ ] **3.1 Privacy-First Natural Language to SQL (NL-to-SQL)**
-  - [ ] AI prompt drawer untuk mengubah instruksi teks bahasa natural menjadi query SQL yang valid.
-  - [ ] **Zero-Data-Leak Architecture**: Hanya mengirimkan skema DDL / nama kolom ke AI. Data baris pengguna **tidak pernah dikirim**.
-  - [ ] Support Multi-Provider: Local **Ollama** (offline/private) + Cloud (OpenAI, Anthropic Claude, Gemini, DeepSeek).
-  - *Files Terkait*: `src-tauri/src/commands/ai.rs`, `src/lib/components/ai/AiAssistantDrawer.svelte`
+- [x] **3.1 Privacy-First Natural Language to SQL (NL-to-SQL)**
+  - [x] AI prompt drawer untuk mengubah instruksi teks bahasa natural menjadi query SQL yang valid.
+  - [x] **Zero-Data-Leak Architecture**: Hanya mengirimkan skema DDL / nama kolom ke AI. Data baris pengguna **tidak pernah dikirim**.
+  - [x] Support Multi-Provider: Local **Ollama** (offline/private) + Cloud (OpenAI, Anthropic Claude, Gemini, DeepSeek).
+  - *Files Terkait*: `src-tauri/src/ai/`, `src-tauri/src/commands/ai.rs`, `src/lib/components/ai/AiAssistantDrawer.svelte`, `src/lib/components/ai/AiSettingsModal.svelte`, `src/lib/state/ai.svelte.ts`
 
 - [ ] **3.2 "Fix with AI" Button pada Query Error**
   - [ ] Tombol 1-klik pada alert error query untuk mendiagnosa dan memperbaiki sintaks query secara otomatis sesuai dialek database aktif.

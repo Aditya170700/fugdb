@@ -13,8 +13,11 @@
   import SafetyModal from '$lib/components/ui/SafetyModal.svelte';
   import QueryHistoryDrawer from '$lib/components/editor/QueryHistoryDrawer.svelte';
   import CellInspectorModal from '$lib/components/inspectors/CellInspectorModal.svelte';
+  import AiAssistantDrawer from '$lib/components/ai/AiAssistantDrawer.svelte';
+  import AiSettingsModal from '$lib/components/ai/AiSettingsModal.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { historyStore } from '$lib/state/history.svelte';
+  import { aiStore } from '$lib/state/ai.svelte';
 
   let isNewConnOpen = $state(false);
   let isErdOpen = $state(false);
@@ -24,11 +27,14 @@
 
   const activeTab = $derived(tabsStore.activeTab);
 
-  // Global Keyboard Shortcuts (Cmd+H for history, etc.)
+  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, etc.)
   function handleGlobalKeyDown(e: KeyboardEvent) {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h') {
       e.preventDefault();
       historyStore.toggleDrawer();
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      aiStore.isDrawerOpen = !aiStore.isDrawerOpen;
     }
   }
 
@@ -214,6 +220,8 @@
   <SafetyModal />
   <QueryHistoryDrawer />
   <CellInspectorModal />
+  <AiAssistantDrawer />
+  <AiSettingsModal isOpen={aiStore.isSettingsOpen} onClose={() => aiStore.closeSettings()} />
 </main>
 
 <svelte:window onkeydown={handleGlobalKeyDown} />
