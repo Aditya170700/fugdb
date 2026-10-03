@@ -174,6 +174,8 @@ pub async fn execute_mock_batch_insert(
     rules: Vec<ColumnMockRule>,
     count: usize,
     chunk_size: Option<usize>,
+    truncate_first: Option<bool>,
+    conflict_strategy: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<MockBatchResult, AppError> {
     let pools = state.pools.read().await;
@@ -185,6 +187,33 @@ pub async fn execute_mock_batch_insert(
     if active_columns.is_empty() {
         return Err(AppError::QueryError("No columns selected for insert".into()));
     }
+
+    // Handle optional table truncation before batch insertion
+    if truncate_first == Some(true) {
+        let truncate_sql = format!("TRUNCATE TABLE {} CASCADE;", table_name);
+        if adapter.execute_query(&truncate_sql, None, None).await.is_err() {
+            let delete_sql = format!("DELETE FROM {};", table_name);
+            let _ = adapter.execute_query(&delete_sql, None, None).await;
+        }
+    }
+
+    // Detect existing count to ensure unique series offset
+    let existing_count = if truncate_first != Some(true) {
+        let count_sql = format!("SELECT COUNT(*) AS c FROM {}", table_name);
+        if let Ok(res) = adapter.execute_query(&count_sql, Some(1), None).await {
+            if let Some(row) = res.rows.first() {
+                if let Some(v) = row.first() {
+                    match v {
+                        Value::Number(n) => n.as_u64().unwrap_or(0) as usize,
+                        Value::String(s) => s.parse::<usize>().unwrap_or(0),
+                        _ => 0,
+                    }
+                } else { 0 }
+            } else { 0 }
+        } else { 0 }
+    } else {
+        0
+    };
 
     let col_names: Vec<String> = active_columns.iter().map(|c| c.column_name.clone()).collect();
     let batch_size = chunk_size.unwrap_or(250).clamp(20, 1000);
@@ -199,7 +228,8 @@ pub async fn execute_mock_batch_insert(
         let mut row_strings = Vec::new();
 
         for i in chunk_start..chunk_end {
-            let row_map = generator.generate_row(&rules, i);
+            let global_idx = existing_count + i;
+            let row_map = generator.generate_row(&rules, global_idx);
             let val_strings: Vec<String> = active_columns
                 .iter()
                 .map(|c| {
@@ -210,14 +240,34 @@ pub async fn execute_mock_batch_insert(
             row_strings.push(format!("({})", val_strings.join(", ")));
         }
 
+        let conflict_clause = match conflict_strategy.as_deref() {
+            Some("ignore") => " ON CONFLICT DO NOTHING",
+            _ => "",
+        };
+
         let sql = format!(
-            "INSERT INTO {} ({}) VALUES {};",
+            "INSERT INTO {} ({}) VALUES {}{};",
             table_name,
             col_names.join(", "),
-            row_strings.join(", ")
+            row_strings.join(", "),
+            conflict_clause
         );
 
-        adapter.execute_query(&sql, None, None).await?;
+        if let Err(e) = adapter.execute_query(&sql, None, None).await {
+            // If ON CONFLICT DO NOTHING failed due to dialect incompatibility (e.g. MySQL/MSSQL), retry without it
+            if !conflict_clause.is_empty() {
+                let fallback_sql = format!(
+                    "INSERT INTO {} ({}) VALUES {};",
+                    table_name,
+                    col_names.join(", "),
+                    row_strings.join(", ")
+                );
+                adapter.execute_query(&fallback_sql, None, None).await?;
+            } else {
+                return Err(e);
+            }
+        }
+
         total_inserted += chunk_end - chunk_start;
         chunks_count += 1;
     }
@@ -247,6 +297,8 @@ pub async fn generate_mock_batch(
         inspection.columns,
         count as usize,
         Some(250),
+        None,
+        None,
         state,
     )
     .await?;

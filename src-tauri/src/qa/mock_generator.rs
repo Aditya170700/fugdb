@@ -176,6 +176,35 @@ pub fn infer_generator_type(
         return "timestamp_past";
     }
 
+    // Order / Code / Invoice / Serial / Tracking Numbers
+    if lower_name.contains("order_no")
+        || lower_name.contains("order_num")
+        || lower_name.contains("order_number")
+        || lower_name.contains("ord_no")
+        || lower_name == "order_id"
+        || lower_name.contains("invoice")
+        || lower_name.contains("tracking")
+        || lower_name.contains("serial")
+        || lower_name.contains("receipt")
+        || lower_name.contains("voucher")
+        || lower_name.contains("coupon")
+        || lower_name.contains("ticket")
+        || lower_name.contains("booking")
+        || lower_name.contains("txn_")
+        || lower_name.contains("transaction_")
+        || lower_name.contains("ref_no")
+        || lower_name.contains("reference_no")
+        || lower_name.contains("reference_num")
+        || lower_name == "code"
+        || lower_name.ends_with("_code")
+        || lower_name.contains("sku")
+        || lower_name.contains("account_no")
+        || lower_name.contains("account_num")
+        || lower_name.contains("account_number")
+    {
+        return "order_number";
+    }
+
     // Descriptions & Text
     if lower_name.contains("desc")
         || lower_name.contains("bio")
@@ -199,7 +228,6 @@ pub fn infer_generator_type(
         || lower_name.contains("score")
         || lower_name.contains("rating")
         || lower_name.contains("rank")
-        || lower_name.contains("order")
     {
         return "integer";
     }
@@ -277,20 +305,51 @@ impl MockDataGenerator {
                 let first = self.pick_random(FIRST_NAMES).to_lowercase();
                 let last = self.pick_random(LAST_NAMES).to_lowercase();
                 let domain = self.pick_random(DOMAINS);
-                let num: u16 = self.rng.gen_range(10..999);
-                Value::String(format!("{}.{}{}@{}", first, last, num, domain))
+                let seq = row_index + 1;
+                Value::String(format!("{}.{}{:05}@{}", first, last, seq, domain))
             }
             "username" => {
                 let adj = self.pick_random(ADJECTIVES).to_lowercase();
                 let noun = self.pick_random(NOUNS).to_lowercase();
-                let num: u16 = self.rng.gen_range(1..99);
-                Value::String(format!("{}{}{}", adj, noun, num))
+                let seq = row_index + 1;
+                Value::String(format!("{}{}{}", adj, noun, seq))
             }
             "phone" => {
-                let p1 = self.rng.gen_range(811..899);
-                let p2 = self.rng.gen_range(1000..9999);
-                let p3 = self.rng.gen_range(1000..9999);
-                Value::String(format!("+62-{}-{}-{}", p1, p2, p3))
+                let seq = row_index + 1;
+                let p1 = 811 + (seq % 88);
+                let p2 = (seq / 10000) % 9000 + 1000;
+                let p3 = seq % 10000;
+                Value::String(format!("+62-{}-{:04}-{:04}", p1, p2, p3))
+            }
+            "order_number" => {
+                let lower = rule.column_name.to_lowercase();
+                let prefix = if lower.contains("inv") {
+                    "INV"
+                } else if lower.contains("track") {
+                    "TRK"
+                } else if lower.contains("sku") {
+                    "SKU"
+                } else if lower.contains("txn") || lower.contains("trans") {
+                    "TXN"
+                } else if lower.contains("ticket") {
+                    "TCK"
+                } else if lower.contains("code") {
+                    "COD"
+                } else if lower.contains("ref") {
+                    "REF"
+                } else if lower.contains("book") {
+                    "BKG"
+                } else if lower.contains("acc") {
+                    "ACC"
+                } else {
+                    "ORD"
+                };
+
+                if rule.data_type.to_lowercase().contains("int") {
+                    Value::Number((10000000 + (row_index as i64 + 1)).into())
+                } else {
+                    Value::String(format!("{}-{:08}", prefix, row_index + 1))
+                }
             }
             "street_address" => {
                 let num = self.rng.gen_range(1..999);
@@ -324,10 +383,13 @@ impl MockDataGenerator {
                     .unwrap_or(Value::String(format!("{:.2}", val)))
             }
             "integer" => {
-                let min = 1;
-                let max = 1000;
-                let val = self.rng.gen_range(min..=max);
-                Value::Number(val.into())
+                let lower = rule.column_name.to_lowercase();
+                if rule.is_primary_key || lower.ends_with("_id") || lower.contains("number") || lower.contains("no") {
+                    Value::Number((row_index + 1).into())
+                } else {
+                    let val = self.rng.gen_range(1..=1000);
+                    Value::Number(val.into())
+                }
             }
             "boolean" => {
                 Value::Bool(self.rng.gen_bool(0.75))

@@ -172,9 +172,25 @@ export const api = {
     return `-- Smart QA Mock Data Script for \`${tableName}\`\nINSERT INTO ${tableName} (name, email) VALUES ('Demo User', 'demo@fugdb.dev');`;
   },
 
-  async executeMockBatchInsert(connectionId: string, tableName: string, rules: ColumnMockRule[], count: number, chunkSize?: number): Promise<MockBatchResult> {
+  async executeMockBatchInsert(
+    connectionId: string, 
+    tableName: string, 
+    rules: ColumnMockRule[], 
+    count: number, 
+    chunkSize?: number,
+    truncateFirst?: boolean,
+    conflictStrategy?: string
+  ): Promise<MockBatchResult> {
     if (isTauri) {
-      return await invoke('execute_mock_batch_insert', { connectionId, tableName, rules, count, chunkSize });
+      return await invoke('execute_mock_batch_insert', { 
+        connectionId, 
+        tableName, 
+        rules, 
+        count, 
+        chunkSize,
+        truncateFirst,
+        conflictStrategy
+      });
     }
     await new Promise(r => setTimeout(r, 600));
     return {

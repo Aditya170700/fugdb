@@ -36,6 +36,8 @@
   let rowCount = $state<number>(100);
   let columnSearch = $state<string>('');
   let chunkSize = $state<number>(250);
+  let truncateFirst = $state<boolean>(false);
+  let conflictStrategy = $state<'fail' | 'ignore'>('ignore');
 
   // Table rules state
   let isLoadingSchema = $state<boolean>(false);
@@ -70,6 +72,7 @@
     { value: 'username', label: '👤 Person: Username (e.g. swiftcoder42)' },
     { value: 'email', label: '📧 Contact: Email Address (e.g. name@domain.com)' },
     { value: 'phone', label: '📞 Contact: Phone Number (+62-812-xxxx)' },
+    { value: 'order_number', label: '🏷️ Code: Unique Order / Ref / Invoice (ORD-000123)' },
     { value: 'street_address', label: '📍 Location: Street Address (e.g. Jl. Sudirman 45)' },
     { value: 'city', label: '📍 Location: City (Jakarta, Tokyo, London...)' },
     { value: 'country', label: '📍 Location: Country' },
@@ -218,7 +221,9 @@
         selectedTable,
         columnRules,
         rowCount,
-        chunkSize
+        chunkSize,
+        truncateFirst,
+        conflictStrategy
       );
       insertResult = result;
       // Refresh schema row counts
@@ -621,30 +626,53 @@
       <!-- Modal Footer (Row Count Selector & Action Trigger) -->
       <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-surface-950/80 flex items-center justify-between gap-4 flex-wrap">
         <!-- Preset Row Count Buttons & Custom Input -->
-        <div class="flex items-center gap-2 text-xs flex-wrap">
-          <span class="font-semibold text-slate-600 dark:text-slate-400">Generate Rows:</span>
-          {#each [10, 50, 100, 500, 1000, 5000, 10000] as count}
-            <button
-              type="button"
-              onclick={() => { rowCount = count; }}
-              class="px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-colors cursor-pointer border {rowCount === count ? 'bg-violet-600 text-white border-violet-600 shadow-xs' : 'bg-white dark:bg-surface-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-surface-700'}"
-            >
-              {count >= 1000 ? `${count / 1000}k` : count}
-            </button>
-          {/each}
+        <div class="flex items-center gap-3 text-xs flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-slate-600 dark:text-slate-400">Generate Rows:</span>
+            {#each [10, 50, 100, 500, 1000, 5000, 10000] as count}
+              <button
+                type="button"
+                onclick={() => { rowCount = count; }}
+                class="px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-colors cursor-pointer border {rowCount === count ? 'bg-violet-600 text-white border-violet-600 shadow-xs' : 'bg-white dark:bg-surface-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-surface-700'}"
+              >
+                {count >= 1000 ? `${count / 1000}k` : count}
+              </button>
+            {/each}
 
-          <!-- Custom Count Input -->
-          <div class="flex items-center gap-1.5 ml-1 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-xs">
-            <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Custom:</span>
-            <input
-              type="number"
-              min="1"
-              max="100000"
-              bind:value={rowCount}
-              class="w-20 bg-transparent text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none text-right"
-              placeholder="Count"
-            />
-            <span class="text-[10px] text-slate-400">rows</span>
+            <!-- Custom Count Input -->
+            <div class="flex items-center gap-1.5 ml-1 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-xs">
+              <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Custom:</span>
+              <input
+                type="number"
+                min="1"
+                max="1000000"
+                bind:value={rowCount}
+                class="w-20 bg-transparent text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none text-right"
+                placeholder="Count"
+              />
+              <span class="text-[10px] text-slate-400">rows</span>
+            </div>
+          </div>
+
+          <!-- Generation Safeguards -->
+          <div class="flex items-center gap-2.5 text-[11px] text-slate-600 dark:text-slate-400 border-l border-slate-200 dark:border-slate-800 pl-3">
+            <label class="flex items-center gap-1.5 cursor-pointer select-none" title="Wipe existing records before generating mock data">
+              <input
+                type="checkbox"
+                bind:checked={truncateFirst}
+                class="rounded accent-rose-600 text-rose-600 bg-white dark:bg-surface-900 border-slate-300 dark:border-slate-700 cursor-pointer"
+              />
+              <span class="{truncateFirst ? 'text-rose-600 dark:text-rose-400 font-bold' : ''}">Truncate first</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer select-none" title="Skip duplicate rows if unique key constraints are encountered">
+              <input
+                type="checkbox"
+                checked={conflictStrategy === 'ignore'}
+                onchange={(e) => conflictStrategy = e.currentTarget.checked ? 'ignore' : 'fail'}
+                class="rounded accent-violet-600 text-violet-600 bg-white dark:bg-surface-900 border-slate-300 dark:border-slate-700 cursor-pointer"
+              />
+              <span>Ignore duplicates</span>
+            </label>
           </div>
         </div>
 
