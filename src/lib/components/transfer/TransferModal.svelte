@@ -616,7 +616,6 @@
                     id="cross-batch"
                     label="Batch Chunk Size"
                     bind:value={crossBatchSize}
-                    direction="up"
                     options={[
                       { value: 250, label: '250 rows / batch' },
                       { value: 500, label: '500 rows / batch (Recommended)' },
@@ -932,7 +931,6 @@
                     id="import-conflict"
                     label="Conflict Resolution Strategy"
                     bind:value={importConflictStrategy}
-                    direction="up"
                     options={[
                       { value: 'fail', label: 'Fail on duplicate / constraint violation' },
                       { value: 'ignore', label: 'Ignore duplicates (Skip conflicting rows)' },

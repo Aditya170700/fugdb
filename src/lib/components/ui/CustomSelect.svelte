@@ -19,7 +19,6 @@
     placeholder = 'Select option...',
     fontMono = false,
     disabled = false,
-    direction = 'auto',
     size = 'md',
     menuClass = '',
     onchange
@@ -31,7 +30,6 @@
     placeholder?: string;
     fontMono?: boolean;
     disabled?: boolean;
-    direction?: 'auto' | 'up' | 'down';
     size?: 'sm' | 'md';
     menuClass?: string;
     onchange?: (val: any) => void;
@@ -39,31 +37,27 @@
 
   let isOpen = $state(false);
   let containerRef: HTMLDivElement | null = $state(null);
-  let computedDirection = $state<'up' | 'down'>('down');
+  let menuRef: HTMLDivElement | null = $state(null);
+  let menuPos = $state<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
 
   const selectedOption = $derived(
     options.find(o => String(o.value) === String(value))
   );
 
+  function updateMenuPosition() {
+    if (!containerRef) return;
+    const rect = containerRef.getBoundingClientRect();
+    menuPos = {
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width
+    };
+  }
+
   function toggleDropdown() {
     if (disabled) return;
-    if (!isOpen && containerRef) {
-      if (direction === 'auto') {
-        const triggerRect = containerRef.getBoundingClientRect();
-        const scrollParent = containerRef.closest('.overflow-y-auto') || containerRef.closest('[role="dialog"]');
-        let spaceBelow = window.innerHeight - triggerRect.bottom;
-        let spaceAbove = triggerRect.top;
-
-        if (scrollParent) {
-          const parentRect = scrollParent.getBoundingClientRect();
-          spaceBelow = parentRect.bottom - triggerRect.bottom;
-          spaceAbove = triggerRect.top - parentRect.top;
-        }
-
-        computedDirection = (spaceBelow < 200 && spaceAbove > spaceBelow) ? 'up' : 'down';
-      } else {
-        computedDirection = direction;
-      }
+    if (!isOpen) {
+      updateMenuPosition();
     }
     isOpen = !isOpen;
   }
@@ -75,7 +69,10 @@
   }
 
   function handleWindowPointerDown(e: PointerEvent) {
-    if (isOpen && containerRef && !containerRef.contains(e.target as Node)) {
+    if (isOpen) {
+      const target = e.target as Node;
+      if (containerRef && containerRef.contains(target)) return;
+      if (menuRef && menuRef.contains(target)) return;
       isOpen = false;
     }
   }
@@ -86,6 +83,19 @@
       e.stopPropagation();
     }
   }
+
+  $effect(() => {
+    if (isOpen) {
+      updateMenuPosition();
+      const handleScroll = () => updateMenuPosition();
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleScroll);
+      return () => {
+        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleScroll);
+      };
+    }
+  });
 </script>
 
 <svelte:window onpointerdown={handleWindowPointerDown} onkeydown={handleKeydown} />
@@ -120,10 +130,12 @@
     <ChevronDown size={14} class="text-slate-400 dark:text-slate-500 transition-transform duration-200 shrink-0 {isOpen ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''}" />
   </button>
 
-  <!-- Options Popover -->
+  <!-- Options Popover: Fixed positioning with z-[9999] so it floats freely OVER modal footers and ignores overflow clipping -->
   {#if isOpen}
     <div 
-      class="absolute left-0 right-0 {computedDirection === 'up' ? 'bottom-full mb-1.5 origin-bottom' : 'top-full mt-1.5 origin-top'} z-50 bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 {menuClass}"
+      bind:this={menuRef}
+      style="position: fixed; top: {menuPos.top}px; left: {menuPos.left}px; width: {menuPos.width}px; z-index: 9999;"
+      class="bg-white dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-1 space-y-0.5 max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100 {menuClass}"
     >
       {#each options as opt}
         {@const isSelected = String(opt.value) === String(value)}
