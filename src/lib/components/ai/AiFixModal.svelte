@@ -242,7 +242,7 @@
       <!-- Modal Footer -->
       <div class="px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-surface-950/70 flex items-center justify-between shrink-0">
         <span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-          Press <kbd class="px-1.5 py-0.5 rounded bg-surface-800 text-slate-300 font-mono">⌘↵</kbd> to Apply & Run
+          Press <kbd class="px-1.5 py-0.5 rounded bg-surface-800 text-slate-300 font-mono">Cmd + Enter</kbd> to Apply & Run
         </span>
 
         <div class="flex items-center gap-2">
@@ -273,7 +273,6 @@
           >
             <Play size={12} class="fill-current" />
             <span>Apply & Run</span>
-            <span class="text-[10px] opacity-75 font-mono">⌘↵</span>
           </button>
         </div>
       </div>

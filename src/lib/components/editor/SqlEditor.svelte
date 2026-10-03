@@ -269,7 +269,6 @@
       >
         <Play size={12} class="fill-current" />
         <span>Run</span>
-        <span class="text-[10px] opacity-75 font-mono">⌘↵</span>
       </button>
 
       {#if isProduction}
