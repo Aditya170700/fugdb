@@ -19,6 +19,8 @@ export interface ConnectionConfig {
   sshUser?: string;
   sshKeyPath?: string;
   sslMode?: 'disable' | 'prefer' | 'require';
+  useKeyring?: boolean;
+  savePasswordToKeyring?: boolean;
 }
 
 export interface ColumnMetadata {

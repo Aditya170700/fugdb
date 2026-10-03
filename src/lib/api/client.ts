@@ -48,6 +48,39 @@ export const api = {
     console.log('[Mock API] Disconnected:', connectionId);
   },
 
+  // OS Keyring Credentials API
+  async saveKeyringCredential(key: string, secret: string): Promise<void> {
+    if (isTauri) {
+      return await invoke('save_keyring_credential', { key, secret });
+    }
+    try {
+      sessionStorage.setItem(`mock_keyring_${key}`, secret);
+    } catch {}
+  },
+
+  async getKeyringCredential(key: string): Promise<string | null> {
+    if (isTauri) {
+      return await invoke('get_keyring_credential', { key });
+    }
+    try {
+      return sessionStorage.getItem(`mock_keyring_${key}`);
+    } catch {
+      return null;
+    }
+  },
+
+  async deleteKeyringCredential(key: string): Promise<boolean> {
+    if (isTauri) {
+      return await invoke('delete_keyring_credential', { key });
+    }
+    try {
+      sessionStorage.removeItem(`mock_keyring_${key}`);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   // Schema commands
   async fetchSchema(connectionId: string): Promise<SchemaTree> {
     if (isTauri) {

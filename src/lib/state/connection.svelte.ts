@@ -85,6 +85,19 @@ export class ConnectionStore {
   }
 
   async addConnection(config: ConnectionConfig) {
+    // If saving to Keyring, persist secret to Keyring & sanitize plaintext password
+    if (config.savePasswordToKeyring || config.useKeyring) {
+      if (config.password && config.password.trim() !== '') {
+        try {
+          await api.saveKeyringCredential(`conn_pwd_${config.id}`, config.password);
+        } catch (e) {
+          console.warn('Failed to save password to OS keyring:', e);
+        }
+      }
+      config.useKeyring = true;
+      config.password = undefined;
+    }
+
     // Avoid duplicate IDs
     const existingIdx = this.connections.findIndex(c => c.id === config.id);
     if (existingIdx >= 0) {
@@ -93,6 +106,26 @@ export class ConnectionStore {
       this.connections.push(config);
     }
     await this.selectConnection(config.id);
+  }
+
+  async removeConnection(connectionId: string) {
+    try {
+      await api.disconnect(connectionId);
+    } catch {}
+    try {
+      await api.deleteKeyringCredential(`conn_pwd_${connectionId}`);
+    } catch {}
+
+    this.connections = this.connections.filter(c => c.id !== connectionId);
+    delete this.schemas[connectionId];
+
+    if (this.activeConnectionId === connectionId) {
+      if (this.connections.length > 0) {
+        await this.selectConnection(this.connections[0].id);
+      } else {
+        this.activeConnectionId = '';
+      }
+    }
   }
 }
 

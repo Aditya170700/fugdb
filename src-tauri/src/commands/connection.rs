@@ -12,15 +12,43 @@ use crate::drivers::{
 use crate::error::AppError;
 use crate::models::connection::{ConnectionConfig, DriverType, TestConnectionResult};
 use crate::state::AppState;
+use crate::keyring;
+
+#[tauri::command]
+pub async fn save_keyring_credential(key: String, secret: String) -> Result<(), AppError> {
+    keyring::set_secret(&key, &secret)
+}
+
+#[tauri::command]
+pub async fn get_keyring_credential(key: String) -> Result<Option<String>, AppError> {
+    keyring::get_secret(&key)
+}
+
+#[tauri::command]
+pub async fn delete_keyring_credential(key: String) -> Result<bool, AppError> {
+    keyring::delete_secret(&key)
+}
+
+fn resolve_effective_config(mut config: ConnectionConfig) -> ConnectionConfig {
+    // If password is not provided or empty, attempt lookup from OS Keyring
+    if config.password.is_none() || config.password.as_deref() == Some("") {
+        if let Ok(Some(secret)) = keyring::get_secret(&format!("conn_pwd_{}", &config.id)) {
+            config.password = Some(secret);
+        }
+    }
+    config
+}
 
 #[tauri::command]
 pub async fn test_connection(config: ConnectionConfig) -> Result<TestConnectionResult, AppError> {
     let start = Instant::now();
-    let adapter: Box<dyn DatabaseAdapter> = match config.driver {
-        DriverType::Postgres => Box::new(PostgresAdapter::new(&config).await?),
-        DriverType::Mysql => Box::new(MySqlAdapter::new(&config).await?),
-        DriverType::Sqlite => Box::new(SqliteAdapter::new(&config).await?),
-        DriverType::Mssql => Box::new(MssqlAdapter::new(&config).await?),
+    let effective_config = resolve_effective_config(config);
+
+    let adapter: Box<dyn DatabaseAdapter> = match effective_config.driver {
+        DriverType::Postgres => Box::new(PostgresAdapter::new(&effective_config).await?),
+        DriverType::Mysql => Box::new(MySqlAdapter::new(&effective_config).await?),
+        DriverType::Sqlite => Box::new(SqliteAdapter::new(&effective_config).await?),
+        DriverType::Mssql => Box::new(MssqlAdapter::new(&effective_config).await?),
         _ => return Err(AppError::ConnectionError("Driver not supported yet".into())),
     };
 
@@ -39,16 +67,25 @@ pub async fn connect_database(
     config: ConnectionConfig,
     state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    let adapter: Box<dyn DatabaseAdapter> = match config.driver {
-        DriverType::Postgres => Box::new(PostgresAdapter::new(&config).await?),
-        DriverType::Mysql => Box::new(MySqlAdapter::new(&config).await?),
-        DriverType::Sqlite => Box::new(SqliteAdapter::new(&config).await?),
-        DriverType::Mssql => Box::new(MssqlAdapter::new(&config).await?),
+    let effective_config = resolve_effective_config(config);
+
+    // Save to OS Keyring if password is provided
+    if let Some(ref pwd) = effective_config.password {
+        if !pwd.is_empty() {
+            let _ = keyring::set_secret(&format!("conn_pwd_{}", &effective_config.id), pwd);
+        }
+    }
+
+    let adapter: Box<dyn DatabaseAdapter> = match effective_config.driver {
+        DriverType::Postgres => Box::new(PostgresAdapter::new(&effective_config).await?),
+        DriverType::Mysql => Box::new(MySqlAdapter::new(&effective_config).await?),
+        DriverType::Sqlite => Box::new(SqliteAdapter::new(&effective_config).await?),
+        DriverType::Mssql => Box::new(MssqlAdapter::new(&effective_config).await?),
         _ => return Err(AppError::ConnectionError("Driver not supported yet".into())),
     };
 
     let mut pools = state.pools.write().await;
-    pools.insert(config.id.clone(), Arc::new(adapter));
+    pools.insert(effective_config.id.clone(), Arc::new(adapter));
 
     Ok(())
 }
@@ -62,3 +99,4 @@ pub async fn disconnect_database(
     pools.remove(&connection_id);
     Ok(())
 }
+

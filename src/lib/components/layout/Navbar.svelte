@@ -19,6 +19,7 @@
     Sun,
     Moon,
     Monitor,
+    Lock,
     History as HistoryIcon
   } from 'lucide-svelte';
   import { historyStore } from '$lib/state/history.svelte';
@@ -110,6 +111,11 @@
             <div class="flex items-center gap-2 truncate">
               <span>{getDriverIcon(conn.driver)}</span>
               <span class="truncate">{conn.name}</span>
+              {#if conn.useKeyring}
+                <span title="OS Keyring Protected" class="flex items-center text-emerald-500 shrink-0">
+                  <Lock size={11} />
+                </span>
+              {/if}
             </div>
             <span class="px-1.5 py-0.2 text-[9px] uppercase rounded-full border {getEnvBadgeColor(conn.environment)}">
               {conn.environment}

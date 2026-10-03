@@ -59,6 +59,7 @@
   let password = $state('fugdb_password');
   let filePath = $state('');
   let showPassword = $state(false);
+  let savePasswordToKeyring = $state(true);
 
   // SSH Fields
   let useSsh = $state(false);
@@ -132,6 +133,8 @@
       sshUser: useSsh ? sshUser : undefined,
       sshKeyPath: useSsh ? sshKeyPath : undefined,
       sslMode,
+      savePasswordToKeyring,
+      useKeyring: savePasswordToKeyring,
     };
   }
 
@@ -436,6 +439,24 @@
                   </button>
                 </div>
               </div>
+            </div>
+
+            <!-- OS Keyring Credential Security Option -->
+            <div class="pt-1 flex items-center justify-between">
+              <label class="flex items-center gap-2 cursor-pointer select-none text-[11px] text-slate-700 dark:text-slate-300">
+                <input 
+                  type="checkbox" 
+                  bind:checked={savePasswordToKeyring} 
+                  class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span class="flex items-center gap-1.5 font-medium">
+                  <Lock size={12} class="text-emerald-500 shrink-0" />
+                  <span>Store password securely in OS Keychain / Keyring</span>
+                </span>
+              </label>
+              <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                Protected
+              </span>
             </div>
           {/if}
 

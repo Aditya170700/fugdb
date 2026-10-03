@@ -1,16 +1,27 @@
 use tauri::State;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::keyring;
 use crate::ai::{
     AiClient, AiProviderConfig, AiSqlResponse, OllamaModelInfo,
     build_schema_context, build_system_prompt,
 };
 
+fn resolve_effective_ai_config(mut config: AiProviderConfig) -> AiProviderConfig {
+    if config.api_key.is_none() || config.api_key.as_deref() == Some("") {
+        if let Ok(Some(secret)) = keyring::get_secret(&format!("ai_key_{}", &config.provider)) {
+            config.api_key = Some(secret);
+        }
+    }
+    config
+}
+
 #[tauri::command]
 pub async fn test_ai_connection(
     config: AiProviderConfig,
 ) -> Result<String, AppError> {
-    AiClient::test_connection(&config).await
+    let effective = resolve_effective_ai_config(config);
+    AiClient::test_connection(&effective).await
 }
 
 #[tauri::command]
@@ -46,6 +57,7 @@ pub async fn generate_sql_from_prompt(
     driver: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<AiSqlResponse, AppError> {
+    let effective_config = resolve_effective_ai_config(config);
     let pools = state.pools.read().await;
     let adapter = pools
         .get(&connection_id)
@@ -67,7 +79,7 @@ pub async fn generate_sql_from_prompt(
         schema_context
     );
 
-    AiClient::generate_sql(&config, &system_prompt, &user_prompt, dialect).await
+    AiClient::generate_sql(&effective_config, &system_prompt, &user_prompt, dialect).await
 }
 
 #[tauri::command]
@@ -79,6 +91,7 @@ pub async fn fix_sql_error(
     driver: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<AiSqlResponse, AppError> {
+    let effective_config = resolve_effective_ai_config(config);
     let pools = state.pools.read().await;
     let adapter = pools
         .get(&connection_id)
@@ -100,7 +113,7 @@ pub async fn fix_sql_error(
         dialect, sql, error_message, dialect, dialect
     );
 
-    AiClient::generate_sql(&config, &system_prompt, &fix_prompt, dialect).await
+    AiClient::generate_sql(&effective_config, &system_prompt, &fix_prompt, dialect).await
 }
 
 #[tauri::command]
@@ -112,6 +125,7 @@ pub async fn optimize_query_explain(
     driver: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<AiSqlResponse, AppError> {
+    let effective_config = resolve_effective_ai_config(config);
     let pools = state.pools.read().await;
     let adapter = pools
         .get(&connection_id)
@@ -133,6 +147,6 @@ pub async fn optimize_query_explain(
         dialect, sql, explain_plan
     );
 
-    AiClient::generate_sql(&config, &system_prompt, &optimize_prompt, dialect).await
+    AiClient::generate_sql(&effective_config, &system_prompt, &optimize_prompt, dialect).await
 }
 

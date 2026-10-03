@@ -7,9 +7,13 @@ mod qa;
 mod state;
 mod transfer;
 mod ai;
+mod keyring;
 
 use commands::{
-    connection::{connect_database, disconnect_database, test_connection},
+    connection::{
+        connect_database, disconnect_database, test_connection,
+        save_keyring_credential, get_keyring_credential, delete_keyring_credential
+    },
     mock_data::{
         execute_mock_batch_insert, generate_mock_batch, generate_mock_sql_script,
         inspect_table_mock_config, preview_mock_rows,
@@ -30,6 +34,9 @@ pub fn run() {
             test_connection,
             connect_database,
             disconnect_database,
+            save_keyring_credential,
+            get_keyring_credential,
+            delete_keyring_credential,
             execute_query,
             fetch_schema_tree,
             generate_erd_metadata,

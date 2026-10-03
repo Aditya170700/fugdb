@@ -311,7 +311,15 @@ function createAiStore() {
     set model(v) { providerModels[provider] = v; saveConfig(); },
 
     get apiKey() { return providerApiKeys[provider] || ''; },
-    set apiKey(v) { providerApiKeys[provider] = v; saveConfig(); },
+    set apiKey(v) { 
+      providerApiKeys[provider] = v; 
+      saveConfig(); 
+      if (v && v.trim() !== '') {
+        api.saveKeyringCredential(`ai_key_${provider}`, v).catch(() => {});
+      } else {
+        api.deleteKeyringCredential(`ai_key_${provider}`).catch(() => {});
+      }
+    },
 
     get endpoint() { return providerEndpoints[provider] || ''; },
     set endpoint(v) { providerEndpoints[provider] = v; saveConfig(); },

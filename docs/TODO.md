@@ -164,9 +164,13 @@
 
 ### 🔒 Phase 4: Security, Session & System Hardening
 
-- [ ] **4.1 OS-Level Keyring Integration**
-  - [ ] Simpan password dan token koneksi ke OS Native Credential Store via `keyring-rs` (macOS Keychain, Windows Credential Manager, Linux Secret Service).
-  - *Files Terkait*: `src-tauri/src/utils/keyring.rs`, `src-tauri/src/commands/connection.rs`
+- [x] **4.1 OS-Level Keyring Integration**
+  - [x] Simpan password database, SSH passphrases, dan AI API keys ke OS Native Credential Store via `keyring-rs` (macOS Keychain, Windows Credential Manager, Linux Secret Service).
+  - [x] Resolusi otomatis kredensial saat koneksi backend (`resolve_effective_config` & `resolve_effective_ai_config`) sehingga password plaintext tidak terekspos di localStorage/state.
+  - [x] Checkbox dan visual protection badge "Store password securely in OS Keychain / Keyring" pada `ConnectionModal.svelte`.
+  - [x] Indikator gembok OS Keyring di connection selector dropdown `Navbar.svelte`.
+  - [x] Otomatis membersihkan secret dari OS keyring (`delete_keyring_credential`) saat koneksi dihapus.
+  - *Files Terkait*: `src-tauri/src/keyring.rs`, `src-tauri/src/commands/connection.rs`, `src-tauri/src/commands/ai.rs`, `src/lib/state/connection.svelte.ts`, `src/lib/components/connection/ConnectionModal.svelte`, `src/lib/components/layout/Navbar.svelte`
 
 - [ ] **4.2 Native SSH Tunneling**
   - [ ] Dukungan koneksi database via SSH Bastion Host (Password, Private Key file, SSH Agent).
