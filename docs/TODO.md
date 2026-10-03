@@ -144,9 +144,11 @@
   - [x] Interactive AI Fix Modal dengan diagnosis akar masalah (Root Cause), preview SQL yang telah diperbaiki, dan aksi **"Apply & Run" (Cmd+Enter)** serta **"Apply to Editor"**.
   - *Files Terkait*: `src-tauri/src/commands/ai.rs`, `src/lib/components/ai/AiFixModal.svelte`, `src/lib/components/editor/SqlEditor.svelte`, `src/lib/components/grid/DataGrid.svelte`, `src/lib/state/ai.svelte.ts`
 
-- [ ] **3.3 1-Click Instant Data Charting**
-  - [ ] Konversi hasil query tabular menjadi grafik visual interaktif (**Bar, Line, Area, Pie/Donut, Scatter**) menggunakan LayerChart / Chart.js / Canvas.
-  - [ ] Opsi export chart ke gambar PNG/SVG.
+- [x] **3.3 1-Click Instant Data Charting**
+  - [x] Konversi hasil query tabular menjadi grafik visual interaktif (**Bar, Horizontal Bar, Line, Area, Pie/Donut, Scatter**) menggunakan Chart.js & HTML5 Canvas.
+  - [x] Auto-detection dimensi X-Axis (kategori/tanggal/teks) dan metrik Y-Axis (angka/numerik/agregasi), multi-series selection, sorting, dan grouping aggregation (Sum, Avg, Count, Min, Max).
+  - [x] Top KPI stat summary cards (Data points plotted, Total Sum, Average, Peak/Max).
+  - [x] Opsi 1-klik export chart: **High-Resolution PNG Image Download** & **Direct Copy Image to System Clipboard**.
   - *Files Terkait*: `src/lib/components/charts/DataChartModal.svelte`, `src/lib/components/grid/DataGrid.svelte`
 
 - [ ] **3.4 Visual Query EXPLAIN Plan**

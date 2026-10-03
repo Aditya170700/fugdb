@@ -30,13 +30,15 @@
     FilterX,
     SlidersHorizontal,
     Database,
-    Loader2
+    Loader2,
+    BarChart3
   } from 'lucide-svelte';
   import { mutationStore, TabMutationState } from '$lib/state/mutations.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
   import { inspectorStore } from '$lib/state/inspector.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
   import MutationReviewDrawer from './MutationReviewDrawer.svelte';
+  import DataChartModal from '$lib/components/charts/DataChartModal.svelte';
 
   let { 
     tabId = 'tab-1',
@@ -83,6 +85,7 @@
   let selectedRowIdx = $state<number | null>(null);
   let selectedColIdx = $state<number | null>(null);
   let copied = $state(false);
+  let isChartModalOpen = $state(false);
 
   // Filter & Multi-Column Sorting States
   let isFilterRowVisible = $state(false);
@@ -946,6 +949,16 @@
           <Download size={12} />
           <span>JSON</span>
         </button>
+
+        <button 
+          type="button"
+          onclick={() => isChartModalOpen = true} 
+          class="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded text-[11px] font-bold transition-colors border border-indigo-500/30 shadow-xs cursor-pointer"
+          title="Instant 1-Click Data Charting & Visualization"
+        >
+          <BarChart3 size={12} />
+          <span>Chart</span>
+        </button>
       </div>
     </div>
 
@@ -1402,6 +1415,14 @@
         </div>
       </div>
     {/if}
+
+    <!-- Data Charting & Visualization Modal -->
+    <DataChartModal 
+      bind:isOpen={isChartModalOpen} 
+      {result} 
+      title={resolvedTableName || 'Query Result'} 
+      {sql} 
+    />
   {/if}
 </div>
 
