@@ -814,5 +814,54 @@ export const api = {
       affectedRows: 4,
       executionTimeMs: 12.5
     };
+  },
+
+  // 5.3 Interactive SQL Scratchpad Notebooks (.fugpad)
+  async saveFugpadFile(path: string, content: string): Promise<void> {
+    if (isTauri) {
+      return await invoke('save_fugpad_file', { path, content });
+    }
+    // Browser mock: save to localStorage
+    try {
+      localStorage.setItem(`fugpad_${path}`, content);
+    } catch {}
+  },
+
+  async readFugpadFile(path: string): Promise<string> {
+    if (isTauri) {
+      return await invoke('read_fugpad_file', { path });
+    }
+    return localStorage.getItem(`fugpad_${path}`) || '{}';
+  },
+
+  async exportNotebookHtmlFile(targetPath: string, htmlContent: string): Promise<string> {
+    if (isTauri) {
+      return await invoke('export_notebook_html_file', { targetPath, htmlContent });
+    }
+    return targetPath;
+  },
+
+  async saveFileDialog(defaultName: string, filters: { name: string; extensions: string[] }[]): Promise<string | null> {
+    if (isTauri) {
+      const selected = await save({
+        defaultPath: defaultName,
+        filters
+      });
+      return selected;
+    }
+    return defaultName;
+  },
+
+  async openFileDialog(filters: { name: string; extensions: string[] }[]): Promise<string | null> {
+    if (isTauri) {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters
+      });
+      return selected as string | null;
+    }
+    return null;
   }
 };
+

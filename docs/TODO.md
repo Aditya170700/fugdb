@@ -210,11 +210,14 @@
   - [x] Akses modal via shortcut global `Cmd+Shift+D` / `Ctrl+Shift+D` dan tombol `GitCompare` di Navbar toolbar.
   - *Files Terkait*: `src-tauri/src/schema/diff.rs`, `src-tauri/src/models/diff.rs`, `src-tauri/src/commands/schema.rs`, `src/lib/components/diff/SchemaDiffModal.svelte`, `src/lib/state/diff.svelte.ts`, `src/lib/api/client.ts`
 
-- [ ] **5.3 Interactive SQL Scratchpad Notebooks (`.fugpad`)**
-  - [ ] Tab editor canvas bergaya notebook interaktif yang menggabungkan Markdown text blocks, SQL query blocks, dan visualisasi Chart.js interaktif dalam satu file.
-  - [ ] Eksekusi independen per blok query (**Run Cell: `Shift+Enter`**) dengan hasil data grid interaktif tersimpan di state.
-  - [ ] Ekspor notebook ke standalone HTML report interaktif atau file dokumen `.fugpad` JSON format.
-  - *Files Terkait*: `src/lib/components/notebook/SqlNotebookTab.svelte`, `src/lib/state/notebook.svelte.ts`, `src/lib/components/layout/Navbar.svelte`
+- [x] **5.3 Interactive SQL Scratchpad Notebooks (`.fugpad`)**
+  - [x] Tab editor canvas bergaya notebook interaktif yang menggabungkan Markdown text blocks, SQL query blocks, dan visualisasi Chart.js interaktif dalam satu file.
+  - [x] Eksekusi independen per blok query (**Run Cell: `Shift+Enter`**) serta eksekusi beruntun (**Run All: `Cmd+Shift+Enter`**) dengan hasil data grid, multi-type chart, atau JSON view.
+  - [x] Dukungan manipulasi cell penuh: tambah cell (+SQL, +Markdown), ubah urutan (Move Up / Down), duplikasi, dan hapus cell.
+  - [x] Ekspor notebook ke standalone HTML report interaktif (lengkap dengan embedded Chart.js & data tables), Markdown (`.md`), serta format native `.fugpad` JSON format.
+  - [x] Buka / Import file `.fugpad` lokal langsung ke workspace tab.
+  - [x] Akses cepat via Navbar tab button (`BookText`), tab switch, dan shortcut global `Cmd+Shift+N` / `Ctrl+Shift+N`.
+  - *Files Terkait*: `src-tauri/src/commands/notebook.rs`, `src/lib/components/notebook/SqlNotebookTab.svelte`, `src/lib/components/notebook/SqlCell.svelte`, `src/lib/components/notebook/MarkdownCell.svelte`, `src/lib/state/notebook.svelte.ts`, `src/lib/utils/notebookExport.ts`
 
 - [ ] **5.4 Redis & Key-Value Polyglot Inspector**
   - [ ] Driver koneksi native Redis / KeyDB via `redis-rs`.

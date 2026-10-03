@@ -19,6 +19,7 @@
   import ExplainPlanModal from '$lib/components/editor/ExplainPlanModal.svelte';
   import ServerMonitorModal from '$lib/components/monitor/ServerMonitorModal.svelte';
   import SchemaDiffModal from '$lib/components/diff/SchemaDiffModal.svelte';
+  import SqlNotebookTab from '$lib/components/notebook/SqlNotebookTab.svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
@@ -34,7 +35,7 @@
 
   const activeTab = $derived(tabsStore.activeTab);
 
-  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, Cmd+Shift+M for Monitor, Cmd+Shift+D for Diff, Cmd+E for Explain, etc.)
+  // Global Keyboard Shortcuts (Cmd+H for history, Cmd+K for AI Copilot, Cmd+Shift+M for Monitor, Cmd+Shift+D for Diff, Cmd+Shift+N for Notebook, etc.)
   function handleGlobalKeyDown(e: KeyboardEvent) {
     const isMod = e.metaKey || e.ctrlKey;
     if (isMod && e.shiftKey && e.key.toLowerCase() === 'm') {
@@ -43,6 +44,9 @@
     } else if (isMod && e.shiftKey && e.key.toLowerCase() === 'd') {
       e.preventDefault();
       diffStore.toggle();
+    } else if (isMod && e.shiftKey && e.key.toLowerCase() === 'n') {
+      e.preventDefault();
+      tabsStore.openNewNotebookTab();
     } else if (isMod && !e.shiftKey && e.key.toLowerCase() === 'h') {
       e.preventDefault();
       historyStore.toggleDrawer();
@@ -187,37 +191,42 @@
     <!-- Right Workspace Area -->
     <section bind:this={sectionRef} class="flex-1 flex flex-col overflow-hidden bg-surface-950 min-w-0">
       {#if activeTab}
-        <!-- Top Split: SQL Editor -->
-        <div style="height: {editorHeightPercent}%;" class="min-h-[60px] relative shrink-0 overflow-hidden">
-          {#key activeTab.id}
-            <SqlEditor tabId={activeTab.id} initialSql={activeTab.sql} />
-          {/key}
-        </div>
+        {#if activeTab.type === 'notebook'}
+          <!-- Full Canvas SQL Scratchpad Notebook -->
+          <SqlNotebookTab tabId={activeTab.id} />
+        {:else}
+          <!-- Top Split: SQL Editor -->
+          <div style="height: {editorHeightPercent}%;" class="min-h-[60px] relative shrink-0 overflow-hidden">
+            {#key activeTab.id}
+              <SqlEditor tabId={activeTab.id} initialSql={activeTab.sql} />
+            {/key}
+          </div>
 
-        <!-- 2. Horizontal Resizer Handle (SQL Editor <-> Result DataGrid) -->
-        <button 
-          type="button"
-          aria-label="Resize editor and results panel"
-          onmousedown={handleEditorMouseDown}
-          ondblclick={resetEditorHeight}
-          class="h-[1px] relative bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500 active:bg-indigo-500 cursor-row-resize transition-colors shrink-0 z-10 p-0 border-0 group {isDraggingEditor ? '!bg-indigo-500' : ''}"
-          title="Drag to resize editor & result grid (Double click to reset)"
-        >
-          <span class="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize"></span>
-        </button>
+          <!-- 2. Horizontal Resizer Handle (SQL Editor <-> Result DataGrid) -->
+          <button 
+            type="button"
+            aria-label="Resize editor and results panel"
+            onmousedown={handleEditorMouseDown}
+            ondblclick={resetEditorHeight}
+            class="h-[1px] relative bg-slate-200 dark:bg-slate-800 hover:bg-indigo-500 active:bg-indigo-500 cursor-row-resize transition-colors shrink-0 z-10 p-0 border-0 group {isDraggingEditor ? '!bg-indigo-500' : ''}"
+            title="Drag to resize editor & result grid (Double click to reset)"
+          >
+            <span class="absolute inset-x-0 -top-1 -bottom-1 cursor-row-resize"></span>
+          </button>
 
-        <!-- Bottom Split: Results Data Grid -->
-        <div style="height: calc(100% - {editorHeightPercent}% - 1px);" class="min-h-[60px] overflow-hidden">
-          <DataGrid 
-            tabId={activeTab.id}
-            sql={activeTab.sql}
-            tableName={activeTab.tableName}
-            connectionId={activeTab.connectionId}
-            result={activeTab.queryResult} 
-            errorMessage={activeTab.errorMessage} 
-            isExecuting={activeTab.isExecuting}
-          />
-        </div>
+          <!-- Bottom Split: Results Data Grid -->
+          <div style="height: calc(100% - {editorHeightPercent}% - 1px);" class="min-h-[60px] overflow-hidden">
+            <DataGrid 
+              tabId={activeTab.id}
+              sql={activeTab.sql}
+              tableName={activeTab.tableName}
+              connectionId={activeTab.connectionId}
+              result={activeTab.queryResult} 
+              errorMessage={activeTab.errorMessage} 
+              isExecuting={activeTab.isExecuting}
+            />
+          </div>
+        {/if}
       {:else}
         <div class="flex-1 flex items-center justify-center text-slate-500 text-sm">
           No active query tab. Click + in topbar to open a new tab.

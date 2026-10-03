@@ -22,6 +22,7 @@
     Lock,
     Activity,
     GitCompare,
+    BookText,
     History as HistoryIcon
   } from 'lucide-svelte';
   import { historyStore } from '$lib/state/history.svelte';
@@ -151,7 +152,7 @@
         onclick={() => tabsStore.activeTabId = tab.id}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') tabsStore.activeTabId = tab.id; }}
       >
-        <span class="text-[11px] opacity-80">{tab.type === 'table_grid' ? '📋' : '📝'}</span>
+        <span class="text-[11px] opacity-80">{tab.type === 'notebook' ? '📓' : tab.type === 'table_grid' ? '📋' : '📝'}</span>
         <span class="truncate max-w-[120px]">{tab.title || 'Untitled Tab'}</span>
         <button 
           type="button"
@@ -182,7 +183,7 @@
   <div class="flex items-center gap-1.5 shrink-0">
     <!-- Execute Query Button -->
     <button 
-      disabled={!activeTab || activeTab.isExecuting}
+      disabled={!activeTab || activeTab.isExecuting || activeTab.type === 'notebook'}
       onclick={() => activeTab && tabsStore.runTabQuery(activeTab.id)}
       class="flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 dark:disabled:text-slate-600 text-white font-semibold text-xs rounded-md shadow-sm transition-all active:scale-95 mr-1"
       title="Run Current Query (Cmd+Enter)"
@@ -201,6 +202,14 @@
       {#if historyStore.items.length > 0}
         <span class="absolute top-1 right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>
       {/if}
+    </button>
+
+    <button 
+      onclick={() => tabsStore.openNewNotebookTab()}
+      class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-surface-800 rounded-md transition-colors" 
+      title="New SQL Scratchpad Notebook (.fugpad) (Cmd+Shift+N / Ctrl+Shift+N)"
+    >
+      <BookText size={15} />
     </button>
 
     <button 

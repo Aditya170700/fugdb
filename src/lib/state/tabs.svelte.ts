@@ -9,7 +9,7 @@ import { sessionStore } from './session.svelte';
 export interface TabItem {
   id: string;
   title: string;
-  type: 'sql' | 'table_grid' | 'erd' | 'scratchpad';
+  type: 'sql' | 'table_grid' | 'erd' | 'scratchpad' | 'notebook';
   connectionId: string;
   sql?: string;
   tableName?: string;
@@ -26,6 +26,18 @@ export class TabsStore {
   activeTab = $derived(
     this.tabs.find(t => t.id === this.activeTabId)
   );
+
+  openNewNotebookTab(title?: string, initialDocId?: string) {
+    const newId = initialDocId || `tab-pad-${Date.now()}`;
+    const newTab: TabItem = {
+      id: newId,
+      title: title || `Notebook ${this.tabs.filter(t => t.type === 'notebook').length + 1}`,
+      type: 'notebook',
+      connectionId: connectionStore.activeConnectionId,
+    };
+    this.tabs.push(newTab);
+    this.activeTabId = newId;
+  }
 
   openNewSqlTab(initialSql?: string, title?: string) {
     const conn = connectionStore.activeConnection;

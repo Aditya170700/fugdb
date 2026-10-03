@@ -24,6 +24,7 @@ use commands::{
     transfer::{cancel_transfer_job, inspect_file, start_db_to_db_job, start_export_job, start_import_job},
     ai::{generate_sql_from_prompt, test_ai_connection, list_ollama_models, fix_sql_error, optimize_query_explain},
     monitor::{get_server_processes, kill_server_process, cancel_server_query},
+    notebook::{save_fugpad_file, read_fugpad_file, export_notebook_html_file},
 };
 use state::AppState;
 
@@ -70,7 +71,10 @@ pub fn run() {
             optimize_query_explain,
             get_server_processes,
             kill_server_process,
-            cancel_server_query
+            cancel_server_query,
+            save_fugpad_file,
+            read_fugpad_file,
+            export_notebook_html_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running FugDB application");

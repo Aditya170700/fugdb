@@ -263,5 +263,47 @@ export interface SchemaDiffResult {
   executionTimeMs: number;
 }
 
+// 5.3 Interactive SQL Scratchpad Notebook (.fugpad) Types
+export type NotebookCellType = 'markdown' | 'sql';
 
+export interface NotebookChartConfig {
+  type: 'bar' | 'line' | 'area' | 'pie' | 'doughnut';
+  xAxisColumn: string;
+  yAxisColumns: string[];
+  title?: string;
+  aggregation?: 'none' | 'sum' | 'avg' | 'count';
+}
 
+export interface MarkdownNotebookCell {
+  id: string;
+  type: 'markdown';
+  content: string;
+  isEditing?: boolean;
+}
+
+export interface SqlNotebookCell {
+  id: string;
+  type: 'sql';
+  sql: string;
+  connectionId?: string;
+  isExecuting?: boolean;
+  result?: QueryResult;
+  errorMessage?: string;
+  displayMode: 'grid' | 'chart' | 'json';
+  chartConfig?: NotebookChartConfig;
+  collapsed?: boolean;
+  executionDurationMs?: number;
+}
+
+export type NotebookCell = MarkdownNotebookCell | SqlNotebookCell;
+
+export interface FugpadDocument {
+  version: 1;
+  id: string;
+  title: string;
+  description?: string;
+  defaultConnectionId?: string;
+  createdAt: number;
+  updatedAt: number;
+  cells: NotebookCell[];
+}
