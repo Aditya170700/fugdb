@@ -1,37 +1,85 @@
 import type { ConnectionConfig, SchemaTree } from '../api/types';
 import { api } from '../api/client';
 
-export class ConnectionStore {
-  connections = $state<ConnectionConfig[]>([
-    {
-      id: 'conn-local-pg',
-      name: 'Local PostgreSQL (Docker)',
-      driver: 'postgres',
-      environment: 'dev',
-      host: 'localhost',
-      port: 15432,
-      database: 'fugdb_test',
-      username: 'fugdb_user',
-      password: 'fugdb_password',
-    },
-    {
-      id: 'conn-local-mysql',
-      name: 'Local MySQL (Docker)',
-      driver: 'mysql',
-      environment: 'dev',
-      host: 'localhost',
-      port: 3306,
-      database: 'fugdb_test',
-      username: 'fugdb_user',
-      password: 'fugdb_password',
-    },
-  ]);
+const STORAGE_KEY = 'fugdb_saved_connections';
+const ACTIVE_CONN_KEY = 'fugdb_active_connection_id';
 
+const DEFAULT_CONNECTIONS: ConnectionConfig[] = [
+  {
+    id: 'conn-local-pg',
+    name: 'Local PostgreSQL (Docker)',
+    driver: 'postgres',
+    environment: 'dev',
+    host: 'localhost',
+    port: 15432,
+    database: 'fugdb_test',
+    username: 'fugdb_user',
+    password: 'fugdb_password',
+  },
+  {
+    id: 'conn-local-mysql',
+    name: 'Local MySQL (Docker)',
+    driver: 'mysql',
+    environment: 'dev',
+    host: 'localhost',
+    port: 3306,
+    database: 'fugdb_test',
+    username: 'fugdb_user',
+    password: 'fugdb_password',
+  },
+];
+
+export class ConnectionStore {
+  connections = $state<ConnectionConfig[]>(DEFAULT_CONNECTIONS);
   activeConnectionId = $state<string>('conn-local-pg');
   schemas = $state<Record<string, SchemaTree>>({});
   isLoading = $state<boolean>(false);
   errorMessage = $state<string | null>(null);
   activeSchemaSearch = $state<string>('');
+
+  constructor() {
+    this.loadFromStorage();
+  }
+
+  private loadFromStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.connections = parsed;
+        }
+      }
+      const savedActive = localStorage.getItem(ACTIVE_CONN_KEY);
+      if (savedActive && this.connections.some(c => c.id === savedActive)) {
+        this.activeConnectionId = savedActive;
+      } else if (this.connections.length > 0) {
+        this.activeConnectionId = this.connections[0].id;
+      }
+    } catch (err) {
+      console.error('Failed to load connections from storage:', err);
+    }
+  }
+
+  private saveToStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      // Ensure password is not written to localStorage for keyring-protected connections
+      const sanitized = this.connections.map(c => {
+        if (c.useKeyring) {
+          const clone = { ...c };
+          delete clone.password;
+          return clone;
+        }
+        return c;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+      localStorage.setItem(ACTIVE_CONN_KEY, this.activeConnectionId);
+    } catch (err) {
+      console.error('Failed to save connections to storage:', err);
+    }
+  }
 
   activeConnection = $derived(
     this.connections.find(c => c.id === this.activeConnectionId)
@@ -52,6 +100,7 @@ export class ConnectionStore {
   async selectConnection(id: string) {
     this.activeConnectionId = id;
     this.errorMessage = null;
+    this.saveToStorage();
     await this.loadSchema(id);
   }
 
@@ -81,6 +130,7 @@ export class ConnectionStore {
     if (!config || config.database === databaseName) return;
 
     config.database = databaseName;
+    this.saveToStorage();
     await this.loadSchema(this.activeConnectionId);
   }
 
@@ -105,6 +155,7 @@ export class ConnectionStore {
     } else {
       this.connections.push(config);
     }
+    this.saveToStorage();
     await this.selectConnection(config.id);
   }
 
@@ -126,6 +177,7 @@ export class ConnectionStore {
         this.activeConnectionId = '';
       }
     }
+    this.saveToStorage();
   }
 }
 
