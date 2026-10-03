@@ -1,0 +1,36 @@
+name: "💡 Feature Request"
+description: "Suggest a new feature, UI enhancement, or workflow improvement for FugDB."
+title: "[Feature]: "
+labels: ["enhancement", "idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make FugDB faster, more productive, or easier to use? Let us know!
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem or Use-case"
+      description: "Is your feature request related to a problem or limitation you faced? Describe what you are trying to accomplish."
+      placeholder: "e.g., When analyzing slow queries on high-traffic databases, it is tedious to..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed Solution / Feature Description"
+      description: "Describe the ideal feature or solution you would like to see in FugDB."
+      placeholder: "e.g., Add a 1-click query optimizer that suggests missing indexes based on..."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternative Solutions or Existing Workarounds"
+      description: "Have you considered any alternative solutions, or how do other database clients handle this?"
+      placeholder: "e.g., Currently I have to copy the query into an external tool..."
+  - type: textarea
+    id: context
+    attributes:
+      label: "Additional Context / Mockups"
+      description: "Add any mockups, screenshots, or additional references that illustrate your idea."

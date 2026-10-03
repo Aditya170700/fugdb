@@ -1,0 +1,30 @@
+name: "🔌 New Database Driver Request"
+description: "Request support for a new database engine, data warehouse, or cloud data store."
+title: "[Driver]: Support for "
+labels: ["driver-request", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        FugDB aims to be the fastest polyglot database client. Let us know which database or data store you would like us to support next!
+  - type: input
+    id: db_name
+    attributes:
+      label: "Database / Storage Engine Name"
+      placeholder: "e.g., ClickHouse, Snowflake, CockroachDB, Cassandra, MongoDB..."
+    validations:
+      required: true
+  - type: textarea
+    id: rust_crates
+    attributes:
+      label: "Known Rust Driver / Client Crates"
+      description: "Are you aware of any official or high-performance async Rust crates for this database? (Optional)"
+      placeholder: "e.g., clickhouse-rs, mongodb crate, etc."
+  - type: textarea
+    id: use_case
+    attributes:
+      label: "Use Case & Popularity"
+      description: "Why is this database important for your team or the developer community?"
+      placeholder: "e.g., We use ClickHouse for real-time analytics and need a native UI to inspect tables..."
+    validations:
+      required: true
