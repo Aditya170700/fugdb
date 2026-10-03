@@ -95,7 +95,16 @@
   // Active Connections & Schema derived
   const connections = $derived(connectionStore.connections);
   const activeConn = $derived(connectionStore.activeConnection);
-  const activeSchema = $derived(connectionStore.activeSchemaTree);
+
+  const crossSrcSchema = $derived(crossSrcConnId ? connectionStore.schemas[crossSrcConnId] : undefined);
+  const crossTargetSchemaTree = $derived(crossTargetConnId ? connectionStore.schemas[crossTargetConnId] : undefined);
+  const exportSchema = $derived(exportConnId ? connectionStore.schemas[exportConnId] : undefined);
+  const importSchema = $derived(importConnId ? connectionStore.schemas[importConnId] : undefined);
+
+  const crossSrcTables = $derived(crossSrcSchema?.tables || []);
+  const crossTargetTables = $derived(crossTargetSchemaTree?.tables || []);
+  const exportTables = $derived(exportSchema?.tables || []);
+  const importTables = $derived(importSchema?.tables || []);
 
   $effect(() => {
     if (isOpen && activeConn) {
@@ -106,12 +115,48 @@
       }
       if (!exportConnId) exportConnId = activeConn.id;
       if (!importConnId) importConnId = activeConn.id;
+    }
+  });
 
-      if (activeSchema?.tables && activeSchema.tables.length > 0) {
-        if (!crossSrcTable) crossSrcTable = activeSchema.tables[0].name;
-        if (!crossTargetTable) crossTargetTable = activeSchema.tables[0].name;
-        if (!exportSelectedTable) exportSelectedTable = activeSchema.tables[0].name;
-        if (!importTargetTable) importTargetTable = activeSchema.tables[0].name;
+  // Automatically fetch schema for selected connections if not already loaded
+  $effect(() => {
+    if (crossSrcConnId && !connectionStore.schemas[crossSrcConnId]) {
+      connectionStore.loadSchema(crossSrcConnId);
+    }
+  });
+
+  $effect(() => {
+    if (crossTargetConnId && !connectionStore.schemas[crossTargetConnId]) {
+      connectionStore.loadSchema(crossTargetConnId);
+    }
+  });
+
+  $effect(() => {
+    if (exportConnId && !connectionStore.schemas[exportConnId]) {
+      connectionStore.loadSchema(exportConnId);
+    }
+  });
+
+  $effect(() => {
+    if (importConnId && !connectionStore.schemas[importConnId]) {
+      connectionStore.loadSchema(importConnId);
+    }
+  });
+
+  // When tables list updates for source, ensure crossSrcTable is valid
+  $effect(() => {
+    if (crossSrcTables.length > 0) {
+      if (!crossSrcTable || !crossSrcTables.some(t => t.name === crossSrcTable)) {
+        crossSrcTable = crossSrcTables[0].name;
+      }
+    }
+  });
+
+  // When tables list updates for export, ensure exportSelectedTable is valid
+  $effect(() => {
+    if (exportTables.length > 0) {
+      if (!exportSelectedTable || !exportTables.some(t => t.name === exportSelectedTable)) {
+        exportSelectedTable = exportTables[0].name;
       }
     }
   });
@@ -437,69 +482,69 @@
         {#if activeTab === 'cross_db'}
           <!-- ================= CROSS-DB DIRECT MIGRATION TAB ================= -->
           <div class="space-y-5">
-            <div class="grid grid-cols-1 lg:grid-cols-11 gap-3 items-center">
+            <div class="grid grid-cols-1 lg:grid-cols-11 gap-3 items-stretch">
               <!-- Left: Source Database Card -->
-              <div class="lg:col-span-5 bg-white dark:bg-surface-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="font-bold text-slate-900 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                    <Database size={13} class="text-indigo-600 dark:text-indigo-400" />
-                    Source Connection
-                  </span>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-500/30">
-                    Extractor
-                  </span>
-                </div>
+              <div class="lg:col-span-5 bg-white dark:bg-surface-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-3 h-full">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-900 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <Database size={13} class="text-indigo-600 dark:text-indigo-400" />
+                      Source Connection
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 font-bold border border-indigo-500/30">
+                      Extractor
+                    </span>
+                  </div>
 
-                <div>
-                  <CustomSelect
-                    id="cross-src-conn"
-                    label="Database"
-                    bind:value={crossSrcConnId}
-                    options={connections.map(conn => ({
-                      value: conn.id,
-                      label: `${conn.name} (${conn.driver} • ${conn.environment})`,
-                      badge: conn.environment,
-                      dotColor: conn.environment === 'production' ? 'bg-rose-500' : conn.environment === 'staging' ? 'bg-amber-500' : 'bg-emerald-500'
-                    }))}
-                  />
-                </div>
+                  <div>
+                    <CustomSelect
+                      id="cross-src-conn"
+                      label="Database"
+                      bind:value={crossSrcConnId}
+                      options={connections.map(conn => ({
+                        value: conn.id,
+                        label: `${conn.name} (${conn.driver} • ${conn.environment})`,
+                        badge: conn.environment,
+                        dotColor: conn.environment === 'production' ? 'bg-rose-500' : conn.environment === 'staging' ? 'bg-amber-500' : 'bg-emerald-500'
+                      }))}
+                    />
+                  </div>
 
-                <div>
-                  <span class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Data Selection</span>
-                  <div class="flex gap-2">
-                    <button
-                      type="button"
-                      onclick={() => crossSrcMode = 'table'}
-                      class="flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer {crossSrcMode === 'table' ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs' : 'bg-white dark:bg-surface-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-800'}"
-                    >
-                      Entire Table
-                    </button>
-                    <button
-                      type="button"
-                      onclick={() => crossSrcMode = 'query'}
-                      class="flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer {crossSrcMode === 'query' ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs' : 'bg-white dark:bg-surface-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-800'}"
-                    >
-                      Custom Query
-                    </button>
+                  <div>
+                    <span class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Data Selection</span>
+                    <div class="flex gap-2">
+                      <button
+                        type="button"
+                        onclick={() => crossSrcMode = 'table'}
+                        class="flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer {crossSrcMode === 'table' ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs' : 'bg-white dark:bg-surface-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-800'}"
+                      >
+                        Entire Table
+                      </button>
+                      <button
+                        type="button"
+                        onclick={() => crossSrcMode = 'query'}
+                        class="flex-1 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer {crossSrcMode === 'query' ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs' : 'bg-white dark:bg-surface-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-surface-800'}"
+                      >
+                        Custom Query
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {#if crossSrcMode === 'table'}
-                  <div>
+                <div>
+                  {#if crossSrcMode === 'table'}
                     <CustomSelect
                       id="cross-src-table"
                       label="Source Table"
                       fontMono={true}
                       bind:value={crossSrcTable}
-                      options={activeSchema?.tables ? activeSchema.tables.map(tbl => ({
+                      options={crossSrcTables.length > 0 ? crossSrcTables.map(tbl => ({
                         value: tbl.name,
                         label: `${tbl.schema}.${tbl.name}`,
-                        badge: `${tbl.rowCountEstimate || 0} rows`
-                      })) : [{ value: 'users', label: 'public.users' }]}
+                        badge: `${(tbl.rowCountEstimate ?? 0).toLocaleString()} rows`
+                      })) : [{ value: '', label: connectionStore.isLoading ? 'Loading tables...' : 'No tables found' }]}
                     />
-                  </div>
-                {:else}
-                  <div>
+                  {:else}
                     <label for="cross-src-query" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">SQL Query to Stream</label>
                     <textarea
                       id="cross-src-query"
@@ -507,12 +552,12 @@
                       rows="3"
                       class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 font-mono text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     ></textarea>
-                  </div>
-                {/if}
+                  {/if}
+                </div>
               </div>
 
               <!-- Center Streaming Pipeline Visual Indicator -->
-              <div class="lg:col-span-1 flex flex-col items-center justify-center py-2 text-indigo-600 dark:text-indigo-400 gap-1">
+              <div class="lg:col-span-1 flex flex-col items-center justify-center py-2 text-indigo-600 dark:text-indigo-400 gap-1 self-center">
                 <div class="w-9 h-9 rounded-full bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center shadow-md shadow-indigo-500/20 {isRunning ? 'animate-pulse' : ''}">
                   <ArrowRight size={18} class={isRunning ? 'animate-pulse' : ''} />
                 </div>
@@ -520,50 +565,52 @@
               </div>
 
               <!-- Right: Target Database Card -->
-              <div class="lg:col-span-5 bg-white dark:bg-surface-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="font-bold text-slate-900 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                    <Database size={13} class="text-emerald-600 dark:text-emerald-400" />
-                    Target Connection
-                  </span>
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/30">
-                    Loader
-                  </span>
-                </div>
+              <div class="lg:col-span-5 bg-white dark:bg-surface-950/70 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-3 h-full">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-900 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <Database size={13} class="text-emerald-600 dark:text-emerald-400" />
+                      Target Connection
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-500/30">
+                      Loader
+                    </span>
+                  </div>
 
-                <div>
-                  <CustomSelect
-                    id="cross-tgt-conn"
-                    label="Database"
-                    bind:value={crossTargetConnId}
-                    options={connections.map(conn => ({
-                      value: conn.id,
-                      label: `${conn.name} (${conn.driver} • ${conn.environment})`,
-                      badge: conn.environment,
-                      dotColor: conn.environment === 'production' ? 'bg-rose-500' : conn.environment === 'staging' ? 'bg-amber-500' : 'bg-emerald-500'
-                    }))}
-                  />
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
                   <div>
-                    <label for="cross-tgt-schema" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Schema</label>
-                    <input
-                      id="cross-tgt-schema"
-                      type="text"
-                      bind:value={crossTargetSchema}
-                      class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-mono"
+                    <CustomSelect
+                      id="cross-tgt-conn"
+                      label="Database"
+                      bind:value={crossTargetConnId}
+                      options={connections.map(conn => ({
+                        value: conn.id,
+                        label: `${conn.name} (${conn.driver} • ${conn.environment})`,
+                        badge: conn.environment,
+                        dotColor: conn.environment === 'production' ? 'bg-rose-500' : conn.environment === 'staging' ? 'bg-amber-500' : 'bg-emerald-500'
+                      }))}
                     />
                   </div>
-                  <div>
-                    <label for="cross-tgt-table" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Target Table</label>
-                    <input
-                      id="cross-tgt-table"
-                      type="text"
-                      bind:value={crossTargetTable}
-                      placeholder="e.g. users_backup"
-                      class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                    />
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label for="cross-tgt-schema" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Schema</label>
+                      <input
+                        id="cross-tgt-schema"
+                        type="text"
+                        bind:value={crossTargetSchema}
+                        class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label for="cross-tgt-table" class="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Target Table</label>
+                      <input
+                        id="cross-tgt-table"
+                        type="text"
+                        bind:value={crossTargetTable}
+                        placeholder="e.g. users_backup"
+                        class="w-full bg-slate-50 dark:bg-surface-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -677,11 +724,11 @@
                     label="Select Table"
                     fontMono={true}
                     bind:value={exportSelectedTable}
-                    options={activeSchema?.tables ? activeSchema.tables.map(tbl => ({
+                    options={exportTables.length > 0 ? exportTables.map(tbl => ({
                       value: tbl.name,
                       label: `${tbl.schema}.${tbl.name}`,
-                      badge: `${tbl.rowCountEstimate || 0} rows`
-                    })) : [{ value: 'users', label: 'public.users' }]}
+                      badge: `${(tbl.rowCountEstimate ?? 0).toLocaleString()} rows`
+                    })) : [{ value: '', label: connectionStore.isLoading ? 'Loading tables...' : 'No tables found' }]}
                   />
                 </div>
               {:else}

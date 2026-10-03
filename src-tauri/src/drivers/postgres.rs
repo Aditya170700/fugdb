@@ -166,12 +166,16 @@ impl DatabaseAdapter for PostgresAdapter {
     async fn fetch_schema_tree(&self) -> Result<SchemaTree, AppError> {
         let tables_sql = r#"
             SELECT 
-                COALESCE(table_schema::text, 'public') AS table_schema,
-                COALESCE(table_name::text, '') AS table_name,
-                COALESCE(table_type::text, 'BASE TABLE') AS table_type
-            FROM information_schema.tables
-            WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-            ORDER BY table_schema, table_name;
+                COALESCE(t.table_schema::text, 'public') AS table_schema,
+                COALESCE(t.table_name::text, '') AS table_name,
+                COALESCE(t.table_type::text, 'BASE TABLE') AS table_type,
+                COALESCE(s.n_live_tup, GREATEST(0, c.reltuples::bigint), 0)::bigint AS row_count_estimate
+            FROM information_schema.tables t
+            LEFT JOIN pg_namespace n ON n.nspname = t.table_schema
+            LEFT JOIN pg_class c ON c.relname = t.table_name AND c.relnamespace = n.oid
+            LEFT JOIN pg_stat_user_tables s ON s.schemaname = t.table_schema AND s.relname = t.table_name
+            WHERE t.table_schema NOT IN ('pg_catalog', 'information_schema')
+            ORDER BY t.table_schema, t.table_name;
         "#;
 
         let table_rows = sqlx::query(tables_sql)
@@ -284,6 +288,7 @@ impl DatabaseAdapter for PostgresAdapter {
             let schema: String = row.try_get("table_schema").unwrap_or_else(|_| "public".into());
             let name: String = row.try_get("table_name").unwrap_or_default();
             let table_type: String = row.try_get("table_type").unwrap_or_else(|_| "table".into());
+            let row_count: Option<i64> = row.try_get("row_count_estimate").ok();
 
             if !name.is_empty() {
                 let key = format!("{}.{}", schema, name);
@@ -292,9 +297,20 @@ impl DatabaseAdapter for PostgresAdapter {
                     schema,
                     name,
                     table_type: if table_type.contains("VIEW") { "view".into() } else { "table".into() },
-                    row_count_estimate: None,
+                    row_count_estimate: row_count,
                     columns,
                 });
+            }
+        }
+
+        for tbl in &mut tables {
+            if tbl.table_type != "view" && (tbl.row_count_estimate.is_none() || tbl.row_count_estimate == Some(0)) {
+                let count_sql = format!("SELECT COUNT(*) AS c FROM \"{}\".\"{}\"", tbl.schema, tbl.name);
+                if let Ok(count_row) = sqlx::query(&count_sql).fetch_one(&self.pool).await {
+                    if let Ok(c) = count_row.try_get::<i64, _>("c") {
+                        tbl.row_count_estimate = Some(c);
+                    }
+                }
             }
         }
 

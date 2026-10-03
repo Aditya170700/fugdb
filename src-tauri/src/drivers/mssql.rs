@@ -161,14 +161,24 @@ impl DatabaseAdapter for MssqlAdapter {
             databases.push(self.database_name.clone());
         }
 
-        // 2. Fetch tables and views for current database
         let tbl_sql = r#"
             SELECT 
-                COALESCE(TABLE_SCHEMA, 'dbo') AS table_schema,
-                COALESCE(TABLE_NAME, '') AS table_name,
-                COALESCE(TABLE_TYPE, 'BASE TABLE') AS table_type
-            FROM INFORMATION_SCHEMA.TABLES
-            ORDER BY TABLE_SCHEMA, TABLE_NAME;
+                t.TABLE_SCHEMA AS table_schema,
+                t.TABLE_NAME AS table_name,
+                t.TABLE_TYPE AS table_type,
+                COALESCE(p.row_count, 0) AS row_count_estimate
+            FROM INFORMATION_SCHEMA.TABLES t
+            LEFT JOIN (
+                SELECT 
+                    s.name AS schema_name,
+                    tbl.name AS table_name,
+                    SUM(part.rows) AS row_count
+                FROM sys.tables tbl
+                JOIN sys.schemas s ON tbl.schema_id = s.schema_id
+                JOIN sys.partitions part ON tbl.object_id = part.object_id AND part.index_id IN (0, 1)
+                GROUP BY s.name, tbl.name
+            ) p ON p.schema_name = t.TABLE_SCHEMA AND p.table_name = t.TABLE_NAME
+            ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME;
         "#;
 
         let tbl_stream = conn.simple_query(tbl_sql).await
@@ -255,6 +265,7 @@ impl DatabaseAdapter for MssqlAdapter {
             let schema = row.get::<&str, _>("table_schema").unwrap_or("dbo").to_string();
             let name = row.get::<&str, _>("table_name").unwrap_or_default().to_string();
             let table_type = row.get::<&str, _>("table_type").unwrap_or("BASE TABLE").to_string();
+            let row_count = row.get::<i64, _>("row_count_estimate");
 
             if !name.is_empty() {
                 let key = format!("{}.{}", schema, name);
@@ -263,7 +274,7 @@ impl DatabaseAdapter for MssqlAdapter {
                     schema,
                     name,
                     table_type: if table_type.contains("VIEW") { "view".into() } else { "table".into() },
-                    row_count_estimate: None,
+                    row_count_estimate: row_count,
                     columns,
                 });
             }

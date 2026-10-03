@@ -188,11 +188,22 @@ impl DatabaseAdapter for SqliteAdapter {
                     }
                 }
 
+                let count_sql = format!("SELECT COUNT(*) AS c FROM \"{}\"", name);
+                let row_count = if table_type != "view" {
+                    sqlx::query(&count_sql)
+                        .fetch_one(&self.pool)
+                        .await
+                        .ok()
+                        .and_then(|r| r.try_get::<i64, _>("c").ok())
+                } else {
+                    None
+                };
+
                 tables.push(TableItem {
                     schema: "main".into(),
                     name,
                     table_type: if table_type == "view" { "view".into() } else { "table".into() },
-                    row_count_estimate: None,
+                    row_count_estimate: row_count,
                     columns,
                 });
             }

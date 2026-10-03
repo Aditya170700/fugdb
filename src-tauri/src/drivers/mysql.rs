@@ -163,13 +163,15 @@ impl DatabaseAdapter for MySqlAdapter {
             SELECT 
                 CAST(TABLE_SCHEMA AS CHAR) AS table_schema, 
                 CAST(TABLE_NAME AS CHAR) AS table_name, 
-                CAST(TABLE_TYPE AS CHAR) AS table_type
+                CAST(TABLE_TYPE AS CHAR) AS table_type,
+                COALESCE(TABLE_ROWS, 0) AS row_count_estimate
             FROM information_schema.tables
-            WHERE TABLE_SCHEMA = DATABASE()
+            WHERE TABLE_SCHEMA = ? OR (DATABASE() IS NOT NULL AND TABLE_SCHEMA = DATABASE())
             ORDER BY TABLE_NAME;
         "#;
 
         let table_rows = sqlx::query(tables_sql)
+            .bind(&self.database_name)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
@@ -183,11 +185,12 @@ impl DatabaseAdapter for MySqlAdapter {
                 CAST(COLUMN_KEY AS CHAR) AS column_key, 
                 CAST(IS_NULLABLE AS CHAR) AS is_nullable
             FROM information_schema.columns
-            WHERE TABLE_SCHEMA = DATABASE()
+            WHERE TABLE_SCHEMA = ? OR (DATABASE() IS NOT NULL AND TABLE_SCHEMA = DATABASE())
             ORDER BY TABLE_NAME, ORDINAL_POSITION;
         "#;
 
         let col_rows = sqlx::query(columns_sql)
+            .bind(&self.database_name)
             .fetch_all(&self.pool)
             .await
             .unwrap_or_default();
@@ -200,11 +203,12 @@ impl DatabaseAdapter for MySqlAdapter {
                 CAST(REFERENCED_TABLE_NAME AS CHAR) AS to_table,
                 CAST(REFERENCED_COLUMN_NAME AS CHAR) AS to_column
             FROM information_schema.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = DATABASE()
+            WHERE (TABLE_SCHEMA = ? OR (DATABASE() IS NOT NULL AND TABLE_SCHEMA = DATABASE()))
               AND REFERENCED_TABLE_NAME IS NOT NULL;
         "#;
 
         let fk_rows = sqlx::query(fk_sql)
+            .bind(&self.database_name)
             .fetch_all(&self.pool)
             .await
             .unwrap_or_default();
@@ -261,15 +265,31 @@ impl DatabaseAdapter for MySqlAdapter {
                 .or_else(|_| row.try_get::<Vec<u8>, _>("table_type").map(|b| String::from_utf8_lossy(&b).to_string()))
                 .unwrap_or_else(|_| "BASE TABLE".into());
 
+            let row_count = row.try_get::<i64, _>("row_count_estimate")
+                .or_else(|_| row.try_get::<u64, _>("row_count_estimate").map(|u| u as i64))
+                .ok();
+
             if !name.is_empty() {
                 let columns = col_map.remove(&name).unwrap_or_default();
                 tables.push(TableItem {
                     schema,
                     name,
                     table_type: if table_type.contains("VIEW") { "view".into() } else { "table".into() },
-                    row_count_estimate: None,
+                    row_count_estimate: row_count,
                     columns,
                 });
+            }
+        }
+
+        // Exact row count verification fallback for small/fresh tables where TABLE_ROWS is 0
+        for tbl in &mut tables {
+            if tbl.table_type != "view" && (tbl.row_count_estimate.is_none() || tbl.row_count_estimate == Some(0)) {
+                let count_sql = format!("SELECT COUNT(*) AS c FROM `{}`.`{}`", tbl.schema, tbl.name);
+                if let Ok(count_row) = sqlx::query(&count_sql).fetch_one(&self.pool).await {
+                    if let Ok(c) = count_row.try_get::<i64, _>("c").or_else(|_| count_row.try_get::<u64, _>("c").map(|u| u as i64)) {
+                        tbl.row_count_estimate = Some(c);
+                    }
+                }
             }
         }
 
