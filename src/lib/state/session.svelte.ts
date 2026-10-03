@@ -10,6 +10,12 @@ export interface SessionTransactionState {
 
 const STORAGE_KEY = 'fugdb_autocommit_prefs';
 
+const DEFAULT_STATE: Readonly<SessionTransactionState> = {
+  autoCommit: true,
+  inTransaction: false,
+  uncommittedCount: 0,
+};
+
 export class SessionStore {
   // Map of connectionId -> Transaction State
   states = $state<Record<string, SessionTransactionState>>({});
@@ -28,7 +34,7 @@ export class SessionStore {
         const parsed = JSON.parse(data);
         if (typeof parsed === 'object' && parsed !== null) {
           for (const [connId, autoCommit] of Object.entries(parsed)) {
-            this.getState(connId).autoCommit = Boolean(autoCommit);
+            this.ensureState(connId).autoCommit = Boolean(autoCommit);
           }
         }
       }
@@ -46,7 +52,7 @@ export class SessionStore {
     } catch {}
   }
 
-  getState(connectionId?: string): SessionTransactionState {
+  private ensureState(connectionId?: string): SessionTransactionState {
     const id = connectionId || connectionStore.activeConnectionId || 'default';
     if (!this.states[id]) {
       this.states[id] = {
@@ -56,6 +62,11 @@ export class SessionStore {
       };
     }
     return this.states[id];
+  }
+
+  getState(connectionId?: string): SessionTransactionState {
+    const id = connectionId || connectionStore.activeConnectionId || 'default';
+    return this.states[id] ?? DEFAULT_STATE;
   }
 
   isAutoCommit(connectionId?: string): boolean {
@@ -71,7 +82,7 @@ export class SessionStore {
   }
 
   toggleAutoCommit(connectionId?: string) {
-    const state = this.getState(connectionId);
+    const state = this.ensureState(connectionId);
     state.autoCommit = !state.autoCommit;
     this.savePrefs();
 
@@ -91,7 +102,7 @@ export class SessionStore {
     this.isOperating = true;
     try {
       await api.beginTransaction(id, d);
-      const state = this.getState(id);
+      const state = this.ensureState(id);
       state.inTransaction = true;
       state.uncommittedCount = 0;
       state.startedAt = Date.now();
@@ -112,7 +123,7 @@ export class SessionStore {
     this.isOperating = true;
     try {
       await api.commitTransaction(id, d);
-      const state = this.getState(id);
+      const state = this.ensureState(id);
       const count = state.uncommittedCount;
       state.inTransaction = false;
       state.uncommittedCount = 0;
@@ -134,7 +145,7 @@ export class SessionStore {
     this.isOperating = true;
     try {
       await api.rollbackTransaction(id, d);
-      const state = this.getState(id);
+      const state = this.ensureState(id);
       const count = state.uncommittedCount;
       state.inTransaction = false;
       state.uncommittedCount = 0;
@@ -149,7 +160,7 @@ export class SessionStore {
   }
 
   trackQuery(connectionId: string, sql: string) {
-    const state = this.getState(connectionId);
+    const state = this.ensureState(connectionId);
     const cleaned = sql.trim().toUpperCase();
 
     // Check explicit transaction SQL commands
