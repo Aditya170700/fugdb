@@ -35,3 +35,62 @@ pub async fn explain_query(
     adapter.explain_query(&sql, analyze).await
 }
 
+#[tauri::command]
+pub async fn begin_transaction(
+    connection_id: String,
+    driver: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<QueryResult, AppError> {
+    let pools = state.pools.read().await;
+    let adapter = pools
+        .get(&connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(connection_id.clone()))?;
+
+    let sql = match driver.as_deref().unwrap_or("").to_lowercase().as_str() {
+        "mysql" => "START TRANSACTION;",
+        "mssql" | "sqlserver" => "BEGIN TRANSACTION;",
+        _ => "BEGIN;",
+    };
+
+    adapter.execute_query(sql, None, None).await
+}
+
+#[tauri::command]
+pub async fn commit_transaction(
+    connection_id: String,
+    driver: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<QueryResult, AppError> {
+    let pools = state.pools.read().await;
+    let adapter = pools
+        .get(&connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(connection_id.clone()))?;
+
+    let sql = match driver.as_deref().unwrap_or("").to_lowercase().as_str() {
+        "mssql" | "sqlserver" => "COMMIT TRANSACTION;",
+        _ => "COMMIT;",
+    };
+
+    adapter.execute_query(sql, None, None).await
+}
+
+#[tauri::command]
+pub async fn rollback_transaction(
+    connection_id: String,
+    driver: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<QueryResult, AppError> {
+    let pools = state.pools.read().await;
+    let adapter = pools
+        .get(&connection_id)
+        .ok_or_else(|| AppError::ConnectionNotFound(connection_id.clone()))?;
+
+    let sql = match driver.as_deref().unwrap_or("").to_lowercase().as_str() {
+        "mssql" | "sqlserver" => "ROLLBACK TRANSACTION;",
+        _ => "ROLLBACK;",
+    };
+
+    adapter.execute_query(sql, None, None).await
+}
+
+

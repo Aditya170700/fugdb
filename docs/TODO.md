@@ -180,10 +180,13 @@
   - [x] Integrasi native file picker dialog untuk pemilihan private key file.
   - *Files Terkait*: `src-tauri/src/ssh.rs`, `src-tauri/src/commands/connection.rs`, `src-tauri/src/state.rs`, `src/lib/components/connection/ConnectionModal.svelte`
 
-- [ ] **4.3 Transaction & Session Control**
-  - [ ] Toggle Auto-commit vs Manual Transaction (`BEGIN`, `COMMIT`, `ROLLBACK`).
-  - [ ] Indikator status transaksi aktif di Statusbar bawah.
-  - *Files Terkait*: `src/lib/components/layout/Statusbar.svelte`, `src-tauri/src/drivers/`
+- [x] **4.3 Transaction & Session Control**
+  - [x] Toggle Auto-commit (⚡) vs Manual Transaction (🔒) dengan persistensi preferensi per koneksi.
+  - [x] Eksekusi backend native transaction commands (`BEGIN` / `START TRANSACTION`, `COMMIT`, `ROLLBACK`) untuk PostgreSQL, MySQL, SQLite, dan SQL Server (MSSQL).
+  - [x] Indikator status transaksi aktif di Statusbar bawah dengan counter uncommitted statements dan tombol aksi cepat Commit / Rollback.
+  - [x] Integrasi SQL Editor toolbar dengan tombol toggle Auto-commit, tombol Commit & Rollback, serta global keyboard shortcuts (`Cmd+Shift+C` / `Ctrl+Shift+C` untuk Commit, `Cmd+Shift+R` / `Ctrl+Shift+R` untuk Rollback).
+  - [x] Automatic query tracking untuk deteksi query mutasi data (`INSERT`, `UPDATE`, `DELETE`, `DDL`) dan perintah eksplisit transaksi.
+  - *Files Terkait*: `src-tauri/src/commands/query.rs`, `src/lib/state/session.svelte.ts`, `src/lib/components/layout/Statusbar.svelte`, `src/lib/components/editor/SqlEditor.svelte`
 
 ---
 

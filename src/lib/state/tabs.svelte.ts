@@ -4,6 +4,7 @@ import { connectionStore } from './connection.svelte';
 import { assessSqlRisk } from '../utils/safetyGuard';
 import { safetyStore } from './safety.svelte';
 import { historyStore } from './history.svelte';
+import { sessionStore } from './session.svelte';
 
 export interface TabItem {
   id: string;
@@ -129,6 +130,9 @@ export class TabsStore {
     try {
       const result = await api.executeQuery(tab.connectionId, tab.sql);
       tab.queryResult = result;
+
+      // Track session transaction state
+      sessionStore.trackQuery(tab.connectionId, tab.sql);
 
       // Log successful execution into persistent history
       historyStore.addEntry({

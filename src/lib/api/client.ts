@@ -181,6 +181,30 @@ export const api = {
     };
   },
 
+  async beginTransaction(connectionId: string, driver?: string): Promise<QueryResult> {
+    if (isTauri) {
+      return await invoke('begin_transaction', { connectionId, driver });
+    }
+    await new Promise(r => setTimeout(r, 40));
+    return { columns: [], rows: [], affectedRows: 0, executionTimeMs: 1.2 };
+  },
+
+  async commitTransaction(connectionId: string, driver?: string): Promise<QueryResult> {
+    if (isTauri) {
+      return await invoke('commit_transaction', { connectionId, driver });
+    }
+    await new Promise(r => setTimeout(r, 40));
+    return { columns: [], rows: [], affectedRows: 0, executionTimeMs: 1.4 };
+  },
+
+  async rollbackTransaction(connectionId: string, driver?: string): Promise<QueryResult> {
+    if (isTauri) {
+      return await invoke('rollback_transaction', { connectionId, driver });
+    }
+    await new Promise(r => setTimeout(r, 40));
+    return { columns: [], rows: [], affectedRows: 0, executionTimeMs: 1.1 };
+  },
+
   // Smart QA Mock Data Generator API
   async inspectTableMockConfig(connectionId: string, tableName: string): Promise<TableMockInspection> {
     if (isTauri) {

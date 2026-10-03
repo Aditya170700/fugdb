@@ -7,10 +7,11 @@
   import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
   import { tags } from '@lezer/highlight';
   import { oneDark } from '@codemirror/theme-one-dark';
-  import { Play, ShieldAlert, AlertTriangle, History, Sparkles, AlertCircle, X, Activity } from 'lucide-svelte';
+  import { Play, ShieldAlert, AlertTriangle, History, Sparkles, AlertCircle, X, Activity, Zap, Lock, RotateCcw, Check, Loader2 } from 'lucide-svelte';
   import { tabsStore } from '$lib/state/tabs.svelte';
   import { themeStore } from '$lib/state/theme.svelte';
   import { connectionStore } from '$lib/state/connection.svelte';
+  import { sessionStore } from '$lib/state/session.svelte';
   import { historyStore } from '$lib/state/history.svelte';
   import { aiStore } from '$lib/state/ai.svelte';
   import { explainStore } from '$lib/state/explain.svelte';
@@ -27,6 +28,7 @@
   const currentTab = $derived(tabsStore.tabs.find(t => t.id === tabId));
   const currentSql = $derived(currentTab?.sql || initialSql || '');
   const activeConn = $derived(connectionStore.activeConnection);
+  const sessionTxState = $derived(sessionStore.getState(activeConn?.id));
   const isProduction = $derived(activeConn?.environment === 'production');
   const sqlRisk = $derived(assessSqlRisk(currentSql));
 
@@ -174,6 +176,20 @@
               return true;
             },
           },
+          {
+            key: 'Mod-Shift-c',
+            run: () => {
+              sessionStore.commit(activeConn?.id, activeConn?.driver);
+              return true;
+            },
+          },
+          {
+            key: 'Mod-Shift-r',
+            run: () => {
+              sessionStore.rollback(activeConn?.id, activeConn?.driver);
+              return true;
+            },
+          },
         ]),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -191,7 +207,20 @@
       parent: editorContainer,
     });
 
+    const handleGlobalKeydown = (e: KeyboardEvent) => {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && e.shiftKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        sessionStore.commit(activeConn?.id, activeConn?.driver);
+      } else if (isMod && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        sessionStore.rollback(activeConn?.id, activeConn?.driver);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeydown);
+
     return () => {
+      window.removeEventListener('keydown', handleGlobalKeydown);
       view?.destroy();
     };
   });
@@ -291,6 +320,65 @@
         <Activity size={12} class="text-indigo-600 dark:text-indigo-400" />
         <span>Explain</span>
       </button>
+
+      <!-- Transaction Controls -->
+      <div class="h-3.5 w-px bg-slate-200 dark:bg-slate-700/80 mx-0.5"></div>
+
+      <button
+        type="button"
+        onclick={() => sessionStore.toggleAutoCommit(activeConn?.id)}
+        class="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-semibold border transition-colors cursor-pointer {sessionTxState.autoCommit 
+          ? 'bg-slate-100 dark:bg-surface-800 text-slate-700 dark:text-slate-300 border-slate-300/80 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-surface-700' 
+          : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/25'}"
+        title={sessionTxState.autoCommit ? 'Auto-commit is ON. Click to switch to Manual Transaction mode.' : 'Manual Transaction mode active. Click to switch to Auto-commit.'}
+      >
+        {#if sessionTxState.autoCommit}
+          <Zap size={11.5} class="text-emerald-500 fill-emerald-500" />
+          <span>Auto-commit</span>
+        {:else}
+          <Lock size={11.5} class="text-amber-500" />
+          <span>Manual Tx</span>
+        {/if}
+      </button>
+
+      {#if !sessionTxState.autoCommit || sessionTxState.inTransaction}
+        <div class="flex items-center gap-1 animate-in fade-in duration-150">
+          <button
+            type="button"
+            onclick={() => sessionStore.commit(activeConn?.id, activeConn?.driver)}
+            disabled={sessionStore.isOperating}
+            class="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold rounded text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            title="Commit Transaction (Cmd+Shift+C / Ctrl+Shift+C)"
+          >
+            {#if sessionStore.isOperating}
+              <Loader2 size={11} class="animate-spin" />
+            {:else}
+              <Check size={11} strokeWidth={3} />
+            {/if}
+            <span>Commit</span>
+            {#if sessionTxState.uncommittedCount > 0}
+              <span class="ml-0.5 px-1 py-0.2 text-[10px] bg-emerald-700 rounded-full font-mono font-bold leading-none">
+                {sessionTxState.uncommittedCount}
+              </span>
+            {/if}
+          </button>
+
+          <button
+            type="button"
+            onclick={() => sessionStore.rollback(activeConn?.id, activeConn?.driver)}
+            disabled={sessionStore.isOperating}
+            class="flex items-center gap-1 px-2.5 py-1 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-bold rounded text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            title="Rollback Transaction (Cmd+Shift+R / Ctrl+Shift+R)"
+          >
+            {#if sessionStore.isOperating}
+              <Loader2 size={11} class="animate-spin" />
+            {:else}
+              <RotateCcw size={11} strokeWidth={2.5} />
+            {/if}
+            <span>Rollback</span>
+          </button>
+        </div>
+      {/if}
 
       {#if isProduction}
         <div class="flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
